@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface CalendarAppointment {
   id: number;
   day: number;
-  month: number; // 0-indexed
+  month: number;
   year: number;
   time: string;
   endTime: string;
@@ -34,7 +34,7 @@ export interface AppNotification {
   read: boolean;
 }
 
-// ─── Initial Calendar Appointments ───────────────────────────────────
+// ─── Initial Data (Fallback) ─────────────────────────────────────────
 const initialCalendarAppointments: CalendarAppointment[] = [
   { id: 1,  day: 1,  month: 2, year: 2026, time: "09:00", endTime: "09:30", petName: "רקס",  petSpecies: "dog", ownerName: "יוסי כהן",     ownerPhone: "052-3456789", ownerEmail: "yosi.cohen@example.com", department: "פנימית",     vet: 'ד"ר יוסי כהן',  room: "חדר 1",       type: "חיסון שנתי",    color: "blue",   notes: "חיסון כלבת + משושה" },
   { id: 2,  day: 1,  month: 2, year: 2026, time: "10:00", endTime: "10:45", petName: "ניקו",  petSpecies: "cat", ownerName: "שרה לוי",      ownerPhone: "054-7891234", ownerEmail: "shira.levi@example.com", department: "פנימית",     vet: 'ד"ר שרה לוי',   room: "חדר 2",       type: "בדיקה כללית",   color: "green",  notes: "בדיקה שגרתית חצי שנתית" },
@@ -49,7 +49,6 @@ interface AppointmentStoreValue {
   unreadCount: (target: "owner" | "staff") => number;
   markAllRead: (target: "owner" | "staff") => void;
   dismissNotification: (id: number) => void;
-  // הוספנו את addAppointment לממשק החנות
   addAppointment: (appt: Omit<CalendarAppointment, "id">) => Promise<void>;
   deleteAppointment: (id: number, by: "owner" | "staff") => Promise<void>;
   rescheduleAppointment: (id: number, newDay: number, newMonth: number, newYear: number, newTime: string, newEndTime: string, by: "owner" | "staff") => Promise<void>;
@@ -74,23 +73,27 @@ const simulateNetwork = async (shouldFail = false) => {
 };
 
 export function AppointmentStoreProvider({ children }: { children: ReactNode }) {
-  const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointment[]>(initialCalendarAppointments);
+  // 1. טעינה ראשונית: מנסה למשוך מהדפדפן, ואם אין - משתמש בנתוני הדיפולט
+  const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointment[]>(() => {
+    try {
+      const saved = localStorage.getItem("myvet_appointments");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("שגיאה בטעינת נתונים מהדפדפן", e);
+    }
+    return initialCalendarAppointments;
+  });
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const [notifications, setNotifications] = useState<AppNotification[]>([
-    {
-      id: 1,
-      target: "staff",
-      type: "rescheduled",
-      message: "משפחת ישראלי הזיזו תור",
-      detail: "התור של רקס הוזז מ-15/03 בשעה 10:00 ל-17/03 בשעה 11:00",
-      petName: "רקס",
-      changedBy: "owner",
-      timestamp: new Date(2026, 2, 2, 8, 15),
-      read: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // 2. שמירה אוטומטית: בכל פעם שהתורים משתנים, הם נשמרים מיד לדפדפן
+  useEffect(() => {
+    localStorage.setItem("myvet_appointments", JSON.stringify(calendarAppointments));
+  }, [calendarAppointments]);
 
   const pushNotification = useCallback(
     (target: "owner" | "staff", type: AppNotification["type"], message: string, detail: string, petName: string, changedBy: "owner" | "staff") => {
@@ -112,17 +115,30 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     []
   );
 
-  // ─── מימוש הוספת תור חדש ───
+  const unreadCount = useCallback(
+    (target: "owner" | "staff") => notifications.filter((n) => n.target === target && !n.read).length,
+    [notifications]
+  );
+
+  const markAllRead = useCallback((target: "owner" | "staff") => {
+    setNotifications((prev) => prev.map((n) => (n.target === target ? { ...n, read: true } : n)));
+  }, []);
+
+  const dismissNotification = useCallback((id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  // 3. הוספת תור עם מזהה חד-משמעי
   const addAppointment = useCallback(
     async (appt: Omit<CalendarAppointment, "id">) => {
       setIsLoading(true);
-      setError(null);
+      setError(null); // ניקוי שגיאות קודמות
       try {
-        await simulateNetwork(); // המתנה מדומה של שנייה
+        await simulateNetwork();
         
         setCalendarAppointments((prev) => {
-          const newId = Math.max(...prev.map((a) => a.id), 0) + 1;
-          // מוסיפים את התור החדש למערך
+          // מזהה מאובטח מבוסס זמן, למניעת דריסת נתונים
+          const newId = Date.now() + Math.floor(Math.random() * 1000);
           return [...prev, { ...appt, id: newId }];
         });
 
@@ -137,19 +153,6 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     []
   );
 
-  const unreadCount = useCallback(
-    (target: "owner" | "staff") => notifications.filter((n) => n.target === target && !n.read).length,
-    [notifications]
-  );
-
-  const markAllRead = useCallback((target: "owner" | "staff") => {
-    setNotifications((prev) => prev.map((n) => (n.target === target ? { ...n, read: true } : n)));
-  }, []);
-
-  const dismissNotification = useCallback((id: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
-
   const deleteAppointment = useCallback(
     async (id: number, by: "owner" | "staff") => {
       setIsLoading(true);
@@ -158,7 +161,9 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         await simulateNetwork(true);
         const appt = calendarAppointments.find((a) => a.id === id);
         if (!appt) return;
+        
         setCalendarAppointments((prev) => prev.filter((a) => a.id !== id));
+        
         const target = by === "owner" ? "staff" : "owner";
         pushNotification(target, "cancelled", `${by === "owner" ? appt.ownerName : "המרפאה"} — ביטול תור`, `התור של ${appt.petName} בוטל`, appt.petName, by);
         toast.success("התור בוטל בהצלחה");
@@ -175,6 +180,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
   const rescheduleAppointment = useCallback(
     async (id: number, newDay: number, newMonth: number, newYear: number, newTime: string, newEndTime: string, by: "owner" | "staff") => {
       setIsLoading(true);
+      setError(null);
       try {
         await simulateNetwork();
         setCalendarAppointments((prev) =>
@@ -182,6 +188,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         );
         toast.success("התור עודכן בהצלחה!");
       } catch (err) {
+        setError("שגיאה בעדכון התור");
         toast.error("שגיאה בעדכון התור");
       } finally {
         setIsLoading(false);
@@ -193,11 +200,13 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
   const editAppointment = useCallback(
     async (id: number, updates: Partial<CalendarAppointment>, by: "owner" | "staff") => {
       setIsLoading(true);
+      setError(null);
       try {
         await simulateNetwork();
         setCalendarAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
         toast.success("הפרטים נשמרו בהצלחה");
       } catch (err) {
+        setError("שגיאה בעריכת התור");
         toast.error("לא הצלחנו לשמור את העריכה");
       } finally {
         setIsLoading(false);
@@ -216,7 +225,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         unreadCount,
         markAllRead,
         dismissNotification,
-        addAppointment, // הוספנו ל-Value
+        addAppointment,
         deleteAppointment,
         rescheduleAppointment,
         editAppointment,
