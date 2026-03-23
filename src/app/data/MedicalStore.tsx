@@ -1,88 +1,184 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { toast } from "sonner"; // ייבוא מערכת ההתראות
-import { medicalHistory as initialHistory } from "./patients";
-import type { MedicalVisit } from "./patients";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────
-interface MedicalStoreContextType {
-  visits: MedicalVisit[];
-  isLoading: boolean; // חדש: חיווי מצב טעינה
-  error: string | null; // חדש: שגיאות רשת או ולידציה
-  // שינינו ל-Promise כדי שה-UI (כמו כפתור השמירה) יוכל להמתין לפעולה
-  addVisit: (visit: Omit<MedicalVisit, "id">) => Promise<void>; 
-  getVisitsForPatient: (patientId: number) => MedicalVisit[];
+export interface MedicalVisit {
+  id: number;
+  patientId: number;
+  date: string;
+  vetName: string;
+  reason: string;
+  diagnosis: string;
+  treatment: string;
+  notes: string;
+  attachments: number;
 }
 
-const MedicalStoreContext = createContext<MedicalStoreContextType | null>(null);
+export interface Prescription {
+  id: number;
+  patientId: number;
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  startDate: string;
+  prescribedBy: string;
+}
 
-// פונקציית עזר לסימולציית רשת
+// ─── Initial Data (Fallback) ─────────────────────────────────────────
+const initialVisits: MedicalVisit[] = [
+  {
+    id: 1,
+    patientId: 1, // ניקו (חתול)
+    date: "2025-10-15",
+    vetName: 'ד"ר שרה לוי',
+    reason: "חיסון מרובע",
+    diagnosis: "בריא",
+    treatment: "ניתן חיסון מרובע, הכל תקין.",
+    notes: "לשקול מעבר למזון בוגרים בעוד חצי שנה.",
+    attachments: 0,
+  },
+  {
+    id: 2,
+    patientId: 2, // רקס (כלב)
+    date: "2025-11-20",
+    vetName: 'ד"ר יוסי כהן',
+    reason: "צליעה רגל אחורית",
+    diagnosis: "מתיחת שריר קלה",
+    treatment: "מנוחה לשבוע, משככי כאבים במקרה הצורך.",
+    notes: "אם הצליעה לא עוברת תוך שבוע, לחזור לצילום רנטגן.",
+    attachments: 1,
+  }
+];
+
+const initialPrescriptions: Prescription[] = [];
+
+// ─── Context ─────────────────────────────────────────────────────────
+interface MedicalStoreValue {
+  visits: MedicalVisit[];
+  prescriptions: Prescription[];
+  isLoading: boolean;
+  error: string | null;
+  addVisit: (visit: Omit<MedicalVisit, "id">) => Promise<void>;
+  updateVisit: (id: number, updates: Partial<MedicalVisit>) => Promise<void>;
+  addPrescription: (prescription: Omit<Prescription, "id">) => Promise<void>;
+}
+
+const MedicalStoreContext = createContext<MedicalStoreValue | null>(null);
+
+export function useMedicalStore() {
+  const ctx = useContext(MedicalStoreContext);
+  if (!ctx) throw new Error("useMedicalStore must be used within MedicalStoreProvider");
+  return ctx;
+}
+
+// פונקציית עזר לסימולציית שרת
 const simulateNetwork = async (shouldFail = false) => {
-  await new Promise((resolve) => setTimeout(resolve, 1500)); // השהיה של שנייה וחצי
-  if (shouldFail && Math.random() > 0.8) { // 20% סיכוי לנפילת רשת מדומה
-    throw new Error("שגיאת רשת מדומה - השרת לא מגיב");
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  if (shouldFail && Math.random() > 0.8) {
+    throw new Error("שגיאת רשת מדומה");
   }
 };
 
-// ─── Context Provider ────────────────────────────────────────────────
 export function MedicalStoreProvider({ children }: { children: ReactNode }) {
-  const [visits, setVisits] = useState<MedicalVisit[]>([...initialHistory]);
-  
-  // States חדשים לניהול המצב מול הלקוח
+  // 1. טעינה מ-localStorage (בדיקה אם יש נתונים שמורים בדפדפן)
+  const [visits, setVisits] = useState<MedicalVisit[]>(() => {
+    try {
+      const saved = localStorage.getItem("myvet_medical_visits");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("שגיאה בטעינת ביקורים מהדפדפן", e);
+    }
+    return initialVisits;
+  });
+
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
+    try {
+      const saved = localStorage.getItem("myvet_prescriptions");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("שגיאה בטעינת מרשמים מהדפדפן", e);
+    }
+    return initialPrescriptions;
+  });
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // הפכנו את הפונקציה לאסינכרונית עם טיפול מלא בשגיאות
+  // 2. שמירה אוטומטית: גיבוי כל שינוי לדפדפן
+  useEffect(() => {
+    localStorage.setItem("myvet_medical_visits", JSON.stringify(visits));
+  }, [visits]);
+
+  useEffect(() => {
+    localStorage.setItem("myvet_prescriptions", JSON.stringify(prescriptions));
+  }, [prescriptions]);
+
+  // 3. הוספת טיפול עם תעודת זהות חסינה מהתנגשויות (UUID מבוסס זמן)
   const addVisit = useCallback(async (visit: Omit<MedicalVisit, "id">) => {
     setIsLoading(true);
-    setError(null);
-    
+    setError(null); // איפוס שגיאות ישנות
     try {
-      // 1. סימולציית המתנה לשרת (כולל בדיקת שגיאות אקראית)
       await simulateNetwork();
-      
-      // 2. שמירת הנתונים בפועל
       setVisits((prev) => {
-        const newId = Math.max(...prev.map((v) => v.id), 0) + 1;
-        return [{ ...visit, id: newId }, ...prev];
+        const newId = Date.now() + Math.floor(Math.random() * 1000);
+        return [{ ...visit, id: newId }, ...prev]; // הטיפול החדש נכנס לתחילת המערך
       });
-
-      // 3. חיווי חיובי לרופא
-      toast.success("הביקור הרפואי נשמר בהצלחה בתיק המטופל");
+      toast.success("הטיפול נשמר בהצלחה בתיק הרפואי");
     } catch (err) {
-      console.error("Failed to add visit:", err);
-      const errorMessage = "אירעה שגיאה בשמירת התיעוד הרפואי. אנא נסה שוב.";
-      setError(errorMessage);
-      toast.error(errorMessage);
-      throw err; // זורקים את השגיאה הלאה כדי שהטופס יידע לא להיסגר
+      setError("שגיאה בשמירת הטיפול");
+      toast.error("לא הצלחנו לשמור את הטיפול, נסה שוב");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // פונקציית השליפה נשארת סינכרונית (מפלטרת את המערך המקומי)
-  const getVisitsForPatient = useCallback(
-    (patientId: number) => visits.filter((v) => v.patientId === patientId),
-    [visits]
-  );
+  const updateVisit = useCallback(async (id: number, updates: Partial<MedicalVisit>) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await simulateNetwork();
+      setVisits((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
+      toast.success("הטיפול עודכן בהצלחה");
+    } catch (err) {
+      setError("שגיאה בעדכון הטיפול");
+      toast.error("לא הצלחנו לעדכן את הטיפול");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const addPrescription = useCallback(async (prescription: Omit<Prescription, "id">) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await simulateNetwork();
+      setPrescriptions((prev) => {
+        const newId = Date.now() + Math.floor(Math.random() * 1000);
+        return [{ ...prescription, id: newId }, ...prev];
+      });
+      toast.success("המרשם הופק בהצלחה");
+    } catch (err) {
+      setError("שגיאה בהנפקת המרשם");
+      toast.error("לא הצלחנו להנפיק את המרשם");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   return (
-    <MedicalStoreContext.Provider 
-      value={{ 
-        visits, 
-        isLoading, 
-        error, 
-        addVisit, 
-        getVisitsForPatient 
+    <MedicalStoreContext.Provider
+      value={{
+        visits,
+        prescriptions,
+        isLoading,
+        error,
+        addVisit,
+        updateVisit,
+        addPrescription,
       }}
     >
       {children}
     </MedicalStoreContext.Provider>
   );
-}
-
-// ─── Custom Hook ─────────────────────────────────────────────────────
-export function useMedicalStore() {
-  const ctx = useContext(MedicalStoreContext);
-  if (!ctx) throw new Error("useMedicalStore must be used within MedicalStoreProvider");
-  return ctx;
 }

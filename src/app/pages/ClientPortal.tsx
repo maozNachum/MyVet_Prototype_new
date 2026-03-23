@@ -42,7 +42,6 @@ interface FutureAppointment {
   date: string; time: string; type: string; vet: string; room: string; notes: string;
 }
 
-// Add after FutureAppointment interface:
 interface UploadedFile {
   id: number;
   name: string;
@@ -103,7 +102,7 @@ const petVisitSummaries: Record<number, VisitSummary[]> = {
 
 // ─── Static Data ─────────────────────────────────────────────────────
 const portalNotifications: PortalNotification[] = [
-  { id: 1, petName: "רקס", petType: "dog", petImage: dogImg, text: "תזכורת: חיסון כלבתinand חודש", type: "warning", date: "02/04/2026" },
+  { id: 1, petName: "רקס", petType: "dog", petImage: dogImg, text: "תזכורת: חיסון כלבת בעוד חודש", type: "warning", date: "02/04/2026" },
   { id: 2, petName: "ניקו", petType: "cat", petImage: catImg, text: "ביקורת שגרתית לאחר טיפול תולעים", type: "info", date: "15/03/2026" },
   { id: 3, petName: "רקס", petType: "dog", petImage: dogImg, text: "תוצאות בדיקת דם מוכנות לצפייה", type: "success", date: "01/03/2026" },
 ];
@@ -126,13 +125,6 @@ const pets: Pet[] = [
       { id: 2, date: "01/01/2026", title: "חיסון משושה", vet: 'ד"ר יוסי כהן', icon: Syringe, color: "bg-blue-50 text-blue-600 border-blue-200" },
     ],
   },
-];
-
-const initialAppointments: FutureAppointment[] = [
-  { id: 1, petName: "רקס", petType: "dog", petImage: dogImg, date: "15/03/2026", time: "10:00", type: "בדיקה כללית", vet: 'ד"ר שרה לוי', room: "חדר 2", notes: "מעקב אחרי חיסון שנתי, בדיקת משקל" },
-  { id: 2, petName: "רקס", petType: "dog", petImage: dogImg, date: "02/04/2026", time: "09:30", type: "חיסון כלבת", vet: 'ד"ר יוסי כהן', room: "חדר 1", notes: "חיסון כלבת שנתי + בדיקת משקל" },
-  { id: 3, petName: "ניקו", petType: "cat", petImage: catImg, date: "20/03/2026", time: "14:00", type: "ביקורת לאחר טיפול", vet: 'ד"ר שרה לוי', room: "חדר 3", notes: "בדיקה לאחר טיפול תולעים, מעקב ספירת דם" },
-  { id: 4, petName: "ניקו", petType: "cat", petImage: catImg, date: "15/05/2026", time: "11:00", type: "חיסון משושה", vet: 'ד"ר יוסי כהן', room: "חדר 1", notes: "חיסון FVRCP — מנת חיזוק שנתית" },
 ];
 
 // ─── Notification style mapping ──────────────────────────────────────
@@ -159,15 +151,29 @@ export function ClientPortal() {
   // Section accordion state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     notifications: true,
-    appointments: false,
+    appointments: true, // שיניתי לברירת מחדל פתוח שיהיה קל לראות את התורים מה-Store
     pets: false,
     documents: false,
   });
   const toggleSection = (key: string) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // Future appointments
-  const [appointments, setAppointments] = useState<FutureAppointment[]>(initialAppointments);
+  // 1. מיפוי דינמי של התורים מה-Store במקום State מקומי
+  const appointments: FutureAppointment[] = store.calendarAppointments
+    .filter((a) => a.ownerName === "יוסי כהן") // סינון לפי משתמש
+    .map((a) => ({
+      id: a.id,
+      petName: a.petName,
+      petType: a.petSpecies,
+      petImage: a.petSpecies === "dog" ? dogImg : catImg,
+      date: `${String(a.day).padStart(2, '0')}/${String(a.month).padStart(2, '0')}/${a.year}`,
+      time: a.time,
+      type: a.type,
+      vet: a.vet,
+      room: a.room,
+      notes: a.notes,
+    }));
+
   const [rescheduleAppt, setRescheduleAppt] = useState<FutureAppointment | null>(null);
   const [cancelAppt, setCancelAppt] = useState<FutureAppointment | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -175,33 +181,52 @@ export function ClientPortal() {
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
-  const handleReschedule = () => {
+  // 2. עדכון להזזת תור מול ה-Store
+  const handleReschedule = async () => {
     if (!rescheduleAppt || !rescheduleDate || !rescheduleTime) return;
-    store.notifications.push({
-      id: Date.now(), target: "staff", type: "rescheduled",
-      message: "משפחת ישראלי הזיזו תור",
-      detail: `התור של ${rescheduleAppt.petName} (${rescheduleAppt.type}) הוזז מ-${rescheduleAppt.date} ${rescheduleAppt.time} ל-${rescheduleDate} ${rescheduleTime}`,
-      petName: rescheduleAppt.petName, changedBy: "owner", timestamp: new Date(), read: false,
-    });
-    setAppointments((prev) => prev.map((a) => a.id === rescheduleAppt.id ? { ...a, date: rescheduleDate, time: rescheduleTime } : a));
-    setRescheduleSuccess(true);
-    setTimeout(() => { setRescheduleSuccess(false); setRescheduleAppt(null); setRescheduleDate(""); setRescheduleTime(""); }, 1800);
+    
+    // מפענח את התאריך החדש
+    const [dayStr, monthStr, yearStr] = rescheduleDate.split("/");
+    const day = parseInt(dayStr, 10);
+    const month = parseInt(monthStr, 10);
+    const year = parseInt(yearStr, 10);
+
+    try {
+      await store.rescheduleAppointment(
+        rescheduleAppt.id,
+        day, month, year,
+        rescheduleTime, rescheduleTime, // (endTime)
+        "owner"
+      );
+      
+      setRescheduleSuccess(true);
+      setTimeout(() => { 
+        setRescheduleSuccess(false); 
+        setRescheduleAppt(null); 
+        setRescheduleDate(""); 
+        setRescheduleTime(""); 
+      }, 1800);
+    } catch (e) {
+      console.error("Failed to reschedule", e);
+    }
   };
 
-  const handleCancel = () => {
+  // 3. עדכון לביטול תור מול ה-Store
+  const handleCancel = async () => {
     if (!cancelAppt) return;
-    store.notifications.push({
-      id: Date.now(), target: "staff", type: "cancelled",
-      message: "משפחת ישראלי ביטלו תור",
-      detail: `התור של ${cancelAppt.petName} (${cancelAppt.type}) בוטל`,
-      petName: cancelAppt.petName, changedBy: "owner", timestamp: new Date(), read: false,
-    });
-    setAppointments((prev) => prev.filter((a) => a.id !== cancelAppt.id));
-    setCancelSuccess(true);
-    setTimeout(() => { setCancelSuccess(false); setCancelAppt(null); }, 1800);
+    try {
+      await store.deleteAppointment(cancelAppt.id, "owner");
+      setCancelSuccess(true);
+      setTimeout(() => { 
+        setCancelSuccess(false); 
+        setCancelAppt(null); 
+      }, 1800);
+    } catch (e) {
+      console.error("Failed to cancel", e);
+    }
   };
 
-  // File upload state
+  // File upload state (נשאר ללא שינוי בדיוק כפי שביקשת)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -461,7 +486,6 @@ export function ClientPortal() {
                     <div key={pet.id} className="rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-sm">
                       {/* ── Pet Card Header ── */}
                       <div className="p-5 flex items-start gap-5">
-                        {/* Avatar — ORIGINAL */}
                         <div className="relative shrink-0">
                           <img src={pet.image} alt={pet.name} className="w-[80px] h-[80px] rounded-2xl object-cover shadow-sm" />
                           <div className="absolute -bottom-1.5 -left-1.5 w-7 h-7 bg-white rounded-lg shadow-sm flex items-center justify-center border border-gray-100">
@@ -469,7 +493,6 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        {/* Info + ORIGINAL buttons */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2.5 mb-2">
                             <h3 className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{pet.name}</h3>
@@ -487,7 +510,6 @@ export function ClientPortal() {
                               <span key={f.label}><span className="text-gray-600" style={{ fontWeight: 500 }}>{f.label}:</span> {f.value}</span>
                             ))}
                           </div>
-                          {/* ORIGINAL action buttons */}
                           <div className="flex items-center gap-2.5">
                             <button
                               onClick={() => setExpandedPet(isExpanded ? null : pet.id)}
@@ -509,7 +531,6 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        {/* NEW: two action buttons on the left side (RTL = visually left) */}
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <button
                             className="flex items-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap"
@@ -531,8 +552,6 @@ export function ClientPortal() {
                       {/* ── Expanded view ── */}
                       {isExpanded && (
                         <div className="border-t border-gray-100">
-
-                          {/* NEW: Visit Summaries section */}
                           <div className="px-6 py-4 bg-gradient-to-l from-blue-50/60 to-white border-b border-gray-100">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-2">
@@ -598,7 +617,6 @@ export function ClientPortal() {
                             </div>
                           </div>
 
-                          {/* ORIGINAL: ClientMedicalReports — restored */}
                           <div className="bg-gray-50/50 px-6 py-5">
                             <ClientMedicalReports petId={pet.id} petName={pet.name} />
                           </div>
