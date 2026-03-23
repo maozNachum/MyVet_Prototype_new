@@ -8,9 +8,10 @@ import { patients } from "../data/patients";
 import type { Patient } from "../data/patients";
 import { useSearchParams } from "react-router";
 import { TreatmentModal } from "../components/TreatmentModal";
+import { AnesthesiaConsentModal } from "../components/AnesthesiaConsentModal";
 import { useMedicalStore } from "../data/MedicalStore";
 import { exportMedicalRecord } from "../hooks/useExportMedicalRecord";
-import { canEditMedicalRecords } from "../data/staffAuth";
+import { canEditMedicalRecords, canPerformTreatment } from "../data/staffAuth";
 import { LabResultsPanel } from "../components/LabResultsPanel";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import { VISIT_TYPES } from "../data/categoryConfig";
@@ -52,6 +53,7 @@ export function Patients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isTreatmentOpen, setIsTreatmentOpen] = useState(false);
+  const [isAnesthesiaOpen, setIsAnesthesiaOpen] = useState(false);
   const { getVisitsForPatient } = useMedicalStore();
 
   useEffect(() => {
@@ -96,7 +98,6 @@ export function Patients() {
       toast.error("אירעה שגיאה בעת רישום המטופל");
     }
   };
-  // ───────────────────────────────────────────────────────────────────
 
   if (selectedPatient) {
     const pet = selectedPatient.pet;
@@ -188,12 +189,22 @@ export function Patients() {
 
                 <div className="mt-auto">
                   {canEditMedicalRecords() ? (
-                    <button
-                      className="w-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
-                      onClick={() => setIsTreatmentOpen(true)}
-                    >
-                      התחל טיפול בתיק רפואי <ChevronLeft className="w-5 h-5" />
-                    </button>
+                    <div className="space-y-3">
+                      {canPerformTreatment() && (
+                        <button
+                          className="w-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
+                          onClick={() => setIsTreatmentOpen(true)}
+                        >
+                          התחל טיפול בתיק רפואי <ChevronLeft className="w-5 h-5" />
+                        </button>
+                      )}
+                      <button
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
+                        onClick={() => setIsAnesthesiaOpen(true)}
+                      >
+                        חתימת הסכמת הרדמה <ChevronLeft className="w-5 h-5" />
+                      </button>
+                    </div>
                   ) : (
                     <div className="w-full bg-gray-100 text-gray-400 py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 border border-gray-200 font-medium">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -264,6 +275,14 @@ export function Patients() {
           ownerName={owner.name}
           patientId={selectedPatient.id}
         />
+
+        {isAnesthesiaOpen && (
+          <AnesthesiaConsentModal
+            petName={pet.name}
+            ownerName={owner.name}
+            onClose={() => setIsAnesthesiaOpen(false)}
+          />
+        )}
       </main>
     );
   }

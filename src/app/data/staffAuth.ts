@@ -5,7 +5,13 @@ export function getStaffType(): StaffType {
 }
 
 export function canEditMedicalRecords(): boolean {
-  return getStaffType() !== "secretary";
+  const st = getStaffType();
+  return st === "vet" || st === "nurse" || st === "secretary";
+}
+
+export function canPerformTreatment(): boolean {
+  const st = getStaffType();
+  return st === "vet" || st === "nurse";
 }
 
 export function isInternalChatOnly(): boolean {

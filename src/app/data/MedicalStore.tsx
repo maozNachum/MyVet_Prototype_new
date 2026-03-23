@@ -62,6 +62,7 @@ interface MedicalStoreValue {
   addVisit: (visit: Omit<MedicalVisit, "id">) => Promise<void>;
   updateVisit: (id: number, updates: Partial<MedicalVisit>) => Promise<void>;
   addPrescription: (prescription: Omit<Prescription, "id">) => Promise<void>;
+  getVisitsForPatient: (patientId: number) => MedicalVisit[];
 }
 
 const MedicalStoreContext = createContext<MedicalStoreValue | null>(null);
@@ -166,6 +167,11 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ─── Get visits for a specific patient ───────────────────────────────
+  const getVisitsForPatient = useCallback((patientId: number) => {
+    return visits.filter((visit) => visit.patientId === patientId);
+  }, [visits]);
+
   return (
     <MedicalStoreContext.Provider
       value={{
@@ -176,6 +182,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
         addVisit,
         updateVisit,
         addPrescription,
+        getVisitsForPatient,
       }}
     >
       {children}

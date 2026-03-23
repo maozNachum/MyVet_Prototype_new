@@ -31,7 +31,7 @@ import {
 import { useMedicalStore } from "../data/MedicalStore";
 import { PaymentModal } from "./PaymentModal";
 import { AnesthesiaConsentModal } from "./AnesthesiaConsentModal";
-import { getStaffLabel } from "../data/staffAuth";
+import { getStaffLabel, canPerformTreatment } from "../data/staffAuth";
 import { useLabStore } from "../data/LabStore";
 import { VISIT_TYPES, CLINIC_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 
@@ -301,6 +301,9 @@ export function TreatmentModal({
     </div>
   );
 
+  // Restrict access for secretary role
+  const canTreat = canPerformTreatment();
+  
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl overflow-hidden flex flex-col" style={{ maxHeight: "92vh", fontFamily: "'Heebo', sans-serif" }} dir="rtl" onClick={(e) => e.stopPropagation()}>
@@ -312,7 +315,7 @@ export function TreatmentModal({
               <Stethoscope className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>טיפול בתיק רפואי</h3>
+              <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>{canTreat ? "טיפול בתיק רפואי" : "צפייה בתיק רפואי"}</h3>
               <div className="flex items-center gap-2 text-white/60 text-[12px]">
                 <PetIcon className="w-3.5 h-3.5" />
                 <span>{petName}</span>
@@ -329,6 +332,7 @@ export function TreatmentModal({
         </div>
 
         {/* ── Progress Steps ── */}
+        {canTreat && (
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 shrink-0 overflow-x-auto">
           <div className="flex items-center gap-1 min-w-max">
             {STEPS.map((step, idx) => {
@@ -353,8 +357,10 @@ export function TreatmentModal({
             })}
           </div>
         </div>
+        )}
 
         {/* ── Content ── */}
+        {canTreat ? (
         <div className="flex-1 overflow-y-auto p-6">
           {isSaved ? (
             <div className="flex flex-col items-center justify-center py-16">
@@ -690,9 +696,26 @@ export function TreatmentModal({
             </form>
           )}
         </div>
+        ) : (
+        <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-gray-900 text-[18px] font-semibold mb-2">הצגה בלבד</h3>
+            <p className="text-gray-500 text-[14px] mb-6">רק וטרינר או אחות יכולים לערוך את התיק הרפואי</p>
+            <button
+              onClick={() => setShowAnesthesiaConsent(true)}
+              className="px-6 py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-colors cursor-pointer text-[14px] font-medium border border-amber-200"
+            >
+              <FileText className="w-4 h-4 inline mr-2" /> חתימת הסכמת הרדמה
+            </button>
+          </div>
+        </div>
+        )}
 
         {/* ── Footer ── */}
-        {!isSaved && (
+        {!isSaved && canTreat && (
           <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-gray-50/30">
             {currentStep === STEPS.length - 1 ? (
               <>
@@ -725,6 +748,16 @@ export function TreatmentModal({
             </button>
             <button onClick={onClose} type="button" className="px-6 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
               ביטול
+            </button>
+          </div>
+        )}
+        {!isSaved && !canTreat && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-gray-50/30">
+            <button onClick={() => setShowAnesthesiaConsent(true)} type="button" className="px-4 py-3 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-xl text-amber-700 transition-colors cursor-pointer text-[13px] flex items-center gap-1.5 shrink-0" style={{ fontWeight: 500 }}>
+              <FileText className="w-4 h-4" /> הרדמה
+            </button>
+            <button onClick={onClose} type="button" className="ml-auto px-6 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
+              סגור
             </button>
           </div>
         )}
