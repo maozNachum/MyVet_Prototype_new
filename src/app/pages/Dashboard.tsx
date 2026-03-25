@@ -182,7 +182,7 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-gray-900" style={{ fontWeight: 700 }}>
-            לוח בקרה - מרפאת VetConnect
+            לוח בקרה - המרפאה שלי
           </h1>
           <p className="text-gray-500 mt-1 text-[15px]">
             סקירה כללית של פעילות המרפאה היום

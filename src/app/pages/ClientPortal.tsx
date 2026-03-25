@@ -298,9 +298,8 @@ export function ClientPortal() {
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="bg-[#1e40af] rounded-xl p-2 shadow-md shadow-blue-500/15">
-              <MyVetLogo size={24} color="white" />
+              <MyVetLogo size={23} color="white" />
             </div>
-            <span className="text-[22px] text-gray-900 tracking-wide" style={{ fontWeight: 700 }}>MyVet</span>
             <span className="bg-blue-50 text-[#1e40af] text-[11px] px-2.5 py-0.5 rounded-full border border-blue-200" style={{ fontWeight: 600 }}>אזור אישי</span>
           </div>
 
