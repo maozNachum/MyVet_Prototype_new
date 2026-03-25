@@ -23,3 +23,13 @@ export function getStaffLabel(type?: StaffType): string {
   const t = type || getStaffType();
   return t === "vet" ? "וטרינר" : t === "nurse" ? "אחות" : "מזכירה";
 }
+
+export function canAccessReportsPage(): boolean {
+  const st = getStaffType();
+  return st !== "nurse";
+}
+
+export function canViewFinancialReports(): boolean {
+  const st = getStaffType();
+  return st === "vet";
+}

@@ -3,6 +3,7 @@ import {
   Download, CalendarRange, DollarSign, Users, UserX,
   Package, Building2, Radar, BarChart3,
 } from "lucide-react";
+import { getStaffType, canViewFinancialReports } from "../data/staffAuth";
 import * as XLSX from "xlsx";
 
 import { RevenueLeakage } from "../components/reports/RevenueLeakage";
@@ -13,16 +14,27 @@ import { ReferralDashboard } from "../components/reports/ReferralDashboard";
 import { EpiRadar } from "../components/reports/EpiRadar";
 
 // ─── Tabs ────────────────────────────────────────────────────────────
-const TABS = [
+const ALL_TABS = [
   { key: "revenue" as const, label: "דליפת הכנסות", icon: DollarSign, color: "text-red-600" },
-  { key: "staff" as const, label: "ניצול צוות", icon: Users, color: "text-blue-600" },
+  { key: "staff" as const, label: "ניהול צוות", icon: Users, color: "text-blue-600" },
   { key: "compliance" as const, label: "ציות לקוחות", icon: UserX, color: "text-amber-600" },
   { key: "inventory" as const, label: "מלאי ופיקוח", icon: Package, color: "text-purple-600" },
   { key: "referrals" as const, label: "הפניות B2B", icon: Building2, color: "text-indigo-600" },
   { key: "epi" as const, label: "רדאר אפידמיולוגי", icon: Radar, color: "text-rose-600" },
 ] as const;
 
-type TabKey = typeof TABS[number]["key"];
+// Filter tabs based on user role
+function getAvailableTabs() {
+  const staffType = getStaffType();
+  if (staffType === "secretary") {
+    // Secretary: only operational tabs (Team Management & Client Compliance)
+    return ALL_TABS.filter((tab) => tab.key === "staff" || tab.key === "compliance");
+  }
+  // Vet and anyone else: all tabs
+  return ALL_TABS;
+}
+
+type TabKey = typeof ALL_TABS[number]["key"];
 
 // ─── Date Range presets ──────────────────────────────────────────────
 const DATE_RANGES = [
@@ -35,7 +47,9 @@ const DATE_RANGES = [
 
 // ─── Component ──────────────────────────────────────────────────────
 export function Reports() {
-  const [activeTab, setActiveTab] = useState<TabKey>("revenue");
+  const availableTabs = getAvailableTabs();
+  const initialTab = availableTabs[0]?.key || ("revenue" as TabKey);
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [dateRange, setDateRange] = useState("30d");
 
   // ── Generic export stub ──
@@ -43,7 +57,7 @@ export function Reports() {
     if (format === "csv") {
       const wb = XLSX.utils.book_new();
       const today = new Date().toLocaleDateString("he-IL");
-      const activeLabel = TABS.find((t) => t.key === activeTab)?.label || "";
+      const activeLabel = ALL_TABS.find((t) => t.key === activeTab)?.label || "";
       const data = [
         [`דוח ${activeLabel} — MyVet`, ""],
         ["תאריך הפקה", today],
@@ -77,7 +91,10 @@ export function Reports() {
           {/* Date range picker */}
           <div className="flex items-center bg-gray-100 rounded-xl p-0.5 gap-0.5">
             <CalendarRange className="w-4 h-4 text-gray-400 mx-2" />
-            {DATE_RANGES.map((dr) => (
+            {/* Date range picker */}
+      <div className="flex items-center bg-gray-100 rounded-xl p-0.5 gap-0.5">
+        <CalendarRange className="w-4 h-4 text-gray-400 mx-2" />
+        {DATE_RANGES.map((dr) => (
               <button
                 key={dr.key}
                 onClick={() => setDateRange(dr.key)}
@@ -91,10 +108,11 @@ export function Reports() {
                 {dr.label}
               </button>
             ))}
-          </div>
+        </div>
+      </div>
 
-          {/* Export buttons */}
-          <button
+        {/* Export buttons */}
+        <button
             onClick={() => handleExport("csv")}
             className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 shadow-sm"
             style={{ fontWeight: 500 }}
@@ -113,7 +131,7 @@ export function Reports() {
 
       {/* ── Tab Navigation ── */}
       <div className="flex items-center bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5 gap-1 mb-6 overflow-x-auto">
-        {TABS.map((tab) => {
+        {getAvailableTabs().map((tab) => {
           const TIcon = tab.icon;
           const isActive = activeTab === tab.key;
           return (

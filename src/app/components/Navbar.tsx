@@ -2,7 +2,7 @@ import { LogOut, Search, Cat, Dog, X, Phone, Package, Stethoscope, Scissors } fr
 import { Link, useLocation, useNavigate } from "react-router";
 import { useState, useRef, useEffect } from "react";
 import { patients } from "../data/patients";
-import { getStaffType, getStaffLabel } from "../data/staffAuth";
+import { getStaffType, getStaffLabel, canAccessReportsPage } from "../data/staffAuth";
 import { MyVetLogo } from "./MyVetLogo";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import {
@@ -93,9 +93,9 @@ export function Navbar() {
     <nav className="bg-[#1e40af] text-white shadow-lg relative z-50">
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-          <div className="bg-white/15 rounded-lg p-1.5">
-            <MyVetLogo size={24} color="white" />
+        <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+          <div className="h-16 w-auto flex items-center justify-center">
+            <MyVetLogo color="white" className="h-full w-auto" />
           </div>
           <span className="text-[22px] tracking-wide" style={{ fontWeight: 700 }}>
             MyVet
@@ -248,14 +248,16 @@ export function Navbar() {
           >
             מלאי
           </Link>
-          <Link
-            to="/reports"
-            className={`px-4 py-2 rounded-lg transition-colors cursor-pointer ${
-              isActive("/reports") ? "bg-white/20" : "hover:bg-white/10"
-            }`}
-          >
-            דוחות
-          </Link>
+          {canAccessReportsPage() && (
+            <Link
+              to="/reports"
+              className={`px-4 py-2 rounded-lg transition-colors cursor-pointer ${
+                isActive("/reports") ? "bg-white/20" : "hover:bg-white/10"
+              }`}
+            >
+              דוחות
+            </Link>
+          )}
           <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-3 py-1.5 mr-2 border border-white/15">
             <StaffIcon className="w-4 h-4 text-white/70" />
             <span className="text-[12px] text-white/90" style={{ fontWeight: 500 }}>{staffLabel}</span>
