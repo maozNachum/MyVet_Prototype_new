@@ -71,8 +71,8 @@ export function Login() {
       className="min-h-screen flex"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
-      {/* Left Side - Hero Image */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden">
+      {/* צד ימין */}
+      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden h-screen sticky top-0">
         <img
           src={heroImage}
           alt="Happy pets"
@@ -81,7 +81,7 @@ export function Login() {
         <div className="absolute inset-0 bg-gradient-to-l from-[#1e40af]/60 via-[#1e40af]/30 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/50 via-transparent to-transparent" />
 
-        <div className="relative z-10 flex flex-col justify-end p-12 pb-16 text-white">
+        <div className="relative z-100 flex flex-col justify-end p-12 pb-16 text-white">
           <div className="max-w-md">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 backdrop-blur-md rounded-xl p-2.5 border border-white/20">
@@ -92,7 +92,7 @@ export function Login() {
         </div>
       </div>
 
-      {/* Right Side */}
+      {/* צד שמאל */}
       <div className="flex-1 flex items-center justify-center bg-gray-50/50 px-6 py-12">
         <div className="w-full max-w-[520px]">
           {/* Logo for mobile */}

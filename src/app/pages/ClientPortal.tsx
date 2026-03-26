@@ -297,10 +297,10 @@ export function ClientPortal() {
       <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="bg-[#1e40af] rounded-xl p-2 shadow-md shadow-blue-500/15">
-              <MyVetLogo size={23} color="white" />
+            <div className="transform scale-[4] origin-right ml-2">
+            <MyVetLogo color="#1e40af" className="w-10 h-10"/>
             </div>
-            <span className="bg-blue-50 text-[#1e40af] text-[11px] px-2.5 py-0.5 rounded-full border border-blue-200" style={{ fontWeight: 600 }}>אזור אישי</span>
+            <span className="mr-15 bg-blue-50 text-[#1e40af] text-[11px] px-2.5 py-1.5 rounded-full border border-blue-200" style={{ fontWeight: 700 }}>אזור אישי</span>
           </div>
 
           <div className="flex items-center gap-3">

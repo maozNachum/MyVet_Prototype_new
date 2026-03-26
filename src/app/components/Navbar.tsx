@@ -95,6 +95,7 @@ export function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <div className="h-16 w-auto flex items-center justify-center">
+            
             <MyVetLogo color="white" className="h-full w-auto" />
           </div>
           <span className="text-[22px] tracking-wide" style={{ fontWeight: 700 }}>

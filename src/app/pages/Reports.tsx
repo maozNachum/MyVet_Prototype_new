@@ -13,7 +13,7 @@ import { InventoryControl } from "../components/reports/InventoryControl";
 import { ReferralDashboard } from "../components/reports/ReferralDashboard";
 import { EpiRadar } from "../components/reports/EpiRadar";
 
-// ─── Tabs ────────────────────────────────────────────────────────────
+// ─── Tabs - סמניות סוגי דוחות ────────────────────────────────────────────────────────────
 const ALL_TABS = [
   { key: "revenue" as const, label: "דליפת הכנסות", icon: DollarSign, color: "text-red-600" },
   { key: "staff" as const, label: "ניהול צוות", icon: Users, color: "text-blue-600" },
