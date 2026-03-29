@@ -293,17 +293,28 @@ export function ClientPortal() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#f8f9fb]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+      
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="transform scale-[4] origin-right ml-2">
-            <MyVetLogo color="#1e40af" className="w-10 h-10"/>
+      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50 w-full">
+        <div className="w-full px-6 h-16 flex items-center justify-between">
+          
+          {/* ─── צד ימין: לוגו ותגית ─── */}
+          <div className="flex items-center gap-5">
+            <div className="flex items-center shrink-0 mr-2 cursor-pointer hover:opacity-90 transition-opacity">
+              {/* הלוגו המקורי בפרופורציה מלאה (סמל + טקסט מובנה), ללא קופסאות או טקסטים כפולים לידו */}
+              <MyVetLogo color="#1e40af" className="h-12 w-auto" />
             </div>
-            <span className="mr-15 bg-blue-50 text-[#1e40af] text-[11px] px-2.5 py-1.5 rounded-full border border-blue-200" style={{ fontWeight: 700 }}>אזור אישי</span>
+
+            <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+            <span className="bg-blue-50 text-[#1e40af] text-[12px] px-3 py-1 rounded-full border border-blue-200 font-medium shadow-sm">
+              אזור אישי
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* ─── צד שמאל: התראות, פעולות ומשתמש ─── */}
+          <div className="flex items-center gap-4">
+            
             <NotificationPanel
               notifications={ownerNotifs}
               unreadCount={ownerUnread}
@@ -313,18 +324,33 @@ export function ClientPortal() {
               emptyText="אין עדכונים מהמרפאה"
             />
 
-            <button onClick={() => setIsBookingOpen(true)} className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 shadow-sm" style={{ fontWeight: 600 }}>
-              <CalendarPlus className="w-4 h-4" /> קביעת תור
+            <button 
+              onClick={() => setIsBookingOpen(true)} 
+              className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 font-medium shadow-sm"
+            >
+              <CalendarPlus className="w-4 h-4 shrink-0" /> 
+              <span className="hidden sm:inline">קביעת תור</span>
             </button>
-            <div className="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-lg flex items-center justify-center">
-                <User className="w-4 h-4 text-[#1e40af]" />
+
+            <div className="hidden lg:block w-px h-6 bg-gray-200"></div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-1.5 border border-gray-200 shadow-inner">
+                <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                  <User className="w-3.5 h-3.5 text-[#1e40af]" />
+                </div>
+                <span className="text-gray-700 text-[13px] font-medium whitespace-nowrap">משפחת ישראלי</span>
               </div>
-              <span className="text-gray-700 text-[14px]" style={{ fontWeight: 500 }}>משפחת ישראלי</span>
+              
+              <button 
+                onClick={() => navigate("/login")} 
+                className="flex items-center gap-2 text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
+              >
+                <span className="hidden sm:inline">התנתקות</span>
+                <LogOut className="w-4 h-4 shrink-0" />
+              </button>
             </div>
-            <button onClick={() => navigate("/login")} className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] border border-red-100" style={{ fontWeight: 500 }}>
-              <LogOut className="w-4 h-4" /> התנתקות
-            </button>
+
           </div>
         </div>
       </header>

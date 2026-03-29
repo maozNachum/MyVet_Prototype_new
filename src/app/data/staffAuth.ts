@@ -19,17 +19,37 @@ export function isInternalChatOnly(): boolean {
   return st === "nurse" || st === "secretary";
 }
 
-export function getStaffLabel(type?: StaffType): string {
-  const t = type || getStaffType();
-  return t === "vet" ? "וטרינר" : t === "nurse" ? "אחות" : "מזכירה";
-}
-
 export function canAccessReportsPage(): boolean {
   const st = getStaffType();
-  return st !== "nurse";
+  return st === "vet" || st === "secretary";
 }
 
 export function canViewFinancialReports(): boolean {
   const st = getStaffType();
   return st === "vet";
+}
+
+export function canViewOperationalReports(): boolean {
+  const st = getStaffType();
+  return st === "vet" || st === "secretary";
+}
+
+export function getStaffLabel(type?: StaffType): string {
+  const t = type || getStaffType();
+  return t === "vet" ? "וטרינר" : t === "nurse" ? "אחות" : "מזכירה";
+}
+
+// ── הפונקציה החדשה שמחזירה את שם איש הצוות ──
+export function getStaffName(): string {
+  const t = getStaffType();
+  switch (t) {
+    case "vet": 
+      return 'ד"ר יוסי כהן';
+    case "nurse": 
+      return 'אורלי כץ';
+    case "secretary": 
+      return 'מיכל אהרוני';
+    default: 
+      return 'צוות מרפאה';
+  }
 }

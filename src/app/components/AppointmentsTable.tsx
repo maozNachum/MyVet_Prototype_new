@@ -1,11 +1,10 @@
-import { Clock, ChevronLeft, X, Dog, Cat, Stethoscope, Calendar, Building2 } from "lucide-react";
+import { Clock, ChevronLeft, X, Dog, Cat, Calendar, Building2 } from "lucide-react";
 import { useState } from "react";
 import { TreatmentModal } from "./TreatmentModal";
 import { patients } from "../data/patients";
 import { canEditMedicalRecords } from "../data/staffAuth";
-import { useAppointmentStore } from "../data/AppointmentStore"; // חיבור לחנות המשודרגת
+import { useAppointmentStore } from "../data/AppointmentStore";
 
-// רכיב פנימי להצגת שורת טעינה (Skeleton)
 const TableSkeletonRow = () => (
   <tr className="animate-pulse border-b border-gray-50">
     <td className="px-6 py-5"><div className="h-4 w-12 bg-gray-100 rounded-md"></div></td>
@@ -23,24 +22,23 @@ const TableSkeletonRow = () => (
 );
 
 export function AppointmentsTable() {
-  const { calendarAppointments, isLoading } = useAppointmentStore(); // משיכת נתונים ומצב טעינה
+  const { calendarAppointments, isLoading } = useAppointmentStore();
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
   const [treatmentAppt, setTreatmentAppt] = useState<any | null>(null);
 
-  // סינון תורים להיום (כאן אפשר להוסיף לוגיקה שבודקת התאמה לתאריך הנוכחי)
   const todayAppointments = calendarAppointments.slice(0, 6); 
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-8">
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-blue-50 rounded-lg p-2">
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
-            <h2 className="text-gray-900" style={{ fontWeight: 600 }}>
-              תורים להיום
+            <h2 className="text-gray-900 text-[18px]" style={{ fontWeight: 600 }}>
+              תקציר תורים להיום
             </h2>
           </div>
           <span className="text-gray-400 text-[14px]">
@@ -52,18 +50,18 @@ export function AppointmentsTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/80">
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>שעה</th>
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>שם בעלים</th>
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>שם חיית מחמד</th>
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>סוג טיפול</th>
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>מחלקה / יעד</th>
-                <th className="text-right px-6 py-3.5 text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>פעולות</th>
+              {/* החזרנו את כותרות הטבלה למשקל בולט אך בגודל נעים לעין, עם רקע מפריד */}
+              <tr className="bg-gray-100/60 border-b border-gray-200">
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שעה</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שם בעלים</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שם חיית מחמד</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>סוג טיפול</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>מחלקה / יעד</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>פעולות</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
-                // הצגת Skeletons בזמן טעינה
                 <>
                   <TableSkeletonRow />
                   <TableSkeletonRow />
@@ -77,15 +75,15 @@ export function AppointmentsTable() {
                     onClick={() => setSelectedAppt(appt)}
                     className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
                   >
-                    <td className="px-6 py-4 text-gray-900" style={{ fontWeight: 500 }}>{appt.time}</td>
-                    <td className="px-6 py-4 text-gray-700">{appt.ownerName}</td>
-                    <td className="px-6 py-4 text-gray-700">
+                    <td className="px-6 py-4 text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{appt.time}</td>
+                    <td className="px-6 py-4 text-gray-600 text-[14px]">{appt.ownerName}</td>
+                    <td className="px-6 py-4 text-gray-600 text-[14px]">
                       <div className="flex items-center gap-2">
                         {appt.petSpecies === "dog" ? <Dog className="w-4 h-4 text-gray-400" /> : <Cat className="w-4 h-4 text-gray-400" />}
                         {appt.petName}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-700">{appt.type}</td>
+                    <td className="px-6 py-4 text-gray-600 text-[14px]">{appt.type}</td>
                     <td className="px-6 py-4">
                       {appt.department === "וטרינר פרטי" ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[12px]" style={{ fontWeight: 500 }}>
