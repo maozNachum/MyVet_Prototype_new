@@ -119,20 +119,20 @@ export function CalendarHeader({
 
       {/* Row 2: Search bar */}
       <div className="relative max-w-md">
-        <Search className="absolute top-1/2 -translate-y-1/2 right-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+        <Search className="absolute top-1/2 -translate-y-1/2 right-3.5 w-4 h-4 text-gray-500 font-medium pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="חיפוש מהיר ביומן — שם חיה, בעלים, סוג טיפול, וטרינר..."
           dir="rtl"
-          className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
+          className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] text-gray-700 placeholder:text-gray-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         />
         {searchQuery && (
           <button
             onClick={() => onSearchChange("")}
-            className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+            className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-medium hover:text-gray-600 cursor-pointer transition-colors"
           >
             <ChevronLeft className="w-4 h-4" style={{ transform: "rotate(90deg)" }} />
           </button>

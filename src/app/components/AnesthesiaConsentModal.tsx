@@ -127,7 +127,7 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
         {!isEmpty && (
           <button
             onClick={clearCanvas}
-            className="flex items-center gap-1 text-gray-400 hover:text-red-500 text-[12px] transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-gray-500 font-medium hover:text-red-500 text-[12px] transition-colors cursor-pointer"
             style={{ fontWeight: 500 }}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -146,14 +146,14 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
         {isEmpty && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-2">
             <PenLine className="w-8 h-8 text-gray-300" />
-            <p className="text-gray-400 text-[13px]" style={{ fontWeight: 500 }}>
+            <p className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 500 }}>
               חתום כאן בעזרת העכבר או האצבע
             </p>
           </div>
         )}
       </div>
 
-      <p className="text-gray-400 text-[11px]">
+      <p className="text-gray-500 font-medium text-[13px]">
         גרור את העכבר (או האצבע על מסך מגע) כדי לחתום
       </p>
     </div>
@@ -212,7 +212,7 @@ export function AnesthesiaConsentModal({
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2.5">
-                  <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#1e40af] text-[11px] px-3 py-1 rounded-full border border-blue-100" style={{ fontWeight: 600 }}>
+                  <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#1e40af] text-[13px] px-3 py-1 rounded-full border border-blue-100" style={{ fontWeight: 600 }}>
                     <span className="w-1.5 h-1.5 rounded-full bg-[#1e40af] inline-block" />
                     טופס הסכמה להרדמה
                   </span>
@@ -220,14 +220,14 @@ export function AnesthesiaConsentModal({
                 <h2 className="text-gray-900 text-[21px] leading-snug" style={{ fontWeight: 700 }}>
                   החתמת טופס הסכמה להרדמה
                 </h2>
-                <p className="text-gray-400 text-[13.5px] mt-1.5" style={{ lineHeight: 1.55 }}>
+                <p className="text-gray-500 font-medium text-[13.5px] mt-1.5" style={{ lineHeight: 1.55 }}>
                   בחר כיצד תרצה להחתים את הלקוח עבור הטיפול של{" "}
                   <span className="text-gray-600" style={{ fontWeight: 600 }}>{petName}</span>
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0 mr-1 -mt-1"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0 mr-1 -mt-1"
               >
                 <X style={{ width: 18, height: 18 }} />
               </button>
@@ -254,17 +254,17 @@ export function AnesthesiaConsentModal({
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
                 selected === "clinic" ? "bg-emerald-100" : "bg-white shadow-sm border border-gray-100 group-hover:bg-emerald-50"
               }`}>
-                <Tablet className={`w-8 h-8 transition-colors ${selected === "clinic" ? "text-emerald-600" : "text-gray-400 group-hover:text-emerald-500"}`} />
+                <Tablet className={`w-8 h-8 transition-colors ${selected === "clinic" ? "text-emerald-600" : "text-gray-500 font-medium group-hover:text-emerald-500"}`} />
               </div>
               <div className="text-center">
                 <p className={`text-[15px] mb-1.5 ${selected === "clinic" ? "text-emerald-800" : "text-gray-800"}`} style={{ fontWeight: 700 }}>
                   החתמה על מסך זה
                 </p>
-                <p className={`text-[12px] leading-relaxed ${selected === "clinic" ? "text-emerald-700/70" : "text-gray-400"}`}>
+                <p className={`text-[12px] leading-relaxed ${selected === "clinic" ? "text-emerald-700/70" : "text-gray-500 font-medium"}`}>
                   פתח את הטופס כעת על גבי המסך/טאבלט להחתמת הלקוח במקום
                 </p>
               </div>
-              <span className={`text-[11px] px-3 py-1 rounded-full ${
+              <span className={`text-[13px] px-3 py-1 rounded-full ${
                 selected === "clinic" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
               }`} style={{ fontWeight: 600 }}>
                 החתמה במרפאה
@@ -290,7 +290,7 @@ export function AnesthesiaConsentModal({
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
                   selected === "sms" ? "bg-emerald-100" : "bg-white shadow-sm border border-gray-100 group-hover:bg-emerald-50"
                 }`}>
-                  <Smartphone className={`w-8 h-8 transition-colors ${selected === "sms" ? "text-emerald-600" : "text-gray-400 group-hover:text-emerald-500"}`} />
+                  <Smartphone className={`w-8 h-8 transition-colors ${selected === "sms" ? "text-emerald-600" : "text-gray-500 font-medium group-hover:text-emerald-500"}`} />
                 </div>
                 <span className={`absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl flex items-center justify-center border-2 border-white shadow-sm ${
                   selected === "sms" ? "bg-emerald-500" : "bg-blue-500"
@@ -302,11 +302,11 @@ export function AnesthesiaConsentModal({
                 <p className={`text-[15px] mb-1.5 ${selected === "sms" ? "text-emerald-800" : "text-gray-800"}`} style={{ fontWeight: 700 }}>
                   שליחת קישור ב-SMS
                 </p>
-                <p className={`text-[12px] leading-relaxed ${selected === "sms" ? "text-emerald-700/70" : "text-gray-400"}`}>
+                <p className={`text-[12px] leading-relaxed ${selected === "sms" ? "text-emerald-700/70" : "text-gray-500 font-medium"}`}>
                   שלח קישור מאובטח לנייד של הלקוח לחתימה דיגיטלית מרחוק
                 </p>
               </div>
-              <span className={`text-[11px] px-3 py-1 rounded-full ${
+              <span className={`text-[13px] px-3 py-1 rounded-full ${
                 selected === "sms" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
               }`} style={{ fontWeight: 600 }}>
                 שליחה מרחוק
@@ -328,7 +328,7 @@ export function AnesthesiaConsentModal({
           <div className="px-7 pb-7 flex items-center justify-between gap-3">
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-[13px] hover:bg-gray-100 px-4 py-2.5 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+              className="text-gray-500 font-medium hover:text-gray-600 text-[13px] hover:bg-gray-100 px-4 py-2.5 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-gray-200"
               style={{ fontWeight: 500 }}
             >
               ביטול
@@ -400,7 +400,7 @@ export function AnesthesiaConsentModal({
                 { label: "תאריך", value: today },
               ].map((f) => (
                 <div key={f.label}>
-                  <p className="text-blue-400 text-[11px]" style={{ fontWeight: 500 }}>{f.label}</p>
+                  <p className="text-blue-400 text-[13px]" style={{ fontWeight: 500 }}>{f.label}</p>
                   <p className="text-blue-900 text-[14px]" style={{ fontWeight: 700 }}>{f.value}</p>
                 </div>
               ))}
@@ -489,7 +489,7 @@ export function AnesthesiaConsentModal({
           <div className="px-7 py-5 border-t border-gray-100 bg-gray-50/40 flex items-center justify-between gap-3 shrink-0">
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-[13px] px-4 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-gray-100 border border-transparent hover:border-gray-200"
+              className="text-gray-500 font-medium hover:text-gray-600 text-[13px] px-4 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-gray-100 border border-transparent hover:border-gray-200"
               style={{ fontWeight: 500 }}
             >
               ביטול
@@ -530,7 +530,7 @@ export function AnesthesiaConsentModal({
         <h2 className="text-gray-900 text-[22px] mb-2" style={{ fontWeight: 700 }}>
           הטופס נחתם בהצלחה!
         </h2>
-        <p className="text-gray-400 text-[14px]" style={{ lineHeight: 1.6 }}>
+        <p className="text-gray-500 font-medium text-[14px]" style={{ lineHeight: 1.6 }}>
           טופס ההסכמה להרדמה עבור <span className="text-gray-700" style={{ fontWeight: 600 }}>{petName}</span> נחתם
           ונשמר בתיק הרפואי. ניתן להמשיך לטיפול.
         </p>

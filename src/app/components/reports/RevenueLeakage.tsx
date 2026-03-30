@@ -147,7 +147,7 @@ function KpiMiniCard({ label, value, icon: Icon, theme }: any) {
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-gray-400 text-[12px] font-medium">{label}</p>
+        <p className="text-gray-500 font-medium text-[12px] font-medium">{label}</p>
         <p className="text-gray-900 text-[22px] font-bold">{value}</p>
       </div>
     </div>
@@ -166,10 +166,10 @@ function LeakageRow({ item, isExpanded, onToggle, addedItems, onAdd }: any) {
           <div className="text-right">
             <div className="flex items-center gap-2">
               <span className="text-gray-900 font-bold">{item.patientName}</span>
-              <span className="text-gray-400 text-[12px]">{item.ownerName}</span>
-              {hasDisc && <span className="bg-red-50 text-red-600 text-[11px] px-2 py-0.5 rounded-full border border-red-100 font-bold">₪{item.discrepancies.reduce((s:any, d:any) => s + d.estimatedValue, 0)}</span>}
+              <span className="text-gray-500 font-medium text-[12px]">{item.ownerName}</span>
+              {hasDisc && <span className="bg-red-50 text-red-600 text-[13px] px-2 py-0.5 rounded-full border border-red-100 font-bold">₪{item.discrepancies.reduce((s:any, d:any) => s + d.estimatedValue, 0)}</span>}
             </div>
-            <p className="text-gray-400 text-[12px]">{item.visitDate} · {item.vet}</p>
+            <p className="text-gray-500 font-medium text-[12px]">{item.visitDate} · {item.vet}</p>
           </div>
         </div>
         {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-300" /> : <ChevronDown className="w-5 h-5 text-gray-300" />}
@@ -194,7 +194,7 @@ function LeakageRow({ item, isExpanded, onToggle, addedItems, onAdd }: any) {
                     <span className="font-bold text-red-600">₪{d.estimatedValue}</span>
                     <button 
                       onClick={(e) => { e.stopPropagation(); onAdd(i); }}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-[13px] font-bold transition-all ${
                         addedItems.has(`${item.id}-${i}`) ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
                       }`}
                     >

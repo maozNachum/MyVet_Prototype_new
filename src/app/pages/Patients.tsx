@@ -206,7 +206,7 @@ export function Patients() {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-full bg-gray-100 text-gray-400 py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 border border-gray-200 font-medium">
+                    <div className="w-full bg-gray-100 text-gray-500 font-medium py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 border border-gray-200 font-medium">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -223,7 +223,7 @@ export function Patients() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-gray-900 text-[17px] font-semibold">היסטוריה רפואית</h3>
-                <span className="text-gray-400 text-[13px]">{patientHistory.length} ביקורים</span>
+                <span className="text-gray-500 font-medium text-[13px]">{patientHistory.length} ביקורים</span>
               </div>
 
               <div className="p-6">
@@ -242,10 +242,10 @@ export function Patients() {
                             <div className={`flex-1 ${index === patientHistory.length - 1 ? "pb-0" : "pb-7"}`}>
                               <div className="flex items-center gap-3 mb-1">
                                 <span className="text-gray-900 text-[15px] font-semibold">{visit.reason}</span>
-                                <span className="text-gray-400 text-[13px]">{visit.date}</span>
+                                <span className="text-gray-500 font-medium text-[13px]">{visit.date}</span>
                               </div>
                               <p className="text-gray-500 text-[14px] mb-1">{visit.treatment || visit.diagnosis}</p>
-                              <p className="text-gray-400 text-[13px]">{visit.vetName}</p>
+                              <p className="text-gray-500 font-medium text-[13px]">{visit.vetName}</p>
                             </div>
                           </div>
                         );
@@ -253,7 +253,7 @@ export function Patients() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-400">
+                  <div className="text-center py-10 text-gray-500 font-medium">
                     <Stethoscope className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p>אין היסטוריה רפואית</p>
                   </div>
@@ -318,7 +318,7 @@ export function Patients() {
         <>
           <div className="mb-6">
             <div className="relative max-w-lg">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
               <input
                 type="text"
                 placeholder="חיפוש לפי שם חיה, בעלים, טלפון או שבב..."
@@ -345,7 +345,7 @@ export function Patients() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <h3 className="text-gray-900 text-[16px] truncate font-semibold">{patient.pet.name}</h3>
-                        <span className="text-gray-400 text-[13px] shrink-0">{patient.pet.species}, {patient.pet.gender}</span>
+                        <span className="text-gray-500 font-medium text-[13px] shrink-0">{patient.pet.species}, {patient.pet.gender}</span>
                       </div>
                       <p className="text-gray-500 text-[13px]">{patient.pet.breed} · בן {patient.pet.age}</p>
                     </div>
@@ -354,26 +354,26 @@ export function Patients() {
 
                   <div className="border-t border-gray-100 pt-3 space-y-2">
                     <div className="flex items-center gap-2 text-[13px] text-gray-500">
-                      <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                      <CreditCard className="w-3.5 h-3.5 text-gray-500 font-medium" />
                       <span className="text-gray-600 font-medium">{patient.owner.name}</span>
                     </div>
                     <div className="flex items-center gap-2 text-[13px] text-gray-500">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <Phone className="w-3.5 h-3.5 text-gray-500 font-medium" />
                       <span>{patient.owner.phone}</span>
                     </div>
                     {patient.owner.email && (
                       <div className="flex items-center gap-2 text-[13px] text-gray-500">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                        <Mail className="w-3.5 h-3.5 text-gray-500 font-medium" />
                         <span className="truncate">{patient.owner.email}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-[13px] text-gray-500">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        <Calendar className="w-3.5 h-3.5 text-gray-500 font-medium" />
                         <span>ביקור אחרון: {patient.lastVisit}</span>
                       </div>
                       {patient.nextAppointment && (
-                        <span className="bg-blue-50 text-blue-600 text-[11px] px-2 py-0.5 rounded-full border border-blue-200 font-medium">
+                        <span className="bg-blue-50 text-blue-600 text-[13px] px-2 py-0.5 rounded-full border border-blue-200 font-medium">
                           תור: {patient.nextAppointment}
                         </span>
                       )}
@@ -387,7 +387,7 @@ export function Patients() {
           {filtered.length === 0 && (
             <div className="text-center py-16">
               <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400 text-[15px]">לא נמצאו מטופלים תואמים</p>
+              <p className="text-gray-500 font-medium text-[15px]">לא נמצאו מטופלים תואמים</p>
             </div>
           )}
         </>
@@ -473,7 +473,7 @@ export function Patients() {
                   <label htmlFor="birthDate" className="block text-gray-700 text-[14px] mb-2 font-medium">תאריך לידה</label>
                   <div className="relative">
                     <input type="date" id="birthDate" {...register("birthDate")} className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-colors text-[15px] ${errors.birthDate ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:ring-blue-500/20 focus:border-blue-500"}`} />
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   </div>
                   {errors.birthDate && <p className="text-red-500 text-[12px] mt-1.5 font-medium">{errors.birthDate.message}</p>}
                 </div>

@@ -77,14 +77,14 @@ export function StaffUtilization() {
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
                 <kpi.icon className="w-5 h-5" />
               </div>
-              <div className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
+              <div className={`flex items-center gap-1 text-[13px] px-2 py-0.5 rounded-full ${
                 kpi.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
               }`} style={{ fontWeight: 500 }}>
                 {kpi.trend === "up" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                 {kpi.trendLabel}
               </div>
             </div>
-            <p className="text-gray-400 text-[12px]">{kpi.label}</p>
+            <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
             <p className="text-gray-900 text-[24px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
           </div>
         ))}
@@ -95,15 +95,15 @@ export function StaffUtilization() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מפת חום — עומס לפי יום ושעה</h3>
-            <p className="text-gray-400 text-[12px] mt-0.5">עוצמת הצבע = מספר תורים מקבילים</p>
+            <p className="text-gray-500 font-medium text-[12px] mt-0.5">עוצמת הצבע = מספר תורים מקבילים</p>
           </div>
           <div className="p-5 overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="py-2 px-1 text-right text-gray-500 text-[11px]" style={{ fontWeight: 600 }}>יום / שעה</th>
+                  <th className="py-2 px-1 text-right text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>יום / שעה</th>
                   {HOURS.map((h) => (
-                    <th key={h} className="py-2 px-1 text-center text-gray-400 text-[10px]" style={{ fontWeight: 500 }}>{h}</th>
+                    <th key={h} className="py-2 px-1 text-center text-gray-500 font-medium text-[10px]" style={{ fontWeight: 500 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -113,7 +113,7 @@ export function StaffUtilization() {
                     <td className="py-1 px-1 text-right text-gray-600 text-[12px]" style={{ fontWeight: 500 }}>{day}</td>
                     {HEATMAP_RAW[di].map((val, hi) => (
                       <td key={`${di}-${hi}`} className="py-1 px-0.5">
-                        <div className={`w-full h-9 rounded-lg flex items-center justify-center text-[11px] ${getHeatColor(val)}`} style={{ fontWeight: 600 }}>
+                        <div className={`w-full h-9 rounded-lg flex items-center justify-center text-[13px] ${getHeatColor(val)}`} style={{ fontWeight: 600 }}>
                           {val}
                         </div>
                       </td>
@@ -122,7 +122,7 @@ export function StaffUtilization() {
                 ))}
               </tbody>
             </table>
-            <div className="flex items-center gap-2 mt-4 text-[10px] text-gray-400">
+            <div className="flex items-center gap-2 mt-4 text-[10px] text-gray-500 font-medium">
               <span>נמוך</span>
               <div className="flex gap-0.5">
                 {["bg-emerald-100", "bg-emerald-200", "bg-amber-200", "bg-orange-300", "bg-red-400"].map((c) => (
@@ -138,7 +138,7 @@ export function StaffUtilization() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>זמן המתנה ממוצע לפי שעה</h3>
-            <p className="text-gray-400 text-[12px] mt-0.5">בדקות · כולל שהייה בקבלה ובחדר המתנה</p>
+            <p className="text-gray-500 font-medium text-[12px] mt-0.5">בדקות · כולל שהייה בקבלה ובחדר המתנה</p>
           </div>
           <div className="p-5">
             <div dir="ltr">
@@ -164,7 +164,7 @@ export function StaffUtilization() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>ניתוח ביצועים לפי רופא/ה</h3>
-          <p className="text-gray-400 text-[12px] mt-0.5">זמן מתוכנן מול בפועל · חריגות · שביעות רצון</p>
+          <p className="text-gray-500 font-medium text-[12px] mt-0.5">זמן מתוכנן מול בפועל · חריגות · שביעות רצון</p>
         </div>
         <div className="p-5 space-y-3">
           <ReportSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="חיפוש לפי שם רופא/ה..." />
@@ -187,12 +187,12 @@ export function StaffUtilization() {
                     </div>
                     <div>
                       <p className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{vet.name}</p>
-                      <p className="text-gray-400 text-[12px]">{vet.totalAppointments} תורים החודש</p>
+                      <p className="text-gray-500 font-medium text-[12px]">{vet.totalAppointments} תורים החודש</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-[13px]">
                     <div className="text-center">
-                      <p className="text-gray-400 text-[10px]">שביעות רצון</p>
+                      <p className="text-gray-500 font-medium text-[10px]">שביעות רצון</p>
                       <p className="text-gray-900" style={{ fontWeight: 700 }}>{vet.patientSatisfaction}/5</p>
                     </div>
                   </div>
@@ -203,7 +203,7 @@ export function StaffUtilization() {
                   {/* Wait time */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[11px]">המתנה ממוצעת</span>
+                      <span className="text-gray-500 text-[13px]">המתנה ממוצעת</span>
                       <span className={`text-[13px] ${vet.avgWaitTime > 12 ? "text-red-500" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>{vet.avgWaitTime} דק׳</span>
                     </div>
                     <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -217,7 +217,7 @@ export function StaffUtilization() {
                   {/* Scheduled vs Actual */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[11px]">מתוכנן → בפועל</span>
+                      <span className="text-gray-500 text-[13px]">מתוכנן → בפועל</span>
                       <span className={`text-[13px] flex items-center gap-1 ${isOverrun ? "text-amber-600" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>
                         {vet.scheduledDuration}→{vet.actualDuration} דק׳
                         {isOverrun && <AlertTriangle className="w-3 h-3" />}
@@ -232,7 +232,7 @@ export function StaffUtilization() {
                   {/* Overrun Rate */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[11px]">שיעור חריגה</span>
+                      <span className="text-gray-500 text-[13px]">שיעור חריגה</span>
                       <span className={`text-[13px] ${vet.overrunRate > 40 ? "text-red-500" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>{vet.overrunRate}%</span>
                     </div>
                     <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">

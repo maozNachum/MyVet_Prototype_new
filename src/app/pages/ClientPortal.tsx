@@ -361,7 +361,7 @@ export function ClientPortal() {
           <h1 className="text-gray-900 text-[26px] mb-1" style={{ fontWeight: 700 }}>
             שלום, משפחת ישראלי<span className="inline-block mr-2">👋</span>
           </h1>
-          <p className="text-gray-400 text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
+          <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
         </div>
 
         {/* ── Accordion Sections ── */}
@@ -377,10 +377,10 @@ export function ClientPortal() {
                 <div className="bg-orange-50 rounded-xl p-2.5"><Bell className="w-5 h-5 text-orange-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מרכז התראות ותזכורות</h2>
-                  <p className="text-gray-400 text-[12px]">{portalNotifications.length} התראות חדשות</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{portalNotifications.length} התראות חדשות</p>
                 </div>
               </div>
-              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.notifications ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.notifications ? "rotate-180" : ""}`} />
             </button>
 
             {openSections.notifications && (
@@ -399,7 +399,7 @@ export function ClientPortal() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{notif.petName}</span>
-                            <span className="text-gray-300 text-[11px]">{notif.date}</span>
+                            <span className="text-gray-300 text-[13px]">{notif.date}</span>
                           </div>
                           <p className="text-gray-600 text-[13px] mb-3" style={{ lineHeight: 1.6 }}>{notif.text}</p>
                           <button onClick={() => setIsBookingOpen(true)} className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm" style={{ fontWeight: 500 }}>
@@ -424,7 +424,7 @@ export function ClientPortal() {
                 <div className="bg-indigo-50 rounded-xl p-2.5"><CalendarClock className="w-5 h-5 text-indigo-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>תורים עתידיים</h2>
-                  <p className="text-gray-400 text-[12px]">{appointments.length} תורים קבועים</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{appointments.length} תורים קבועים</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -435,14 +435,14 @@ export function ClientPortal() {
                 >
                   <CalendarPlus className="w-3.5 h-3.5" /> תור חדש
                 </span>
-                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.appointments ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.appointments ? "rotate-180" : ""}`} />
               </div>
             </button>
 
             {openSections.appointments && (
               <div className="border-t border-gray-100 p-4 space-y-3">
                 {appointments.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400">
+                  <div className="text-center py-10 text-gray-500 font-medium">
                     <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-[14px]">אין תורים עתידיים</p>
                     <button onClick={() => setIsBookingOpen(true)} className="mt-3 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer transition-colors" style={{ fontWeight: 500 }}>קבעו תור חדש</button>
@@ -460,20 +460,20 @@ export function ClientPortal() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{appt.petName}</span>
-                            <span className="bg-indigo-50 text-indigo-600 text-[11px] px-2 py-0.5 rounded-full border border-indigo-200" style={{ fontWeight: 500 }}>{appt.type}</span>
+                            <span className="bg-indigo-50 text-indigo-600 text-[13px] px-2 py-0.5 rounded-full border border-indigo-200" style={{ fontWeight: 500 }}>{appt.type}</span>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-gray-500 mb-1.5">
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-gray-400" />{appt.date}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400" />{appt.time}</span>
-                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-400" />{appt.room}</span>
+                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-gray-500 font-medium" />{appt.date}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gray-500 font-medium" />{appt.time}</span>
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-500 font-medium" />{appt.room}</span>
                           </div>
-                          <p className="text-gray-400 text-[12px] mb-0.5">{appt.vet}</p>
-                          {appt.notes && <p className="text-gray-400 text-[11px] mt-1" style={{ lineHeight: 1.5 }}>{appt.notes}</p>}
+                          <p className="text-gray-500 font-medium text-[12px] mb-0.5">{appt.vet}</p>
+                          {appt.notes && <p className="text-gray-500 font-medium text-[13px] mt-1" style={{ lineHeight: 1.5 }}>{appt.notes}</p>}
                           <div className="flex items-center gap-2 mt-3">
-                            <button onClick={() => { setRescheduleAppt(appt); setRescheduleDate(""); setRescheduleTime(""); }} className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200" style={{ fontWeight: 500 }}>
+                            <button onClick={() => { setRescheduleAppt(appt); setRescheduleDate(""); setRescheduleTime(""); }} className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[13px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200" style={{ fontWeight: 500 }}>
                               <CalendarClock className="w-3 h-3" /> הזז תור
                             </button>
-                            <button onClick={() => setCancelAppt(appt)} className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-red-200" style={{ fontWeight: 500 }}>
+                            <button onClick={() => setCancelAppt(appt)} className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-[13px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-red-200" style={{ fontWeight: 500 }}>
                               <Trash2 className="w-3 h-3" /> בטל תור
                             </button>
                           </div>
@@ -496,10 +496,10 @@ export function ClientPortal() {
                 <div className="bg-green-50 rounded-xl p-2.5"><Heart className="w-5 h-5 text-green-600" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>החיות שלי - תיק רפואי</h2>
-                  <p className="text-gray-400 text-[12px]">{pets.length} חיות רשומות</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{pets.length} חיות רשומות</p>
                 </div>
               </div>
-              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.pets ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.pets ? "rotate-180" : ""}`} />
             </button>
 
             {openSections.pets && (
@@ -582,7 +582,7 @@ export function ClientPortal() {
                               <div className="flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-[#1e40af]" />
                                 <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 700 }}>סיכומי ביקור</h4>
-                                <span className="bg-blue-100 text-[#1e40af] text-[11px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
+                                <span className="bg-blue-100 text-[#1e40af] text-[13px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
                                   {(petVisitSummaries[pet.id] ?? []).length} ביקורים
                                 </span>
                               </div>
@@ -607,7 +607,7 @@ export function ClientPortal() {
                                     <div className={`w-2 h-2 rounded-full shrink-0 ${visit.status === "paid" ? "bg-emerald-400" : "bg-red-400"}`} />
                                     <div className="min-w-0">
                                       <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{visit.title}</p>
-                                      <p className="text-gray-400 text-[12px] flex items-center gap-1 mt-0.5">
+                                      <p className="text-gray-500 font-medium text-[12px] flex items-center gap-1 mt-0.5">
                                         <Calendar className="w-3 h-3" />{visit.date}
                                       </p>
                                     </div>
@@ -664,10 +664,10 @@ export function ClientPortal() {
                 <div className="bg-violet-50 rounded-xl p-2.5"><Paperclip className="w-5 h-5 text-violet-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מסמכים וקבצים</h2>
-                  <p className="text-gray-400 text-[12px]">{uploadedFiles.length} קבצים הועלו</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים הועלו</p>
                 </div>
               </div>
-              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
             </button>
 
             {openSections.documents && (
@@ -721,19 +721,19 @@ export function ClientPortal() {
                     onChange={(e) => { processFiles(e.target.files); e.target.value = ""; }}
                   />
                   <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${isDragging ? "bg-blue-100" : "bg-gray-100"}`}>
-                    <Upload className={`w-7 h-7 ${isDragging ? "text-[#1e40af]" : "text-gray-400"}`} />
+                    <Upload className={`w-7 h-7 ${isDragging ? "text-[#1e40af]" : "text-gray-500 font-medium"}`} />
                   </div>
                   <p className="text-gray-700 text-[15px] mb-1" style={{ fontWeight: 600 }}>
                     {isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
                   </p>
-                  <p className="text-gray-400 text-[12px]">
+                  <p className="text-gray-500 font-medium text-[12px]">
                     תמונות, PDF, Word, Excel — עד 10MB לקובץ
                   </p>
                 </div>
 
                 {/* Uploaded files list */}
                 {uploadedFiles.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="text-center py-8 text-gray-500 font-medium">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-[14px]">לא הועלו קבצים עדיין</p>
                     <p className="text-[12px] mt-1">העלו תעודות חיסון, תוצאות בדיקות, מרשמים ועוד</p>
@@ -763,7 +763,7 @@ export function ClientPortal() {
                                 {CATEGORY_LABELS[file.category] || file.category}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                            <div className="flex items-center gap-3 text-[13px] text-gray-500 font-medium">
                               <span className="flex items-center gap-1"><PIcon className="w-3 h-3" />{file.petName}</span>
                               <span>{formatFileSize(file.size)}</span>
                               <span>{file.uploadDate}</span>
@@ -775,7 +775,7 @@ export function ClientPortal() {
                             {file.previewUrl && (
                               <button
                                 onClick={() => setPreviewFile(file)}
-                                className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
+                                className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer"
                                 title="צפייה"
                               >
                                 <Eye className="w-4 h-4" />
@@ -783,7 +783,7 @@ export function ClientPortal() {
                             )}
                             <button
                               onClick={() => setDeleteConfirmFile(file)}
-                              className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                              className="p-2 rounded-lg hover:bg-red-50 text-gray-500 font-medium hover:text-red-500 transition-colors cursor-pointer"
                               title="מחיקה"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -820,7 +820,7 @@ export function ClientPortal() {
                 <PillPicker label="בחרו שעה חדשה" items={timePills} selected={rescheduleTime || null} onSelect={setRescheduleTime} />
                 <div className="flex gap-3 mt-2">
                   <button onClick={handleReschedule} disabled={!rescheduleDate || !rescheduleTime}
-                    className={`flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 ${rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+                    className={`flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 ${rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"}`}
                     style={{ fontWeight: 600 }}
                   >
                     <CalendarClock className="w-4 h-4" /> אישור הזזת תור
@@ -888,7 +888,7 @@ export function ClientPortal() {
             />
             <div className="px-5 py-4 border-t border-gray-100">
               <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{previewFile.name}</p>
-              <p className="text-gray-400 text-[12px]">{previewFile.petName} · {CATEGORY_LABELS[previewFile.category]} · {previewFile.uploadDate}</p>
+              <p className="text-gray-500 font-medium text-[12px]">{previewFile.petName} · {CATEGORY_LABELS[previewFile.category]} · {previewFile.uploadDate}</p>
             </div>
           </div>
         </ModalOverlay>
@@ -911,7 +911,7 @@ export function ClientPortal() {
               </div>
               <div className="min-w-0">
                 <p className="text-gray-900 text-[13px] truncate" style={{ fontWeight: 600 }}>{deleteConfirmFile.name}</p>
-                <p className="text-gray-400 text-[11px]">{deleteConfirmFile.petName} · {formatFileSize(deleteConfirmFile.size)}</p>
+                <p className="text-gray-500 font-medium text-[13px]">{deleteConfirmFile.petName} · {formatFileSize(deleteConfirmFile.size)}</p>
               </div>
             </div>
             <div className="flex gap-3">

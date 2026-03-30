@@ -61,7 +61,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick }: DailyView
                 className="w-[72px] shrink-0 py-4 px-3 border-r border-gray-100 text-center"
                 style={{ fontFamily: "'Heebo', sans-serif" }}
               >
-                <span className="text-[12px] text-gray-400" style={{ fontWeight: 600 }}>
+                <span className="text-[12px] text-gray-500 font-medium" style={{ fontWeight: 600 }}>
                   {String(hour).padStart(2, "0")}:00
                 </span>
               </div>
@@ -113,18 +113,18 @@ export function DailyView({ dailyDate, getAppointments, onApptClick }: DailyView
                         {/* Line 3 */}
                         <p className="text-gray-500 text-[12px]">{appt.type}</p>
                         {/* Line 4 */}
-                        <p className="text-gray-400 text-[11.5px]">{appt.vet}</p>
+                        <p className="text-gray-500 font-medium text-[11.5px]">{appt.vet}</p>
                       </div>
 
                       {/* Right meta */}
                       <div className="shrink-0 flex flex-col items-end gap-1.5">
                         <span
-                          className={`text-[11px] px-2.5 py-0.5 rounded-full border ${dept.text} bg-white/70`}
+                          className={`text-[13px] px-2.5 py-0.5 rounded-full border ${dept.text} bg-white/70`}
                           style={{ borderColor: `${dept.borderColor}50`, fontWeight: 600 }}
                         >
                           {appt.department}
                         </span>
-                        <span className="text-gray-400 text-[11px]">{appt.room}</span>
+                        <span className="text-gray-500 font-medium text-[13px]">{appt.room}</span>
                         <span
                           className={`w-2 h-2 rounded-full ${status.dotColor}`}
                           title={status.label}

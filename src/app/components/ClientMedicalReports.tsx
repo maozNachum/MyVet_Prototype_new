@@ -323,7 +323,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       </div>
 
       {/* FHIR compliance badge */}
-      <div className="flex items-center gap-2 text-[11px] text-gray-400">
+      <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
         <span>נתונים מאובטחים בהתאם לחוק הגנת הפרטיות · תקן HL7 FHIR · שיתוף בקליק אחד</span>
       </div>
@@ -332,7 +332,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       {activeTab === "visits" && (
         <div className="space-y-3">
           {visits.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
+            <div className="text-center py-10 text-gray-500 font-medium">
               <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
               <p className="text-[14px]">אין סיכומי ביקור עדיין</p>
             </div>
@@ -352,38 +352,38 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{visit.reason}</span>
-                          <span className="text-gray-400 text-[12px]">{visit.date}</span>
+                          <span className="text-gray-500 font-medium text-[12px]">{visit.date}</span>
                         </div>
-                        <p className="text-gray-400 text-[12px]">{visit.vet}</p>
+                        <p className="text-gray-500 font-medium text-[12px]">{visit.vet}</p>
                       </div>
                     </div>
-                    <ChevronLeft className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    <ChevronLeft className={`w-4 h-4 text-gray-500 font-medium transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                   </button>
 
                   {isExpanded && (
                     <div className="border-t border-gray-100 px-5 py-5 space-y-4">
                       {/* Reason */}
                       <div>
-                        <p className="text-gray-500 text-[11px] mb-1" style={{ fontWeight: 600 }}>סיבת הביקור</p>
+                        <p className="text-gray-500 text-[13px] mb-1" style={{ fontWeight: 600 }}>סיבת הביקור</p>
                         <p className="text-gray-800 text-[13px] bg-blue-50/50 rounded-lg px-3 py-2 border border-blue-100">{visit.reason}</p>
                       </div>
 
                       {/* Diagnosis */}
                       <div>
-                        <p className="text-gray-500 text-[11px] mb-1" style={{ fontWeight: 600 }}>🩺 מה הרופא/ה חושב/ת?</p>
+                        <p className="text-gray-500 text-[13px] mb-1" style={{ fontWeight: 600 }}>🩺 מה הרופא/ה חושב/ת?</p>
                         <p className="text-gray-800 text-[13px]" style={{ lineHeight: 1.7 }}>{visit.diagnosis}</p>
                       </div>
 
                       {/* Treatment Plan */}
                       <div>
-                        <p className="text-gray-500 text-[11px] mb-1" style={{ fontWeight: 600 }}>📋 תוכנית טיפול — מה עושים עכשיו?</p>
+                        <p className="text-gray-500 text-[13px] mb-1" style={{ fontWeight: 600 }}>📋 תוכנית טיפול — מה עושים עכשיו?</p>
                         <p className="text-gray-800 text-[13px]" style={{ lineHeight: 1.7 }}>{visit.treatmentPlan}</p>
                       </div>
 
                       {/* Medications */}
                       {visit.medications && visit.medications.length > 0 && (
                         <div>
-                          <p className="text-gray-500 text-[11px] mb-2" style={{ fontWeight: 600 }}>💊 תרופות</p>
+                          <p className="text-gray-500 text-[13px] mb-2" style={{ fontWeight: 600 }}>💊 תרופות</p>
                           <div className="space-y-2">
                             {visit.medications.map((med, i) => (
                               <div key={i} className="flex items-center gap-3 bg-amber-50/60 rounded-lg px-3 py-2 border border-amber-100">
@@ -391,7 +391,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                                 <div className="text-[13px]">
                                   <span className="text-gray-900" style={{ fontWeight: 600 }}>{med.name}</span>
                                   <span className="text-gray-500"> — {med.dose}</span>
-                                  <p className="text-gray-400 text-[11px]">{med.duration}</p>
+                                  <p className="text-gray-500 font-medium text-[13px]">{med.duration}</p>
                                 </div>
                               </div>
                             ))}
@@ -401,7 +401,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
 
                       {/* Notes */}
                       <div>
-                        <p className="text-gray-500 text-[11px] mb-1" style={{ fontWeight: 600 }}>📝 הנחיות לבעלים — מה חשוב שתעשו</p>
+                        <p className="text-gray-500 text-[13px] mb-1" style={{ fontWeight: 600 }}>📝 הנחיות לבעלים — מה חשוב שתעשו</p>
                         <p className="text-gray-800 text-[13px] bg-emerald-50/50 rounded-lg px-3 py-2 border border-emerald-100" style={{ lineHeight: 1.7 }}>{visit.notes}</p>
                       </div>
 
@@ -454,7 +454,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>דרכון חיסונים דיגיטלי — {petName}</h4>
-                <p className="text-gray-400 text-[11px]">כולל מספר סידורי ומועד תפוגה · תקף לנסיעות ופנסיונים</p>
+                <p className="text-gray-500 font-medium text-[13px]">כולל מספר סידורי ומועד תפוגה · תקף לנסיעות ופנסיונים</p>
               </div>
               <PDFButton />
             </div>
@@ -481,12 +481,12 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                         <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>בתוקף</span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-x-4 text-[11px] text-gray-500">
+                    <div className="flex flex-wrap gap-x-4 text-[13px] text-gray-500">
                       <span>תאריך: {vac.date}</span>
                       <span>תפוגה: {vac.expiryDate}</span>
                       <span>יצרן: {vac.manufacturer}</span>
                     </div>
-                    <p className="text-gray-400 text-[10px] mt-0.5 font-mono">S/N: {vac.serialNumber}</p>
+                    <p className="text-gray-500 font-medium text-[10px] mt-0.5 font-mono">S/N: {vac.serialNumber}</p>
                   </div>
                 </div>
               ))}
@@ -499,7 +499,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       {activeTab === "diagnostics" && (
         <div className="space-y-3">
           {labResults.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
+            <div className="text-center py-10 text-gray-500 font-medium">
               <FlaskConical className="w-8 h-8 mx-auto mb-2 text-gray-300" />
               <p className="text-[14px]">אין תוצאות בדיקות</p>
             </div>
@@ -527,10 +527,10 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                           <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{lab.title}</span>
                           <StatusBadge status={lab.status} />
                         </div>
-                        <p className="text-gray-400 text-[12px]">{lab.date} · {lab.vet}</p>
+                        <p className="text-gray-500 font-medium text-[12px]">{lab.date} · {lab.vet}</p>
                       </div>
                     </div>
-                    <ChevronLeft className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    <ChevronLeft className={`w-4 h-4 text-gray-500 font-medium transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                   </button>
 
                   {isExpanded && (
@@ -552,7 +552,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                                   <td className="py-2.5 px-3 text-gray-900" style={{ fontWeight: 500 }}>{v.name}</td>
                                   <td className={`py-2.5 px-3 ${v.status !== "normal" ? "text-red-600" : "text-gray-700"}`} style={{ fontWeight: v.status !== "normal" ? 700 : 400 }}>{v.value}</td>
                                   <td className="py-2.5 px-3 text-gray-500">{v.unit}</td>
-                                  <td className="py-2.5 px-3 text-gray-400">{v.range}</td>
+                                  <td className="py-2.5 px-3 text-gray-500 font-medium">{v.range}</td>
                                   <td className="py-2.5 px-3"><StatusBadge status={v.status} /></td>
                                 </tr>
                               ))}
@@ -564,7 +564,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                       {/* Interpretation */}
                       {lab.interpretation && (
                         <div className="bg-amber-50/50 rounded-lg px-4 py-3 border border-amber-100">
-                          <p className="text-gray-500 text-[11px] mb-1" style={{ fontWeight: 600 }}>פירוש הרופא/ה</p>
+                          <p className="text-gray-500 text-[13px] mb-1" style={{ fontWeight: 600 }}>פירוש הרופא/ה</p>
                           <p className="text-gray-800 text-[13px]" style={{ lineHeight: 1.7 }}>{lab.interpretation}</p>
                         </div>
                       )}
@@ -595,7 +595,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                 </div>
                 <div>
                   <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>מעקב משקל — {petName}</h4>
-                  <p className="text-gray-400 text-[11px]">3 שנים אחרונות</p>
+                  <p className="text-gray-500 font-medium text-[13px]">3 שנים אחרונות</p>
                 </div>
               </div>
               <ShareButton />
@@ -612,7 +612,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-gray-400 py-8 text-[14px]">אין נתוני משקל</p>
+                <p className="text-center text-gray-500 font-medium py-8 text-[14px]">אין נתוני משקל</p>
               )}
             </div>
           </SectionCard>
@@ -627,7 +627,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                   </div>
                   <div>
                     <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>מעקב קריאטינין (תפקודי כליות)</h4>
-                    <p className="text-gray-400 text-[11px]">סמן קריטי למעקב מחלת כליות כרונית</p>
+                    <p className="text-gray-500 font-medium text-[13px]">סמן קריטי למעקב מחלת כליות כרונית</p>
                   </div>
                 </div>
                 <ShareButton />
@@ -663,7 +663,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                   <item.icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-[11px]">{item.label}</p>
+                  <p className="text-gray-500 font-medium text-[13px]">{item.label}</p>
                   <p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{item.value}</p>
                 </div>
               </div>
@@ -676,7 +676,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       {activeTab === "consents" && (
         <div className="space-y-3">
           {consents.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
+            <div className="text-center py-10 text-gray-500 font-medium">
               <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-gray-300" />
               <p className="text-[14px]">אין רשומות הסכמה או סירוב</p>
             </div>
@@ -719,7 +719,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                           </span>
                         </div>
                         <p className="text-gray-600 text-[13px] mb-2" style={{ lineHeight: 1.7 }}>{consent.description}</p>
-                        <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                        <div className="flex items-center gap-3 text-[13px] text-gray-500 font-medium">
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{consent.date}</span>
                           <span className="flex items-center gap-1"><User className="w-3 h-3" />{consent.signedBy}</span>
                         </div>

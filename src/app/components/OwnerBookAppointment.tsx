@@ -193,7 +193,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                           className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                             isSelected
                               ? "bg-[#1e40af] text-white"
-                              : "bg-gray-100 text-gray-400"
+                              : "bg-gray-100 text-gray-500 font-medium"
                           }`}
                         >
                           <PIcon className="w-5 h-5" />
@@ -205,7 +205,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                           >
                             {pet.name}
                           </p>
-                          <p className="text-gray-400 text-[11px]">{pet.breed}</p>
+                          <p className="text-gray-500 font-medium text-[13px]">{pet.breed}</p>
                         </div>
                       </button>
                     );
@@ -274,7 +274,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                           : "border-gray-100 hover:border-gray-200"
                       }`}
                     >
-                      <span className="text-gray-400 text-[11px]" style={{ fontWeight: 500 }}>
+                      <span className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 500 }}>
                         {day.dayName}
                       </span>
                       <span
@@ -285,7 +285,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                       >
                         {day.dayNumber}
                       </span>
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-gray-500 font-medium">
                         {day.isToday ? "היום" : day.date}
                       </span>
                     </button>
@@ -299,14 +299,14 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                   <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
                     שעות פנויות
                   </h4>
-                  <span className="text-gray-400 text-[12px]">
+                  <span className="text-gray-500 font-medium text-[12px]">
                     {week[selectedDay].slots.filter((s) => s.available).length} תורים פנויים
                   </span>
                 </div>
                 {week[selectedDay].slots.length === 0 ? (
                   <div className="text-center py-8">
                     <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-400 text-[14px]">סגור — אין תורים ביום זה</p>
+                    <p className="text-gray-500 font-medium text-[14px]">סגור — אין תורים ביום זה</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-2">
@@ -341,7 +341,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
               {/* Summary Cards */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-[11px] mb-1" style={{ fontWeight: 500 }}>
+                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
                     חיה
                   </p>
                   <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-[11px] mb-1" style={{ fontWeight: 500 }}>
+                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
                     סוג טיפול
                   </p>
                   <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
@@ -364,7 +364,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-[11px] mb-1" style={{ fontWeight: 500 }}>
+                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
                     יום
                   </p>
                   <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
@@ -372,7 +372,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-[11px] mb-1" style={{ fontWeight: 500 }}>
+                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
                     שעה
                   </p>
                   <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
@@ -423,7 +423,7 @@ export function OwnerBookAppointment({ isOpen, onClose }: OwnerBookAppointmentPr
               <button
                 onClick={() => setStep(step + 1)}
                 disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
-                className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-gray-200 disabled:text-gray-400 text-white py-2.5 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm"
+                className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-gray-200 disabled:text-gray-500 font-medium text-white py-2.5 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm"
                 style={{ fontWeight: 600 }}
               >
                 המשך

@@ -129,7 +129,7 @@ export function NewAppointment() {
                   חיפוש לקוח / חיה
                 </label>
                 <div className="relative">
-                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   <select
                     {...register("patient")}
                     className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
@@ -149,7 +149,7 @@ export function NewAppointment() {
                   טלפון בעלים (לאישור)
                 </label>
                 <div className="relative">
-                  <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   <input
                     type="tel"
                     {...register("ownerPhone")}
@@ -254,7 +254,7 @@ export function NewAppointment() {
                     רופא מטפל
                   </label>
                   <div className="relative">
-                    <Stethoscope className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    <Stethoscope className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                     <select
                       {...register("vet")}
                       className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
@@ -273,7 +273,7 @@ export function NewAppointment() {
                     מחלקה (רשות)
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    <MapPin className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                     <select
                       {...register("department")}
                       className="w-full pr-12 pl-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer"

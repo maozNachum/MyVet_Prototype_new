@@ -227,7 +227,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                       </span>
                       <button
                         onClick={handleEditTotal}
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer"
                         title="עריכת סכום ידנית"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -256,7 +256,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                   <span className="text-gray-800 text-[15px]" style={{ fontWeight: 600 }}>
                     אשראי
                   </span>
-                  <span className="text-gray-400 text-[11px]">סולק אשראי</span>
+                  <span className="text-gray-500 font-medium text-[13px]">סולק אשראי</span>
                 </button>
 
                 <button
@@ -269,7 +269,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                   <span className="text-gray-800 text-[15px]" style={{ fontWeight: 600 }}>
                     מזומן
                   </span>
-                  <span className="text-gray-400 text-[11px]">תשלום במזומן</span>
+                  <span className="text-gray-500 font-medium text-[13px]">תשלום במזומן</span>
                 </button>
               </div>
             </div>
@@ -305,14 +305,14 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                   <h3 className="text-gray-900 text-[18px] mb-2" style={{ fontWeight: 700 }}>
                     מתחבר לסולק אשראי...
                   </h3>
-                  <p className="text-gray-400 text-[14px] mb-4">
+                  <p className="text-gray-500 font-medium text-[14px] mb-4">
                     סכום: ₪{total.toLocaleString()}
                   </p>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 text-center">
                     <p className="text-blue-700 text-[13px]" style={{ fontWeight: 500 }}>
                       העבירו את הכרטיס במסוף
                     </p>
-                    <p className="text-blue-500 text-[11px] mt-1">
+                    <p className="text-blue-500 text-[13px] mt-1">
                       ממתין לאישור עסקה...
                     </p>
                   </div>
@@ -325,7 +325,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                   <h3 className="text-gray-900 text-[18px] mb-2" style={{ fontWeight: 700 }}>
                     העסקה אושרה!
                   </h3>
-                  <p className="text-gray-400 text-[14px]">
+                  <p className="text-gray-500 font-medium text-[14px]">
                     התשלום בוצע בהצלחה
                   </p>
                 </>
@@ -408,7 +408,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                   סכום שהתקבל מהלקוח
                 </label>
                 <div className="relative">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[16px]" style={{ fontWeight: 600 }}>₪</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-[16px]" style={{ fontWeight: 600 }}>₪</span>
                   <input
                     type="number"
                     value={amountPaid}
@@ -479,7 +479,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
                 className={`w-full py-3.5 rounded-xl transition-all cursor-pointer text-[15px] flex items-center justify-center gap-2 shadow-sm ${
                   paidNum >= total
                     ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"
                 }`}
                 style={{ fontWeight: 600 }}
               >
@@ -525,7 +525,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
               <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 border border-gray-100">
                 <div className="flex items-center justify-between pb-2 border-b border-gray-200 mb-2">
                   <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>קבלה #{Math.floor(10000 + Math.random() * 90000)}</span>
-                  <span className="text-gray-400 text-[12px]">{dateStr} · {timeStr}</span>
+                  <span className="text-gray-500 font-medium text-[12px]">{dateStr} · {timeStr}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-[13px]">

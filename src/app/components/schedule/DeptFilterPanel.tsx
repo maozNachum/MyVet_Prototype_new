@@ -33,7 +33,7 @@ export function DeptFilterPanel({
         {hasFilters && (
           <button
             onClick={onClearAll}
-            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 cursor-pointer transition-colors"
+            className="flex items-center gap-1 text-[13px] text-gray-500 font-medium hover:text-red-500 cursor-pointer transition-colors"
             style={{ fontWeight: 500 }}
           >
             <X className="w-3 h-3" />
@@ -44,7 +44,7 @@ export function DeptFilterPanel({
 
       {/* Count badge */}
       <div className="px-4 py-2.5 border-b border-gray-50 bg-white flex items-center justify-between">
-        <span className="text-gray-400 text-[11px]" style={{ fontWeight: 500 }}>
+        <span className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 500 }}>
           {hasFilters ? "תורים מוצגים" : "כל התורים"}
         </span>
         <span
@@ -106,7 +106,7 @@ export function DeptFilterPanel({
 
       {/* Status legend */}
       <div className="px-4 py-3 border-t border-gray-100 space-y-2">
-        <p className="text-gray-400 text-[11px]" style={{ fontWeight: 600 }}>
+        <p className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 600 }}>
           סטטוס תורים
         </p>
         {[

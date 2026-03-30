@@ -107,7 +107,7 @@ export function EpiRadar() {
               <kpi.icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-gray-400 text-[12px]">{kpi.label}</p>
+              <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
               <p className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
             </div>
           </div>
@@ -118,7 +118,7 @@ export function EpiRadar() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מגמות מחלות — 6 חודשים אחרונים</h3>
-          <p className="text-gray-400 text-[12px] mt-0.5">אבחנות מאומתות ברדיוס המרפאה</p>
+          <p className="text-gray-500 font-medium text-[12px] mt-0.5">אבחנות מאומתות ברדיוס המרפאה</p>
         </div>
         <div className="p-6">
           <div dir="ltr">
@@ -161,7 +161,7 @@ export function EpiRadar() {
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{disease.name}</span>
-                        <span className="text-gray-400 text-[11px]">({disease.nameEn})</span>
+                        <span className="text-gray-500 font-medium text-[13px]">({disease.nameEn})</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${style.bg} ${style.border} ${style.text}`} style={{ fontWeight: 600 }}>
                           {style.badge}
                         </span>
@@ -169,23 +169,23 @@ export function EpiRadar() {
                           {disease.species === "dog" ? "כלבים" : disease.species === "cat" ? "חתולים" : "כלבים + חתולים"}
                         </span>
                       </div>
-                      <p className="text-gray-400 text-[12px]">{disease.description}</p>
+                      <p className="text-gray-500 font-medium text-[12px]">{disease.description}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 shrink-0 mr-4">
                     <div className="text-center">
-                      <p className="text-gray-400 text-[10px]">מקרים</p>
+                      <p className="text-gray-500 font-medium text-[10px]">מקרים</p>
                       <div className="flex items-center gap-1">
                         <span className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{disease.casesThisMonth}</span>
                         {disease.trend === "rising" && (
-                          <span className="text-red-500 text-[11px] flex items-center"><ArrowUp className="w-3 h-3" />+{trendPercent}%</span>
+                          <span className="text-red-500 text-[13px] flex items-center"><ArrowUp className="w-3 h-3" />+{trendPercent}%</span>
                         )}
                         {disease.trend === "falling" && (
-                          <span className="text-emerald-600 text-[11px] flex items-center"><ArrowDown className="w-3 h-3" />{trendPercent}%</span>
+                          <span className="text-emerald-600 text-[13px] flex items-center"><ArrowDown className="w-3 h-3" />{trendPercent}%</span>
                         )}
                         {disease.trend === "stable" && (
-                          <span className="text-gray-400 text-[11px]">יציב</span>
+                          <span className="text-gray-500 font-medium text-[13px]">יציב</span>
                         )}
                       </div>
                     </div>
@@ -194,10 +194,10 @@ export function EpiRadar() {
 
                 {/* Affected Areas */}
                 <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-gray-500 font-medium shrink-0" />
                   <div className="flex flex-wrap gap-1.5">
                     {disease.affectedAreas.map((area) => (
-                      <span key={area} className="bg-gray-100 text-gray-600 text-[11px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
+                      <span key={area} className="bg-gray-100 text-gray-600 text-[13px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
                         {area}
                       </span>
                     ))}
@@ -206,7 +206,7 @@ export function EpiRadar() {
 
                 {/* Campaign Action */}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                  <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
                     <div className={`w-2 h-2 rounded-full ${style.dotColor}`} />
                     <span>חודש קודם: {disease.casesLastMonth} מקרים</span>
                   </div>

@@ -43,7 +43,7 @@ const ConversationItem = ({ conv, onClick }: { conv: Conversation; onClick: () =
     <div className="flex-1 min-w-0">
       <div className="flex justify-between mb-0.5">
         <span className="text-gray-900 text-[14px] font-semibold truncate">{conv.name}</span>
-        <span className="text-gray-400 text-[11px]">{conv.lastTime}</span>
+        <span className="text-gray-500 font-medium text-[13px]">{conv.lastTime}</span>
       </div>
       <div className="flex justify-between">
         <p className="text-gray-500 text-[12px] truncate max-w-[200px]">{conv.lastMessage}</p>
@@ -66,7 +66,7 @@ const MessageBubble = ({ msg, onImageClick }: { msg: Message; onImageClick: (url
         </div>
       )}
       {msg.text && <p className="text-[13px] leading-relaxed">{msg.text}</p>}
-      <div className={`flex items-center gap-1 mt-1 ${msg.sender === "me" ? "text-white/50" : "text-gray-400"} text-[10px]`}>
+      <div className={`flex items-center gap-1 mt-1 ${msg.sender === "me" ? "text-white/50" : "text-gray-500 font-medium"} text-[10px]`}>
         <span>{msg.time}</span>
         {msg.sender === "me" && (msg.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />)}
       </div>
@@ -129,7 +129,7 @@ export function ChatWidget({ mode }: { mode: "owner" | "staff" }) {
         className="fixed bottom-24 left-8 z-[999] w-14 h-14 rounded-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-        {!isOpen && totalUnread > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white">{totalUnread}</span>}
+        {!isOpen && totalUnread > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[13px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white">{totalUnread}</span>}
       </button>
 
       {/* Chat Panel */}
@@ -142,7 +142,7 @@ export function ChatWidget({ mode }: { mode: "owner" | "staff" }) {
             <MessageCircle className="w-5 h-5 opacity-80" />
             <div>
               <h3 className="text-[15px] font-semibold">{activeConv ? activeConv.name : "הודעות"}</h3>
-              <p className="text-[11px] opacity-75">{activeConv ? (activeConv.online ? "מחובר/ת" : "לא מחובר/ת") : "שוחח/י עם צוות המרפאה"}</p>
+              <p className="text-[13px] opacity-75">{activeConv ? (activeConv.online ? "מחובר/ת" : "לא מחובר/ת") : "שוחח/י עם צוות המרפאה"}</p>
             </div>
           </div>
 
@@ -167,10 +167,10 @@ export function ChatWidget({ mode }: { mode: "owner" | "staff" }) {
                   </div>
                 )}
                 
-                {pendingAttachment && <div className="mb-2 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded">קובץ מצורף: {pendingAttachment.name}</div>}
+                {pendingAttachment && <div className="mb-2 text-[13px] text-blue-600 bg-blue-50 px-2 py-1 rounded">קובץ מצורף: {pendingAttachment.name}</div>}
                 
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setShowAttachMenu(!showAttachMenu)} className="p-2 text-gray-400 hover:text-blue-600 cursor-pointer rounded-full hover:bg-gray-100"><Paperclip className="w-5 h-5" /></button>
+                  <button onClick={() => setShowAttachMenu(!showAttachMenu)} className="p-2 text-gray-500 font-medium hover:text-blue-600 cursor-pointer rounded-full hover:bg-gray-100"><Paperclip className="w-5 h-5" /></button>
                   <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="כתוב/י הודעה..." className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-[13px] outline-none focus:ring-1 focus:ring-blue-400" />
                   <button onClick={handleSend} disabled={!newMessage && !pendingAttachment} className="w-9 h-9 bg-[#1e40af] text-white rounded-full flex items-center justify-center cursor-pointer disabled:opacity-50"><Send className="w-4 h-4 rotate-180 -ml-1" /></button>
                 </div>

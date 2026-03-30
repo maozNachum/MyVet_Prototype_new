@@ -138,11 +138,11 @@ export function Inventory() {
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium hover:text-gray-600 cursor-pointer transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -232,7 +232,7 @@ export function Inventory() {
                       }`}
                     >
                       <td className="px-5 py-4">
-                        <span className="text-gray-400 text-[14px] font-mono">
+                        <span className="text-gray-500 font-medium text-[14px] font-mono">
                           {highlightMatch(item.sku)}
                         </span>
                       </td>
@@ -256,7 +256,7 @@ export function Inventory() {
                             <span className="text-red-600 text-[15px]" style={{ fontWeight: 700 }}>
                               {item.quantity}
                             </span>
-                            <span className="bg-red-50 border border-red-200 text-red-600 text-[11px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
+                            <span className="bg-red-50 border border-red-200 text-red-600 text-[13px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
                               מלאי נמוך
                             </span>
                           </div>
@@ -281,7 +281,7 @@ export function Inventory() {
                     <p className="text-gray-500 text-[15px]" style={{ fontWeight: 600 }}>
                       לא נמצאו פריטים עבור &quot;{searchQuery}&quot;
                     </p>
-                    <p className="text-gray-400 text-[13px] mt-1">
+                    <p className="text-gray-500 font-medium text-[13px] mt-1">
                       נסו לחפש לפי שם אחר, מק&quot;ט או קטגוריה
                     </p>
                     <button
@@ -298,7 +298,7 @@ export function Inventory() {
           </table>
         </div>
         <div className="bg-gray-50/50 border-t border-gray-100 px-5 py-3 flex items-center justify-between">
-          <p className="text-gray-400 text-[13px]">
+          <p className="text-gray-500 font-medium text-[13px]">
             מציג {filtered.length} מתוך {totalItems} פריטים
           </p>
         </div>

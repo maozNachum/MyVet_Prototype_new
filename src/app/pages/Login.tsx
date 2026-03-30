@@ -112,7 +112,7 @@ export function Login() {
                 >
                   ברוכים הבאים
                 </h1>
-                <p className="text-gray-400 text-[15px]">
+                <p className="text-gray-500 font-medium text-[15px]">
                   בחרו את סוג הכניסה שלכם
                 </p>
               </div>
@@ -163,7 +163,7 @@ export function Login() {
                     כניסה כבעלים
                     <ArrowRight className="w-4 h-4 rotate-180" />
                   </div>
-                  <div className="mt-6 bg-gray-50 text-gray-400 text-[13px] py-2.5 rounded-xl group-hover:hidden flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
+                  <div className="mt-6 bg-gray-50 text-gray-500 font-medium text-[13px] py-2.5 rounded-xl group-hover:hidden flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
                     בחרו כניסה זו
                   </div>
                 </button>
@@ -213,7 +213,7 @@ export function Login() {
                     כניסה כצוות
                     <ArrowRight className="w-4 h-4 rotate-180" />
                   </div>
-                  <div className="mt-6 bg-gray-50 text-gray-400 text-[13px] py-2.5 rounded-xl group-hover:hidden flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
+                  <div className="mt-6 bg-gray-50 text-gray-500 font-medium text-[13px] py-2.5 rounded-xl group-hover:hidden flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
                     בחרו כניסה זו
                   </div>
                 </button>
@@ -242,7 +242,7 @@ export function Login() {
                   setEmail("");
                   setPassword("");
                 }}
-                className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-[13px] mb-6 cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 text-gray-500 font-medium hover:text-gray-600 text-[13px] mb-6 cursor-pointer transition-colors"
                 style={{ fontWeight: 500 }}
               >
                 <ArrowRight className="w-4 h-4" />
@@ -293,7 +293,7 @@ export function Login() {
                 >
                   {role === "owner" ? "שלום, אזור אישי" : "שלום, צוות המרפאה"}
                 </h1>
-                <p className="text-gray-400 text-[15px]">
+                <p className="text-gray-500 font-medium text-[15px]">
                   {role === "owner"
                     ? "התחברו כדי לצפות בתיק הרפואי ובתורים"
                     : "התחברו כדי לגשת ללוח הבקרה"}
@@ -328,12 +328,12 @@ export function Login() {
                                 ? "bg-[#1e40af] shadow-md shadow-blue-500/20"
                                 : "bg-gray-100"
                             }`}>
-                              <SIcon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
+                              <SIcon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500 font-medium"}`} />
                             </div>
                             <span className={`text-[13px] ${isActive ? "text-[#1e40af]" : "text-gray-600"}`} style={{ fontWeight: isActive ? 700 : 500 }}>
                               {st.label}
                             </span>
-                            <span className={`text-[10px] ${isActive ? "text-blue-400" : "text-gray-400"}`}>
+                            <span className={`text-[10px] ${isActive ? "text-blue-400" : "text-gray-500 font-medium"}`}>
                               {st.description}
                             </span>
                             {isActive && (
@@ -362,7 +362,7 @@ export function Login() {
                       : "שם משתמש / אימייל"}
                   </label>
                   <div className="relative">
-                    <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400 pointer-events-none" />
+                    <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 font-medium pointer-events-none" />
                     <input
                       type="text"
                       id="email"
@@ -393,7 +393,7 @@ export function Login() {
                     סיסמה
                   </label>
                   <div className="relative">
-                    <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400 pointer-events-none" />
+                    <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 font-medium pointer-events-none" />
                     <input
                       type={showPassword ? "text" : "password"}
                       id="password"
@@ -410,7 +410,7 @@ export function Login() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-medium hover:text-gray-600 cursor-pointer transition-colors"
                     >
                       {showPassword ? (
                         <EyeOff className="w-[18px] h-[18px]" />
@@ -464,7 +464,7 @@ export function Login() {
               <div className="flex items-center gap-4 my-7">
                 <div className="flex-1 h-px bg-gray-200" />
                 <span
-                  className="text-gray-400 text-[13px]"
+                  className="text-gray-500 font-medium text-[13px]"
                   style={{ fontWeight: 500 }}
                 >
                   או

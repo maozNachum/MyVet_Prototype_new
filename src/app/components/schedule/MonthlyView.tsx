@@ -44,11 +44,11 @@ function MonthlyApptCard({ appt }: { appt: CalendarAppointment }) {
           {appt.ownerName}
         </p>
         {/* Line 3: treatment type */}
-        <p className="text-[9px] text-gray-400 leading-tight truncate" style={{ fontWeight: 400 }}>
+        <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
           {appt.type}
         </p>
         {/* Line 4: vet */}
-        <p className="text-[9px] text-gray-400 leading-tight truncate" style={{ fontWeight: 400 }}>
+        <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
           {appt.vet}
         </p>
       </div>
@@ -122,7 +122,7 @@ export function MonthlyView({
                 </span>
                 {appts.length > 0 && (
                   <span
-                    className="text-[9px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5"
+                    className="text-[9px] text-gray-500 font-medium bg-gray-100 rounded-full px-1.5 py-0.5"
                     style={{ fontWeight: 500 }}
                   >
                     {appts.length}

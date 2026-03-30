@@ -238,8 +238,7 @@ export function TreatmentModal({
       await addVisit({
         patientId,
         date: dateStr,
-        title: visitTypeLabel + (diagTexts ? ` — ${diagTexts}` : ""),
-        description: descParts.join(" | ") || "ביקור רפואי",
+        description: visitTypeLabel + (diagTexts ? ` — ${diagTexts}` : "") || descParts.join(" | ") || "ביקור רפואי",
         vet: currentVet,
         type: validType,
       });
@@ -296,7 +295,7 @@ export function TreatmentModal({
         </button>
       </div>
       <div className="px-4 py-3">
-        {isEmpty ? <p className="text-gray-400 text-[13px]">לא הוזן</p> : content}
+        {isEmpty ? <p className="text-gray-500 font-medium text-[13px]">לא הוזן</p> : content}
       </div>
     </div>
   );
@@ -342,8 +341,8 @@ export function TreatmentModal({
                 <div key={step.id} className="flex items-center">
                   <button
                     onClick={() => goToStep(idx)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-all ${
-                      isActive ? "bg-[#1e40af] text-white shadow-sm" : idx < currentStep ? "bg-emerald-50 text-emerald-600 cursor-pointer hover:bg-emerald-100" : "bg-white text-gray-400 hover:bg-gray-100 cursor-pointer"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all ${
+                      isActive ? "bg-[#1e40af] text-white shadow-sm" : idx < currentStep ? "bg-emerald-50 text-emerald-600 cursor-pointer hover:bg-emerald-100" : "bg-white text-gray-500 font-medium hover:bg-gray-100 cursor-pointer"
                     }`}
                     style={{ fontWeight: isActive ? 600 : 400 }}
                   >
@@ -378,7 +377,7 @@ export function TreatmentModal({
                 <div className="space-y-5">
                   <div className="text-center mb-6">
                     <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מהו סוג הביקור?</h4>
-                    <p className="text-gray-400 text-[14px]">בחרו את סוג הטיפול עבור {petName}</p>
+                    <p className="text-gray-500 font-medium text-[14px]">בחרו את סוג הטיפול עבור {petName}</p>
                     {errors.visitType && <p className="text-red-500 text-sm mt-2">{errors.visitType.message}</p>}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
@@ -395,7 +394,7 @@ export function TreatmentModal({
                           }`}
                         >
                           <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? vt.color.split(" ").slice(0, 1).join(" ") : "bg-gray-50"}`}>
-                            <VTIcon className={`w-5 h-5 ${isSelected ? vt.color.split(" ")[1] : "text-gray-400"}`} />
+                            <VTIcon className={`w-5 h-5 ${isSelected ? vt.color.split(" ")[1] : "text-gray-500 font-medium"}`} />
                           </div>
                           <span className={`text-[14px] block ${isSelected ? "text-gray-900" : "text-gray-600"}`} style={{ fontWeight: isSelected ? 700 : 500 }}>{vt.label}</span>
                           {isSelected && <Check className="w-5 h-5 text-emerald-500 mr-auto" />}
@@ -411,7 +410,7 @@ export function TreatmentModal({
                 <div className="space-y-5">
                   <div className="mb-2">
                     <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מדדים חיוניים</h4>
-                    <p className="text-gray-400 text-[14px]">מלאו את כל המדדים החיוניים של {petName}</p>
+                    <p className="text-gray-500 font-medium text-[14px]">מלאו את כל המדדים החיוניים של {petName}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -452,7 +451,7 @@ export function TreatmentModal({
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>אבחנות</h4>
-                      <p className="text-gray-400 text-[14px]">רשמו את האבחנות שנמצאו בביקור</p>
+                      <p className="text-gray-500 font-medium text-[14px]">רשמו את האבחנות שנמצאו בביקור</p>
                     </div>
                     <button type="button" onClick={() => appendDiag({ text: "" })} className="flex items-center gap-1.5 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer" style={{ fontWeight: 500 }}>
                       <Plus className="w-4 h-4" /> הוסף אבחנה
@@ -485,7 +484,7 @@ export function TreatmentModal({
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>טיפולים</h4>
-                      <p className="text-gray-400 text-[14px]">תעדו את הטיפולים שבוצעו</p>
+                      <p className="text-gray-500 font-medium text-[14px]">תעדו את הטיפולים שבוצעו</p>
                     </div>
                     <button type="button" onClick={() => appendTreat({ name: "", details: "" })} className="flex items-center gap-1.5 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer" style={{ fontWeight: 500 }}>
                       <Plus className="w-4 h-4" /> הוסף טיפול
@@ -519,7 +518,7 @@ export function TreatmentModal({
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מרשמים</h4>
-                      <p className="text-gray-400 text-[14px]">הוסיפו מרשמים לתרופות (אופציונלי)</p>
+                      <p className="text-gray-500 font-medium text-[14px]">הוסיפו מרשמים לתרופות (אופציונלי)</p>
                     </div>
                     <button type="button" onClick={() => appendPresc({ medication: "", dosage: "", frequency: "", duration: "" })} className="flex items-center gap-1.5 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer" style={{ fontWeight: 500 }}>
                       <Plus className="w-4 h-4" /> הוסף תרופה
@@ -554,7 +553,7 @@ export function TreatmentModal({
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>בדיקות מעבדה</h4>
-                      <p className="text-gray-400 text-[14px]">הזינו תוצאות בדיקות מעבדה (אופציונלי)</p>
+                      <p className="text-gray-500 font-medium text-[14px]">הזינו תוצאות בדיקות מעבדה (אופציונלי)</p>
                     </div>
                     <button type="button" onClick={() => appendLab({ testName: "", result: "", normal: "", status: "pending" })} className="flex items-center gap-1.5 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer" style={{ fontWeight: 500 }}>
                       <Plus className="w-4 h-4" /> הוסף בדיקה
@@ -575,7 +574,7 @@ export function TreatmentModal({
                                   key={s}
                                   type="button"
                                   onClick={() => setValue(`labResults.${idx}.status`, s)}
-                                  className={`px-2.5 py-1 rounded-md text-[11px] border transition-all cursor-pointer ${currentStatus === s ? statusLabels[s].cls : "border-gray-200 text-gray-400 bg-white"}`}
+                                  className={`px-2.5 py-1 rounded-md text-[13px] border transition-all cursor-pointer ${currentStatus === s ? statusLabels[s].cls : "border-gray-200 text-gray-500 font-medium bg-white"}`}
                                   style={{ fontWeight: currentStatus === s ? 600 : 400 }}
                                 >
                                   {statusLabels[s].label}
@@ -605,11 +604,11 @@ export function TreatmentModal({
                 <div className="space-y-5">
                   <div className="mb-2">
                     <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>הערות ומעקב</h4>
-                    <p className="text-gray-400 text-[14px]">הוסיפו הערות כלליות והנחיות למעקב (אופציונלי)</p>
+                    <p className="text-gray-500 font-medium text-[14px]">הוסיפו הערות כלליות והנחיות למעקב (אופציונלי)</p>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-gray-700 text-[13px] mb-2" style={{ fontWeight: 500 }}>
-                      <FileText className="w-4 h-4 text-gray-400" /> הערות כלליות
+                      <FileText className="w-4 h-4 text-gray-500 font-medium" /> הערות כלליות
                     </label>
                     <textarea {...register("notes")} rows={4} className={`${inputCls} resize-none`} placeholder="הערות, תצפיות, המלצות לבעלים..." />
                   </div>
@@ -627,7 +626,7 @@ export function TreatmentModal({
                 <div className="space-y-4">
                   <div className="text-center mb-4">
                     <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>סיכום הביקור</h4>
-                    <p className="text-gray-400 text-[14px]">בדקו את כל הפרטים לפני שמירה. לחצו "ערוך" כדי לתקן כל סעיף.</p>
+                    <p className="text-gray-500 font-medium text-[14px]">בדקו את כל הפרטים לפני שמירה. לחצו "ערוך" כדי לתקן כל סעיף.</p>
                   </div>
 
                   <div className="bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
@@ -656,10 +655,10 @@ export function TreatmentModal({
                   {renderSummarySection(
                     "מדדים חיוניים", 1, <Thermometer className="w-4 h-4 text-red-400" />,
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="text-center"><p className="text-gray-400 text-[11px]">טמפרטורה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.temperature || "—"}°C</p></div>
-                      <div className="text-center"><p className="text-gray-400 text-[11px]">משקל</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.weight || "—"} ק״ג</p></div>
-                      <div className="text-center"><p className="text-gray-400 text-[11px]">קצב לב</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.heartRate || "—"} bpm</p></div>
-                      <div className="text-center"><p className="text-gray-400 text-[11px]">קצב נשימה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.respiratoryRate || "—"} /דקה</p></div>
+                      <div className="text-center"><p className="text-gray-500 font-medium text-[13px]">טמפרטורה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.temperature || "—"}°C</p></div>
+                      <div className="text-center"><p className="text-gray-500 font-medium text-[13px]">משקל</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.weight || "—"} ק״ג</p></div>
+                      <div className="text-center"><p className="text-gray-500 font-medium text-[13px]">קצב לב</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.heartRate || "—"} bpm</p></div>
+                      <div className="text-center"><p className="text-gray-500 font-medium text-[13px]">קצב נשימה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>{formValues.vitals.respiratoryRate || "—"} /דקה</p></div>
                     </div>
                   )}
 
@@ -668,7 +667,7 @@ export function TreatmentModal({
                     <div className="flex flex-wrap gap-2">
                       {formValues.diagnoses.filter((d) => d.text.trim()).map((d, idx) => (
                         <span key={idx} className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-1.5 text-[13px]" style={{ fontWeight: 500 }}>
-                          <span className="w-5 h-5 rounded-md bg-amber-100 flex items-center justify-center text-[11px]" style={{ fontWeight: 700 }}>{idx + 1}</span> {d.text}
+                          <span className="w-5 h-5 rounded-md bg-amber-100 flex items-center justify-center text-[13px]" style={{ fontWeight: 700 }}>{idx + 1}</span> {d.text}
                         </span>
                       ))}
                     </div>,
@@ -680,7 +679,7 @@ export function TreatmentModal({
                     <div className="space-y-2">
                       {formValues.treatments.filter((t) => t.name.trim()).map((t, idx) => (
                         <div key={idx} className="flex items-start gap-2">
-                          <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center text-[11px] mt-0.5 shrink-0" style={{ fontWeight: 700 }}>{idx + 1}</span>
+                          <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center text-[13px] mt-0.5 shrink-0" style={{ fontWeight: 700 }}>{idx + 1}</span>
                           <div>
                             <p className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{t.name}</p>
                             {t.details && <p className="text-gray-500 text-[12px]">{t.details}</p>}

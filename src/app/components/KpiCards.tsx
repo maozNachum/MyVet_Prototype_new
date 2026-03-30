@@ -94,14 +94,14 @@ export function KpiCards() {
               <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>כל התורים להיום</h3>
               <span className="bg-blue-100 text-blue-700 text-[12px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 600 }}>{todayAppointments.length}</span>
             </div>
-            <button onClick={() => setExpandedKpi(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
+            <button onClick={() => setExpandedKpi(null)} className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
             {todayAppointments.map((appt) => (
               <button key={appt.id} onClick={() => navigate("/appointments")} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer text-right group">
                 <div className="bg-blue-50 rounded-lg px-2.5 py-1.5 text-[13px] text-blue-700 shrink-0 group-hover:bg-blue-100 transition-colors" style={{ fontWeight: 700 }}>{appt.time}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{appt.pet} <span className="text-gray-400 text-[12px]" style={{ fontWeight: 400 }}>· {appt.owner}</span></p>
+                  <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{appt.pet} <span className="text-gray-500 font-medium text-[12px]" style={{ fontWeight: 400 }}>· {appt.owner}</span></p>
                   <p className="text-gray-500 text-[12px] truncate">{appt.type}</p>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-gray-300 -rotate-90 group-hover:text-blue-500 transition-colors shrink-0" />
@@ -119,7 +119,7 @@ export function KpiCards() {
               <MapPin className="w-5 h-5 text-green-600" />
               <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>מחלקות אשפוז ומטופלים פעילים</h3>
             </div>
-            <button onClick={() => setExpandedKpi(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
+            <button onClick={() => setExpandedKpi(null)} className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
           </div>
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             {departments.map((dept) => (
@@ -127,7 +127,7 @@ export function KpiCards() {
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-[18px]">{dept.icon}</span>
                   <h4 className="text-[15px]" style={{ fontWeight: 700 }}>{dept.name}</h4>
-                  <span className="bg-white/60 text-[11px] px-2.5 py-0.5 rounded-full text-gray-700" style={{ fontWeight: 600 }}>{dept.patients.length} מאושפזים</span>
+                  <span className="bg-white/60 text-[13px] px-2.5 py-0.5 rounded-full text-gray-700" style={{ fontWeight: 600 }}>{dept.patients.length} מאושפזים</span>
                 </div>
                 <div className="space-y-2">
                   {dept.patients.map((p) => {
@@ -136,9 +136,9 @@ export function KpiCards() {
                       <button key={p.id} onClick={() => navigate(`/patients?selected=${p.id}`)} className="w-full flex items-center gap-3 bg-white/80 rounded-lg px-3 py-2.5 text-right hover:bg-white transition-colors cursor-pointer group shadow-sm border border-transparent hover:border-green-100">
                         <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-blue-50 transition-colors"><SIcon className="w-4 h-4 text-gray-500 group-hover:text-blue-600" /></div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{p.name} <span className="text-gray-400 text-[12px] mr-1" style={{ fontWeight: 400 }}>({p.owner})</span></p>
+                          <p className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{p.name} <span className="text-gray-500 font-medium text-[12px] mr-1" style={{ fontWeight: 400 }}>({p.owner})</span></p>
                         </div>
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${p.statusColor}`} style={{ fontWeight: 600 }}>{p.status}</span>
+                        <span className={`text-[13px] px-2 py-0.5 rounded-full ${p.statusColor}`} style={{ fontWeight: 600 }}>{p.status}</span>
                       </button>
                     );
                   })}
@@ -158,7 +158,7 @@ export function KpiCards() {
               <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>מקרים דחופים פעילים</h3>
               <span className="bg-red-100 text-red-700 text-[12px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>{urgentCases.length} פתוחים</span>
             </div>
-            <button onClick={() => setExpandedKpi(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
+            <button onClick={() => setExpandedKpi(null)} className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
           </div>
           <div className="p-4 space-y-3">
             {urgentCases.map((uc) => {
@@ -169,13 +169,13 @@ export function KpiCards() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{uc.petName}</span>
-                      <span className="text-gray-400 text-[12px]">{uc.species} · {uc.owner}</span>
+                      <span className="text-gray-500 font-medium text-[12px]">{uc.species} · {uc.owner}</span>
                     </div>
                     <p className="text-gray-600 text-[13px] font-medium">{uc.issue}</p>
                   </div>
                   <div className="text-left shrink-0 space-y-1">
-                    <span className={`text-[11px] px-2.5 py-0.5 rounded-full ${uc.sevColor} block text-center`} style={{ fontWeight: 600 }}>{uc.severity}</span>
-                    <p className="text-gray-400 text-[11px] text-center">{uc.time}</p>
+                    <span className={`text-[13px] px-2.5 py-0.5 rounded-full ${uc.sevColor} block text-center`} style={{ fontWeight: 600 }}>{uc.severity}</span>
+                    <p className="text-gray-500 font-medium text-[13px] text-center">{uc.time}</p>
                   </div>
                 </div>
               );

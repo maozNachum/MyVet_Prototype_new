@@ -42,7 +42,7 @@ function WeeklyApptCard({
       <div className="px-2 py-2 pr-3 space-y-0.5">
         {/* Line 1: Time + Pet Name */}
         <p
-          className={`text-[11px] leading-tight ${dept.text} truncate`}
+          className={`text-[13px] leading-tight ${dept.text} truncate`}
           style={{ fontWeight: 700 }}
         >
           {appt.time}–{appt.endTime} | {appt.petName}
@@ -56,7 +56,7 @@ function WeeklyApptCard({
           {appt.type}
         </p>
         {/* Line 4: Vet */}
-        <p className="text-[10px] text-gray-400 leading-tight truncate" style={{ fontWeight: 400 }}>
+        <p className="text-[10px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
           {appt.vet}
         </p>
       </div>
@@ -112,7 +112,7 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick }: WeeklyVie
               }`}
             >
               <div
-                className="text-[10px] text-gray-400 uppercase tracking-wide"
+                className="text-[10px] text-gray-500 font-medium uppercase tracking-wide"
                 style={{ fontWeight: 600 }}
               >
                 {HEBREW_DAYS[wd.getDay()]}
@@ -128,7 +128,7 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick }: WeeklyVie
               {count > 0 && (
                 <div
                   className={`text-[10px] mt-0.5 ${
-                    isT ? "text-blue-600" : "text-gray-400"
+                    isT ? "text-blue-600" : "text-gray-500 font-medium"
                   }`}
                   style={{ fontWeight: 600 }}
                 >
@@ -159,7 +159,7 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick }: WeeklyVie
                 }`}
               >
                 <span
-                  className="text-[11px] text-gray-400"
+                  className="text-[13px] text-gray-500 font-medium"
                   style={{ fontWeight: 600 }}
                 >
                   {String(hour).padStart(2, "0")}:00

@@ -52,7 +52,7 @@ export function NotificationPanel({
               <Bell className="w-4 h-4 text-[#1e40af]" />
               <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{title}</h4>
             </div>
-            <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <button onClick={() => setOpen(false)} className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -60,7 +60,7 @@ export function NotificationPanel({
             {notifications.length === 0 ? (
               <div className="py-12 text-center">
                 <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                <p className="text-gray-400 text-[13px]">{emptyText}</p>
+                <p className="text-gray-500 font-medium text-[13px]">{emptyText}</p>
               </div>
             ) : (
               <div className="p-3 space-y-2">
@@ -79,7 +79,7 @@ export function NotificationPanel({
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-900 text-[13px] mb-0.5" style={{ fontWeight: 600 }}>{n.message}</p>
                           <p className="text-gray-600 text-[12px]" style={{ lineHeight: 1.5 }}>{n.detail}</p>
-                          <p className="text-gray-400 text-[11px] mt-1">
+                          <p className="text-gray-500 font-medium text-[13px] mt-1">
                             {n.timestamp.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
                             {" · "}
                             {n.timestamp.toLocaleDateString("he-IL", { day: "numeric", month: "short" })}

@@ -357,7 +357,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                                 {test.testName}
                               </span>
                               <span
-                                className={`text-[11px] px-2 py-0.5 rounded-md border ${cat.color}`}
+                                className={`text-[13px] px-2 py-0.5 rounded-md border ${cat.color}`}
                                 style={{ fontWeight: 500 }}
                               >
                                 {cat.label}
@@ -366,10 +366,10 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => toggleUrgent(test.id)}
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] border transition-all cursor-pointer ${
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] border transition-all cursor-pointer ${
                                   test.urgent
                                     ? "bg-red-50 text-red-600 border-red-200"
-                                    : "bg-white text-gray-400 border-gray-200 hover:border-gray-300"
+                                    : "bg-white text-gray-500 font-medium border-gray-200 hover:border-gray-300"
                                 }`}
                                 style={{ fontWeight: test.urgent ? 600 : 400 }}
                               >

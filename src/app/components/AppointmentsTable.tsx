@@ -1,4 +1,4 @@
-import { Clock, ChevronLeft, X, Dog, Cat, Calendar, Building2 } from "lucide-react";
+import { Clock, ChevronLeft, X, Dog, Cat, Calendar, Building2, Stethoscope, Eye } from "lucide-react";
 import { useState } from "react";
 import { TreatmentModal } from "./TreatmentModal";
 import { patients } from "../data/patients";
@@ -17,7 +17,7 @@ const TableSkeletonRow = () => (
     </td>
     <td className="px-6 py-5"><div className="h-4 w-28 bg-gray-100 rounded-md"></div></td>
     <td className="px-6 py-5"><div className="h-6 w-24 bg-gray-100 rounded-full"></div></td>
-    <td className="px-6 py-5"><div className="h-4 w-16 bg-gray-100 rounded-md ml-auto"></div></td>
+    <td className="px-6 py-5"><div className="h-8 w-24 bg-gray-100 rounded-lg ml-auto"></div></td>
   </tr>
 );
 
@@ -27,6 +27,7 @@ export function AppointmentsTable() {
   const [treatmentAppt, setTreatmentAppt] = useState<any | null>(null);
 
   const todayAppointments = calendarAppointments.slice(0, 6); 
+  const canTreat = canEditMedicalRecords(); // בודק האם המשתמש מורשה לטפל
 
   return (
     <>
@@ -41,7 +42,7 @@ export function AppointmentsTable() {
               תקציר תורים להיום
             </h2>
           </div>
-          <span className="text-gray-400 text-[14px]">
+          <span className="text-gray-500 font-medium text-[14px]">
             {isLoading ? "טוען..." : `${todayAppointments.length} תורים`}
           </span>
         </div>
@@ -50,14 +51,13 @@ export function AppointmentsTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              {/* החזרנו את כותרות הטבלה למשקל בולט אך בגודל נעים לעין, עם רקע מפריד */}
               <tr className="bg-gray-100/60 border-b border-gray-200">
                 <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שעה</th>
                 <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שם בעלים</th>
                 <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>שם חיית מחמד</th>
                 <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>סוג טיפול</th>
                 <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>מחלקה / יעד</th>
-                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px]" style={{ fontWeight: 700 }}>פעולות</th>
+                <th className="text-right px-6 py-3.5 text-gray-700 text-[14px] w-48" style={{ fontWeight: 700 }}>פעולות</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -79,7 +79,7 @@ export function AppointmentsTable() {
                     <td className="px-6 py-4 text-gray-600 text-[14px]">{appt.ownerName}</td>
                     <td className="px-6 py-4 text-gray-600 text-[14px]">
                       <div className="flex items-center gap-2">
-                        {appt.petSpecies === "dog" ? <Dog className="w-4 h-4 text-gray-400" /> : <Cat className="w-4 h-4 text-gray-400" />}
+                        {appt.petSpecies === "dog" ? <Dog className="w-4 h-4 text-gray-500 font-medium" /> : <Cat className="w-4 h-4 text-gray-500 font-medium" />}
                         {appt.petName}
                       </div>
                     </td>
@@ -96,9 +96,24 @@ export function AppointmentsTable() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 text-[#1e40af] text-[13px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ fontWeight: 500 }}>
-                        צפה בפרטים <ChevronLeft className="w-3.5 h-3.5" />
-                      </span>
+                      {/* התיקון כאן: הסרתי את opacity-0 כדי שהכפתורים יהיו תמיד גלויים */}
+                      <div className="flex items-center gap-2 justify-end">
+                        {canTreat && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTreatmentAppt(appt);
+                            }}
+                            className="flex items-center gap-1.5 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors"
+                          >
+                            <Stethoscope className="w-3.5 h-3.5" />
+                            התחל טיפול
+                          </button>
+                        )}
+                        <span className="flex items-center gap-1 text-gray-500 hover:text-[#1e40af] text-[13px] font-medium transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50">
+                          <Eye className="w-4 h-4" />
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -130,24 +145,24 @@ export function AppointmentsTable() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-400 text-[12px] mb-1">שעה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 600 }}>{selectedAppt.time}</p></div>
-                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-400 text-[12px] mb-1">חדר</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 600 }}>{selectedAppt.room || "—"}</p></div>
-                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-400 text-[12px] mb-1">בעלים</p><p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{selectedAppt.ownerName}</p></div>
-                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-400 text-[12px] mb-1">רופא מטפל</p><p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{selectedAppt.vet}</p></div>
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-500 font-medium text-[12px] mb-1">שעה</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 600 }}>{selectedAppt.time}</p></div>
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-500 font-medium text-[12px] mb-1">חדר</p><p className="text-gray-900 text-[16px]" style={{ fontWeight: 600 }}>{selectedAppt.room || "—"}</p></div>
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-500 font-medium text-[12px] mb-1">בעלים</p><p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{selectedAppt.ownerName}</p></div>
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-gray-500 font-medium text-[12px] mb-1">רופא מטפל</p><p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{selectedAppt.vet}</p></div>
               </div>
               <div className="flex gap-3">
                 <button
-                  className={`flex-1 py-3 rounded-xl transition-colors text-[14px] shadow-sm ${canEditMedicalRecords() ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer" : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"}`}
+                  className={`flex-1 py-3 rounded-xl transition-colors text-[14px] shadow-sm ${canTreat ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer" : "bg-gray-100 text-gray-500 font-medium border border-gray-200 cursor-not-allowed"}`}
                   style={{ fontWeight: 600 }}
                   onClick={() => {
-                    if (canEditMedicalRecords()) {
+                    if (canTreat) {
                       setTreatmentAppt(selectedAppt);
                       setSelectedAppt(null);
                     }
                   }}
-                  disabled={!canEditMedicalRecords()}
+                  disabled={!canTreat}
                 >
-                  {canEditMedicalRecords() ? "התחל טיפול" : "🔒 מורשים בלבד"}
+                  {canTreat ? "התחל טיפול" : "🔒 מורשים בלבד"}
                 </button>
                 <button onClick={() => setSelectedAppt(null)} className="px-6 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors text-[14px]">סגור</button>
               </div>

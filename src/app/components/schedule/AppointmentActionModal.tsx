@@ -44,7 +44,7 @@ function SelectField({ label, value, options, onChange }: {
         >
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
-        <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 font-medium pointer-events-none" />
       </div>
     </div>
   );
@@ -130,7 +130,7 @@ export function AppointmentActionModal({
                 { label: "רופא / מחלקה", value: appt.vet, sub: appt.department },
               ].map((item, i) => (
                 <div key={i} className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-[12px] mb-1" style={{ fontWeight: 500 }}>{item.label}</p>
+                  <p className="text-gray-500 font-medium text-[12px] mb-1" style={{ fontWeight: 500 }}>{item.label}</p>
                   <p className={`text-gray-900 ${item.big ? "text-[16px]" : "text-[14px]"}`} style={{ fontWeight: 600 }}>{item.value}</p>
                   {item.sub && <p className="text-gray-500 text-[13px]">{item.sub}</p>}
                 </div>
@@ -160,7 +160,7 @@ export function AppointmentActionModal({
                     className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border ${btn.cls} transition-colors cursor-pointer`}
                   >
                     <BtnIcon className="w-5 h-5" />
-                    <span className="text-[11px]" style={{ fontWeight: 600 }}>{btn.label}</span>
+                    <span className="text-[13px]" style={{ fontWeight: 600 }}>{btn.label}</span>
                   </button>
                 );
               })}
@@ -195,7 +195,7 @@ export function AppointmentActionModal({
                   onClick={onReschedule}
                   disabled={!rescheduleDate || !rescheduleTime}
                   className={`flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 ${
-                    rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"
                   }`}
                   style={{ fontWeight: 600 }}
                 >
@@ -281,7 +281,7 @@ export function AppointmentActionModal({
                 <div>
                   <p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{appt.petName} — {appt.type}</p>
                   <p className="text-gray-500 text-[12px]">{appt.day}/{appt.month + 1}/{appt.year} | {appt.time} | {appt.vet}</p>
-                  <p className="text-gray-400 text-[12px]">בעלים: {appt.ownerName}</p>
+                  <p className="text-gray-500 font-medium text-[12px]">בעלים: {appt.ownerName}</p>
                 </div>
               </div>
 

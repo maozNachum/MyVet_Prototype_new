@@ -33,14 +33,14 @@ export function CalendarSidebar({
             <h3 className="text-white text-[14px]" style={{ fontWeight: 600 }}>
               יום {dayName}
             </h3>
-            <p className="text-white/60 text-[11px]">
+            <p className="text-white/60 text-[13px]">
               {selectedDay} ב{HEBREW_MONTHS[currentMonth]} {currentYear}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className="bg-white/20 text-white text-[11px] px-2 py-0.5 rounded-full"
+            className="bg-white/20 text-white text-[13px] px-2 py-0.5 rounded-full"
             style={{ fontWeight: 600 }}
           >
             {appointments.length} תורים
@@ -59,7 +59,7 @@ export function CalendarSidebar({
         {appointments.length === 0 ? (
           <div className="py-12 text-center">
             <Calendar className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-[13px]">אין תורים ביום זה</p>
+            <p className="text-gray-500 font-medium text-[13px]">אין תורים ביום זה</p>
           </div>
         ) : (
           <div className="p-3 space-y-2">
@@ -100,18 +100,18 @@ export function CalendarSidebar({
                           {appt.time}–{appt.endTime} | {appt.petName}
                         </p>
                         {/* Line 2 */}
-                        <p className="text-[11px] text-gray-600 truncate" style={{ fontWeight: 500 }}>
+                        <p className="text-[13px] text-gray-600 truncate" style={{ fontWeight: 500 }}>
                           {appt.ownerName}
                         </p>
                         {/* Line 3 */}
-                        <p className="text-[11px] text-gray-500 truncate">{appt.type}</p>
+                        <p className="text-[13px] text-gray-500 truncate">{appt.type}</p>
                         {/* Line 4 */}
-                        <p className="text-[10.5px] text-gray-400 truncate">{appt.vet}</p>
+                        <p className="text-[10.5px] text-gray-500 font-medium truncate">{appt.vet}</p>
                       </div>
                     </div>
 
                     {/* Department + Room */}
-                    <div className="flex items-center gap-1.5 text-[10.5px] text-gray-400 mb-2">
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-gray-500 font-medium mb-2">
                       <MapPin className="w-3 h-3" />
                       <span>{appt.department}</span>
                       <span className="text-gray-300">·</span>

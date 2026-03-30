@@ -145,8 +145,8 @@ export function Dashboard() {
               <div className="flex flex-col overflow-hidden">
                 <div className="px-5 pt-5 pb-3 space-y-3 shrink-0">
                   <div className="relative">
-                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
-                    {walkInSearch && <button onClick={() => setWalkInSearch("")} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>}
+                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500 font-medium pointer-events-none" />
+                    {walkInSearch && <button onClick={() => setWalkInSearch("")} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-medium hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>}
                     <input type="text" placeholder="חיפוש לפי שם חיה, בעלים, טלפון..." value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} autoFocus className="w-full pr-11 pl-10 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all text-[14px]" />
                   </div>
                   <button onClick={() => setModalView("new-patient")} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-orange-300 bg-orange-50/50 hover:bg-orange-50 hover:border-orange-400 rounded-xl transition-all cursor-pointer text-orange-600 text-[14px] font-semibold group">
@@ -163,10 +163,10 @@ export function Dashboard() {
                           <button key={patient.id} onClick={() => handleSelectPatient(patient)} className="w-full px-4 py-3.5 flex items-center gap-3.5 hover:bg-orange-50 rounded-xl transition-colors cursor-pointer text-right group">
                             <div className="bg-orange-50 group-hover:bg-orange-100 rounded-xl w-11 h-11 flex items-center justify-center shrink-0 transition-colors"><PetIcon className="w-5 h-5 text-orange-600" /></div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5"><span className="text-gray-900 text-[15px] font-semibold">{patient.pet.name}</span><span className="text-gray-400 text-[12px]">{patient.pet.species} · {patient.pet.breed}</span></div>
+                              <div className="flex items-center gap-2 mb-0.5"><span className="text-gray-900 text-[15px] font-semibold">{patient.pet.name}</span><span className="text-gray-500 font-medium text-[12px]">{patient.pet.species} · {patient.pet.breed}</span></div>
                               <div className="flex items-center gap-3 text-[12px] text-gray-500"><span>{patient.owner.name}</span><span className="flex items-center gap-1"><Phone className="w-3 h-3" />{patient.owner.phone}</span></div>
                             </div>
-                            <div className="bg-orange-100 text-orange-600 text-[11px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 font-semibold transition-opacity shrink-0">התחל טיפול</div>
+                            <div className="bg-orange-100 text-orange-600 text-[13px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 font-semibold transition-opacity shrink-0">התחל טיפול</div>
                           </button>
                         );
                       })}
@@ -174,7 +174,7 @@ export function Dashboard() {
                   ) : (
                     <div className="text-center py-10">
                       <Search className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-gray-400 text-[14px]">לא נמצאו מטופלים עבור "{walkInSearch}"</p>
+                      <p className="text-gray-500 font-medium text-[14px]">לא נמצאו מטופלים עבור "{walkInSearch}"</p>
                       <button onClick={() => { setModalView("new-patient"); updateField("petName", walkInSearch); }} className="mt-3 text-orange-500 hover:text-orange-600 text-[13px] hover:underline font-semibold cursor-pointer"><UserPlus className="w-3.5 h-3.5 inline-block ml-1 -mt-0.5" /> רשמו מטופל חדש במקום</button>
                     </div>
                   )}
@@ -195,7 +195,7 @@ export function Dashboard() {
                       <select value={newForm.speciesType} onChange={(e) => updateField("speciesType", e.target.value)} className={`${inputClass("speciesType")} appearance-none cursor-pointer`}>
                         {speciesOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                       </select>
-                      <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 font-medium pointer-events-none" />
                     </div>
                   </div>
                   {renderInput("גזע", "breed", "לדוגמה: גולדן רטריבר", true)}

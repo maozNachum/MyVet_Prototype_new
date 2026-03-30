@@ -123,7 +123,7 @@ export function InventoryControl() {
                 <p className="text-red-500 text-[12px]">{filteredExpiring.filter((m) => m.daysUntilExpiry <= 14).length} פריטים ב-14 ימים הקרובים</p>
               </div>
             </div>
-            {expandedAlert === "expiring" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {expandedAlert === "expiring" ? <ChevronUp className="w-4 h-4 text-gray-500 font-medium" /> : <ChevronDown className="w-4 h-4 text-gray-500 font-medium" />}
           </button>
           {expandedAlert === "expiring" && (
             <div className="border-t border-gray-100 divide-y divide-gray-50">
@@ -144,13 +144,13 @@ export function InventoryControl() {
                         <span className="bg-purple-50 text-purple-600 text-[9px] px-1.5 py-0.5 rounded border border-purple-200" style={{ fontWeight: 600 }}>מפוקח</span>
                       )}
                     </div>
-                    <p className="text-gray-400 text-[11px]">Batch: {med.batchNo} · {med.quantity} יחידות</p>
+                    <p className="text-gray-500 font-medium text-[13px]">Batch: {med.batchNo} · {med.quantity} יחידות</p>
                   </div>
                   <div className="text-left shrink-0">
                     <span className={`text-[13px] ${med.daysUntilExpiry <= 14 ? "text-red-600" : "text-amber-600"}`} style={{ fontWeight: 700 }}>
                       {med.daysUntilExpiry} ימים
                     </span>
-                    <p className="text-gray-400 text-[10px]">{med.expiryDate}</p>
+                    <p className="text-gray-500 font-medium text-[10px]">{med.expiryDate}</p>
                   </div>
                 </div>
               ))}
@@ -176,7 +176,7 @@ export function InventoryControl() {
                 <p className="text-amber-600 text-[12px]">{filteredLowStock.filter((l) => l.daysUntilEmpty <= 2).length} פריטים קריטיים</p>
               </div>
             </div>
-            {expandedAlert === "lowstock" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {expandedAlert === "lowstock" ? <ChevronUp className="w-4 h-4 text-gray-500 font-medium" /> : <ChevronDown className="w-4 h-4 text-gray-500 font-medium" />}
           </button>
           {expandedAlert === "lowstock" && (
             <div className="border-t border-gray-100 divide-y divide-gray-50">
@@ -185,7 +185,7 @@ export function InventoryControl() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{item.name}</span>
-                      <span className="text-gray-400 text-[11px]">({item.sku})</span>
+                      <span className="text-gray-500 font-medium text-[13px]">({item.sku})</span>
                     </div>
                     <span className={`text-[12px] ${item.daysUntilEmpty <= 1 ? "text-red-600" : "text-amber-600"}`} style={{ fontWeight: 600 }}>
                       {item.daysUntilEmpty <= 1 ? "נגמר היום!" : `${item.daysUntilEmpty} ימים`}
@@ -200,7 +200,7 @@ export function InventoryControl() {
                         style={{ width: `${Math.min((item.currentQty / item.minQty) * 100, 100)}%` }}
                       />
                     </div>
-                    <span className="text-gray-500 text-[11px] shrink-0 w-16 text-left">
+                    <span className="text-gray-500 text-[13px] shrink-0 w-16 text-left">
                       {item.currentQty}/{item.minQty}
                     </span>
                   </div>
@@ -221,11 +221,11 @@ export function InventoryControl() {
               </div>
               <div>
                 <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>יומן חומרים מפוקחים (Audit Log)</h3>
-                <p className="text-gray-400 text-[12px]">רשומות בלתי ניתנות לעריכה · מותאם לפיקוח משרד הבריאות</p>
+                <p className="text-gray-500 font-medium text-[12px]">רשומות בלתי ניתנות לעריכה · מותאם לפיקוח משרד הבריאות</p>
               </div>
             </div>
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 font-medium" />
               <input
                 type="text"
                 placeholder="חיפוש ביומן..."
@@ -251,7 +251,7 @@ export function InventoryControl() {
                 const actionStyle = ACTION_LABELS[log.action];
                 return (
                   <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="py-3 px-3 text-gray-600 font-mono text-[11px] whitespace-nowrap">{log.timestamp}</td>
+                    <td className="py-3 px-3 text-gray-600 font-mono text-[13px] whitespace-nowrap">{log.timestamp}</td>
                     <td className="py-3 px-3 text-gray-900" style={{ fontWeight: 500 }}>{log.medication}</td>
                     <td className="py-3 px-3 text-gray-500 font-mono text-[10px]">{log.batchNo}</td>
                     <td className="py-3 px-3">
@@ -265,7 +265,7 @@ export function InventoryControl() {
                     <td className="py-3 px-3 text-gray-600">{log.patientName || "—"}</td>
                     <td className="py-3 px-3 text-gray-600">{log.vet}</td>
                     <td className="py-3 px-3 text-gray-900" style={{ fontWeight: 600 }}>{log.remainingStock}</td>
-                    <td className="py-3 px-3 text-gray-400 max-w-[200px] truncate">{log.notes}</td>
+                    <td className="py-3 px-3 text-gray-500 font-medium max-w-[200px] truncate">{log.notes}</td>
                   </tr>
                 );
               })}
@@ -273,7 +273,7 @@ export function InventoryControl() {
           </table>
         </div>
 
-        <div className="px-6 py-3 bg-purple-50/30 border-t border-purple-100 flex items-center gap-2 text-[11px] text-purple-600">
+        <div className="px-6 py-3 bg-purple-50/30 border-t border-purple-100 flex items-center gap-2 text-[13px] text-purple-600">
           <Shield className="w-3.5 h-3.5" />
           <span>יומן זה מוגן מעריכה בהתאם לתקנות משרד הבריאות · כל שינוי נרשם אוטומטית</span>
         </div>

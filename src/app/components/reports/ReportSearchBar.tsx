@@ -9,13 +9,13 @@ interface ReportSearchBarProps {
 export function ReportSearchBar({ value, onChange, placeholder }: ReportSearchBarProps) {
   return (
     <div className="relative">
-      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 font-medium pointer-events-none" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-xl pr-10 pl-10 py-2.5 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 shadow-sm transition-all placeholder:text-gray-400"
+        className="w-full bg-white border border-gray-200 rounded-xl pr-10 pl-10 py-2.5 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 shadow-sm transition-all placeholder:text-gray-500 font-medium"
       />
       {value.length > 0 && (
         <button

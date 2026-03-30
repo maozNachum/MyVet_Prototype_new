@@ -106,7 +106,7 @@ export function ClientCompliance() {
               <kpi.icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-gray-400 text-[12px]">{kpi.label}</p>
+              <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
               <p className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export function ClientCompliance() {
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : r.id)}>
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{r.petName}</span>
-                      <span className="text-gray-400 text-[12px]">({r.ownerName})</span>
+                      <span className="text-gray-500 font-medium text-[12px]">({r.ownerName})</span>
                       <span className="bg-amber-50 text-amber-700 text-[10px] px-2 py-0.5 rounded-full border border-amber-200" style={{ fontWeight: 600 }}>
                         {r.daysSince} ימים
                       </span>
@@ -205,34 +205,34 @@ export function ClientCompliance() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {smsSent ? (
-                      <span className="text-emerald-600 text-[11px] flex items-center gap-1"><Check className="w-3 h-3" />SMS</span>
+                      <span className="text-emerald-600 text-[13px] flex items-center gap-1"><Check className="w-3 h-3" />SMS</span>
                     ) : (
-                      <button onClick={() => setSentIds((p) => new Set(p).add(`missed-${r.id}-sms`))} className="p-2 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors cursor-pointer" title="שלח SMS">
+                      <button onClick={() => setSentIds((p) => new Set(p).add(`missed-${r.id}-sms`))} className="p-2 rounded-lg hover:bg-emerald-50 text-gray-500 font-medium hover:text-emerald-600 transition-colors cursor-pointer" title="שלח SMS">
                         <Phone className="w-4 h-4" />
                       </button>
                     )}
                     {emailSent ? (
-                      <span className="text-blue-600 text-[11px] flex items-center gap-1"><Check className="w-3 h-3" />Email</span>
+                      <span className="text-blue-600 text-[13px] flex items-center gap-1"><Check className="w-3 h-3" />Email</span>
                     ) : (
-                      <button onClick={() => setSentIds((p) => new Set(p).add(`missed-${r.id}-email`))} className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" title="שלח אימייל">
+                      <button onClick={() => setSentIds((p) => new Set(p).add(`missed-${r.id}-email`))} className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer" title="שלח אימייל">
                         <Mail className="w-4 h-4" />
                       </button>
                     )}
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500 font-medium" /> : <ChevronDown className="w-4 h-4 text-gray-500 font-medium" />}
                   </div>
                 </div>
                 {isExpanded && (
                   <div className="mt-3 mr-16 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">טלפון</span>
+                      <span className="text-gray-500 font-medium">טלפון</span>
                       <p className="text-gray-700 font-mono" style={{ fontWeight: 500 }}>{r.ownerPhone}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">אימייל</span>
+                      <span className="text-gray-500 font-medium">אימייל</span>
                       <p className="text-gray-700" style={{ fontWeight: 500 }}>{r.ownerEmail}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">ביקור אחרון</span>
+                      <span className="text-gray-500 font-medium">ביקור אחרון</span>
                       <p className="text-gray-700" style={{ fontWeight: 500 }}>{r.lastVisit}</p>
                     </div>
                     <div className="bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
@@ -265,7 +265,7 @@ export function ClientCompliance() {
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : c.id)}>
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{c.petName}</span>
-                      <span className="text-gray-400 text-[12px]">({c.ownerName})</span>
+                      <span className="text-gray-500 font-medium text-[12px]">({c.ownerName})</span>
                       <span className="bg-red-50 text-red-600 text-[10px] px-2 py-0.5 rounded-full border border-red-200" style={{ fontWeight: 600 }}>
                         {c.monthsInactive} חודשים
                       </span>
@@ -274,34 +274,34 @@ export function ClientCompliance() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {smsSent ? (
-                      <span className="text-emerald-600 text-[11px] flex items-center gap-1"><Check className="w-3 h-3" />SMS</span>
+                      <span className="text-emerald-600 text-[13px] flex items-center gap-1"><Check className="w-3 h-3" />SMS</span>
                     ) : (
-                      <button onClick={() => setSentIds((p) => new Set(p).add(`inactive-${c.id}-sms`))} className="p-2 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors cursor-pointer" title="שלח SMS">
+                      <button onClick={() => setSentIds((p) => new Set(p).add(`inactive-${c.id}-sms`))} className="p-2 rounded-lg hover:bg-emerald-50 text-gray-500 font-medium hover:text-emerald-600 transition-colors cursor-pointer" title="שלח SMS">
                         <Phone className="w-4 h-4" />
                       </button>
                     )}
                     {emailSent ? (
-                      <span className="text-blue-600 text-[11px] flex items-center gap-1"><Check className="w-3 h-3" />Email</span>
+                      <span className="text-blue-600 text-[13px] flex items-center gap-1"><Check className="w-3 h-3" />Email</span>
                     ) : (
-                      <button onClick={() => setSentIds((p) => new Set(p).add(`inactive-${c.id}-email`))} className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" title="שלח אימייל">
+                      <button onClick={() => setSentIds((p) => new Set(p).add(`inactive-${c.id}-email`))} className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer" title="שלח אימייל">
                         <Mail className="w-4 h-4" />
                       </button>
                     )}
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500 font-medium" /> : <ChevronDown className="w-4 h-4 text-gray-500 font-medium" />}
                   </div>
                 </div>
                 {isExpanded && (
                   <div className="mt-3 mr-16 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">טלפון</span>
+                      <span className="text-gray-500 font-medium">טלפון</span>
                       <p className="text-gray-700 font-mono" style={{ fontWeight: 500 }}>{c.ownerPhone}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">אימייל</span>
+                      <span className="text-gray-500 font-medium">אימייל</span>
                       <p className="text-gray-700" style={{ fontWeight: 500 }}>{c.ownerEmail}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-400">ביקור אחרון</span>
+                      <span className="text-gray-500 font-medium">ביקור אחרון</span>
                       <p className="text-gray-700" style={{ fontWeight: 500 }}>{c.lastVisit}</p>
                     </div>
                     <div className="bg-red-50 rounded-lg px-3 py-2 border border-red-100">

@@ -229,7 +229,7 @@ export function PetProfile() {
               >
                 היסטוריה רפואית
               </h3>
-              <span className="text-gray-400 text-[13px]">
+              <span className="text-gray-500 font-medium text-[13px]">
                 {medicalHistory.length} ביקורים
               </span>
             </div>
@@ -265,14 +265,14 @@ export function PetProfile() {
                             >
                               {visit.title}
                             </span>
-                            <span className="text-gray-400 text-[13px]">
+                            <span className="text-gray-500 font-medium text-[13px]">
                               {visit.date}
                             </span>
                           </div>
                           <p className="text-gray-500 text-[14px] mb-1">
                             {visit.description}
                           </p>
-                          <p className="text-gray-400 text-[13px]">
+                          <p className="text-gray-500 font-medium text-[13px]">
                             {visit.vet}
                           </p>
                         </div>

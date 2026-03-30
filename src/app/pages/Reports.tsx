@@ -68,7 +68,7 @@ export function Reports() {
         </div>
         <div>
           <h1 className="text-gray-900 text-[24px] font-bold">BUSINESS INTELLIGENCE DASHBOARD</h1>
-          <p className="text-gray-500 text-[14px]">תובנות מבוססות נתונים · ROI גבוה · מרץ 2026</p>
+          <p className="text-gray-500 text-[14px]">תובנות מבוססות נתונים</p>דד
         </div>
       </div>
 
@@ -96,7 +96,7 @@ export function Reports() {
       {/* ── 2. Control Bar (ירד מתחת לטאבים!) ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center bg-gray-50 rounded-xl p-1 w-full sm:w-auto overflow-x-auto">
-          <CalendarRange className="w-4.5 h-4.5 text-gray-400 mx-2.5 shrink-0" />
+          <CalendarRange className="w-4.5 h-4.5 text-gray-500 font-medium mx-2.5 shrink-0" />
           <div className="flex gap-1">
             {DATE_RANGES.map((dr) => (
               <button

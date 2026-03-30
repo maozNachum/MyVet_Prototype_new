@@ -191,7 +191,7 @@ export function Navbar() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <span className="text-gray-900 text-[14px] font-semibold">{patient.pet.name}</span>
-                                    <span className="text-gray-400 text-[12px]">{patient.pet.species} · {patient.pet.breed}</span>
+                                    <span className="text-gray-500 font-medium text-[12px]">{patient.pet.species} · {patient.pet.breed}</span>
                                   </div>
                                   <div className="flex items-center gap-3 text-[12px] text-gray-500">
                                     <span>{patient.owner.name}</span>
@@ -220,7 +220,7 @@ export function Navbar() {
                                 </div>
                                 <div className="flex items-center gap-3 text-[12px] text-gray-500">
                                   <span>{item.categoryLabel}</span>
-                                  <span className="font-mono text-gray-400">מק״ט {item.sku}</span>
+                                  <span className="font-mono text-gray-500 font-medium">מק״ט {item.sku}</span>
                                 </div>
                               </div>
                             </button>

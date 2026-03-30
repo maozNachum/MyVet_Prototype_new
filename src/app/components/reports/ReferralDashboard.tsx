@@ -126,7 +126,7 @@ export function ReferralDashboard() {
               <kpi.icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-gray-400 text-[12px]">{kpi.label}</p>
+              <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
               <p className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
             </div>
           </div>
@@ -137,7 +137,7 @@ export function ReferralDashboard() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>דירוג מרפאות מפנות — מרץ 2026</h3>
-          <p className="text-gray-400 text-[12px] mt-0.5">מספר הפניות לפי מרפאה</p>
+          <p className="text-gray-500 font-medium text-[12px] mt-0.5">מספר הפניות לפי מרפאה</p>
         </div>
         <div className="p-6">
           <div dir="ltr">
@@ -208,29 +208,29 @@ export function ReferralDashboard() {
                   <div className="text-right">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{clinic.name}</span>
-                      <span className="text-gray-400 text-[12px]">({clinic.city})</span>
+                      <span className="text-gray-500 font-medium text-[12px]">({clinic.city})</span>
                     </div>
-                    <p className="text-gray-400 text-[12px]">{clinic.contactPerson} · {clinic.phone}</p>
+                    <p className="text-gray-500 font-medium text-[12px]">{clinic.contactPerson} · {clinic.phone}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-6">
                   <div className="text-center">
-                    <p className="text-gray-400 text-[10px]">הפניות</p>
+                    <p className="text-gray-500 font-medium text-[10px]">הפניות</p>
                     <div className="flex items-center gap-1">
                       <span className="text-gray-900 text-[18px]" style={{ fontWeight: 700 }}>{clinic.referralsThisMonth}</span>
                       {trend !== 0 && (
-                        <span className={`text-[11px] ${trend > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        <span className={`text-[13px] ${trend > 0 ? "text-emerald-600" : "text-red-500"}`}>
                           {trend > 0 ? `+${trend}` : trend}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-gray-400 text-[10px]">הכנסות</p>
+                    <p className="text-gray-500 font-medium text-[10px]">הכנסות</p>
                     <span className="text-emerald-600 text-[16px]" style={{ fontWeight: 700 }}>₪{clinic.totalRevenue.toLocaleString()}</span>
                   </div>
-                  <TrendingUp className="w-4 h-4 text-gray-400" />
+                  <TrendingUp className="w-4 h-4 text-gray-500 font-medium" />
                 </div>
               </button>
 
@@ -251,20 +251,20 @@ export function ReferralDashboard() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
                               <span className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{ref.patientName}</span>
-                              <span className="text-gray-400 text-[11px]">{ref.date}</span>
+                              <span className="text-gray-500 font-medium text-[13px]">{ref.date}</span>
                             </div>
                             <p className="text-gray-500 text-[12px]">{ref.reason}</p>
                           </div>
                           <span className="text-emerald-600 text-[14px] shrink-0" style={{ fontWeight: 600 }}>₪{ref.revenue.toLocaleString()}</span>
                           <div className="shrink-0">
                             {showAsSent ? (
-                              <span className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg border ${DISCHARGE_STYLE.sent.bg} ${DISCHARGE_STYLE.sent.color}`} style={{ fontWeight: 500 }}>
+                              <span className={`flex items-center gap-1 text-[13px] px-2.5 py-1 rounded-lg border ${DISCHARGE_STYLE.sent.bg} ${DISCHARGE_STYLE.sent.color}`} style={{ fontWeight: 500 }}>
                                 <Check className="w-3 h-3" /> דוח נשלח
                               </span>
                             ) : (
                               <button
                                 onClick={() => setSentDischarges((p) => new Set(p).add(`${clinic.id}-${ref.id}`))}
-                                className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${ds.bg} ${ds.color} hover:opacity-80`}
+                                className={`flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${ds.bg} ${ds.color} hover:opacity-80`}
                                 style={{ fontWeight: 500 }}
                               >
                                 <Send className="w-3 h-3" /> שלח דוח שחרור
