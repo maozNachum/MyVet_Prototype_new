@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { KpiCards } from "../components/KpiCards";
 import { AppointmentsTable } from "../components/AppointmentsTable";
-import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, User, ChevronDown } from "lucide-react";
+import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, User, ChevronDown, Check } from "lucide-react";
 import { patients, type Patient } from "../data/patients";
 import { TreatmentModal } from "../components/TreatmentModal";
-import { getStaffName } from "../data/staffAuth"; // שולף את שם איש הצוות
+import { getStaffName, canEditMedicalRecords } from "../data/staffAuth"; 
 import { useSearchFilter } from "../hooks/useSearchFilter";
 
-// ─── Constants & Types ──────────────────────────────────────────────────
 const speciesOptions = [
   { value: "dog", label: "כלב", species: "כלב", icon: Dog },
   { value: "cat", label: "חתול", species: "חתול", icon: Cat },
@@ -30,7 +29,6 @@ const emptyForm: NewPatientForm = {
   microchip: "", allergies: "", ownerName: "", ownerId: "", ownerPhone: "", ownerEmail: "", ownerAddress: "",
 };
 
-// ─── Component ──────────────────────────────────────────────────────────
 export function Dashboard() {
   const [showWalkInPicker, setShowWalkInPicker] = useState(false);
   const [walkInSearch, setWalkInSearch] = useState("");
@@ -38,8 +36,10 @@ export function Dashboard() {
   const [newForm, setNewForm] = useState<NewPatientForm>(emptyForm);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof NewPatientForm, boolean>>>({});
   const [treatmentPatient, setTreatmentPatient] = useState<{ id: number; petName: string; petSpecies: string; ownerName: string; } | null>(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // Search hook
+  const canTreat = canEditMedicalRecords(); 
+
   const filteredPatients = useSearchFilter(patients, walkInSearch, (p) => [
     p.pet.name, p.owner.name, p.owner.phone, p.owner.email, p.pet.microchip,
   ]);
@@ -51,7 +51,12 @@ export function Dashboard() {
 
   const handleSelectPatient = (p: Patient) => {
     closeModal();
-    setTreatmentPatient({ id: p.id, petName: p.pet.name, petSpecies: p.pet.speciesType, ownerName: p.owner.name });
+    if (canTreat) {
+      setTreatmentPatient({ id: p.id, petName: p.pet.name, petSpecies: p.pet.speciesType, ownerName: p.owner.name });
+    } else {
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    }
   };
 
   const updateField = (field: keyof NewPatientForm, value: string) => {
@@ -66,7 +71,7 @@ export function Dashboard() {
     
     if (Object.keys(errors).length > 0) return setFormErrors(errors);
 
-    const newId = Math.max(...patients.map((p) => p.id), 0) + 1;
+    const newId = Math.max(...(patients || []).map((p) => p.id), 0) + 1;
     const specOpt = speciesOptions.find((s) => s.value === newForm.speciesType);
     
     const newPatient: Patient = {
@@ -93,7 +98,6 @@ export function Dashboard() {
       formErrors[field] ? "border-red-300 bg-red-50/50 focus:ring-red-500/20" : "border-gray-200 bg-white focus:ring-orange-500/20"
     }`;
 
-  // Helper פונקציה לייצור השדות בטופס בצורה קצרה ונקייה
   const renderInput = (label: string, field: keyof NewPatientForm, placeholder: string, required = false, type = "text", extraProps = {}) => (
     <div>
       <label className="block text-gray-600 text-[12px] mb-1.5 font-medium">{label} {required && <span className="text-red-400">*</span>}</label>
@@ -102,11 +106,17 @@ export function Dashboard() {
   );
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-      {/* ── Page Header ── */}
+    <main className="max-w-7xl mx-auto px-6 py-8 space-y-8 relative">
+      
+      {showSuccessToast && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3 animate-in slide-in-from-top-5">
+          <Check className="w-5 h-5 text-emerald-500" />
+          <span className="font-bold text-[15px]">המטופל נרשם והתווסף לתור בהצלחה!</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
-          {/* הכותרת המעודכנת עם שם המשתמש! */}
           <h1 className="text-gray-900 text-[26px] font-bold">ברוך הבא, {getStaffName()} </h1>
           <p className="text-gray-500 mt-1 text-[15px]">סקירה כללית של פעילות המרפאה היום</p>
         </div>
@@ -121,12 +131,10 @@ export function Dashboard() {
       <KpiCards />
       <AppointmentsTable />
 
-      {/* ── Walk-in Modal ── */}
       {showWalkInPicker && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4" onClick={closeModal}>
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             
-            {/* Header */}
             <div className="bg-gradient-to-l from-orange-500 to-amber-500 px-6 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 {modalView === "new-patient" ? (
@@ -140,7 +148,6 @@ export function Dashboard() {
               <button onClick={closeModal} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* ── LIST VIEW ── */}
             {modalView === "list" && (
               <div className="flex flex-col overflow-hidden">
                 <div className="px-5 pt-5 pb-3 space-y-3 shrink-0">
@@ -166,7 +173,9 @@ export function Dashboard() {
                               <div className="flex items-center gap-2 mb-0.5"><span className="text-gray-900 text-[15px] font-semibold">{patient.pet.name}</span><span className="text-gray-500 font-medium text-[12px]">{patient.pet.species} · {patient.pet.breed}</span></div>
                               <div className="flex items-center gap-3 text-[12px] text-gray-500"><span>{patient.owner.name}</span><span className="flex items-center gap-1"><Phone className="w-3 h-3" />{patient.owner.phone}</span></div>
                             </div>
-                            <div className="bg-orange-100 text-orange-600 text-[13px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 font-semibold transition-opacity shrink-0">התחל טיפול</div>
+                            <div className="bg-orange-100 text-orange-600 text-[13px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 font-semibold transition-opacity shrink-0">
+                              {canTreat ? "התחל טיפול" : "הכנס ליומן"}
+                            </div>
                           </button>
                         );
                       })}
@@ -182,10 +191,8 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* ── NEW PATIENT FORM VIEW ── */}
             {modalView === "new-patient" && (
               <div className="overflow-y-auto px-6 py-5">
-                {/* חיה */}
                 <div className="flex items-center gap-2 mb-4"><PawPrint className="w-4 h-4 text-orange-500" /><span className="text-gray-800 text-[15px] font-semibold">פרטי החיה</span></div>
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {renderInput("שם החיה", "petName", 'לדוגמה: "רקסי"', true)}
@@ -215,7 +222,6 @@ export function Dashboard() {
 
                 <div className="border-t border-gray-100 my-5" />
 
-                {/* בעלים */}
                 <div className="flex items-center gap-2 mb-4"><User className="w-4 h-4 text-orange-500" /><span className="text-gray-800 text-[15px] font-semibold">פרטי הבעלים</span></div>
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {renderInput("שם הבעלים", "ownerName", "שם מלא", true)}
@@ -225,9 +231,10 @@ export function Dashboard() {
                   <div className="col-span-2">{renderInput("כתובת", "ownerAddress", "כתובת מגורים (אופציונלי)")}</div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-3 pt-2 pb-1">
-                  <button onClick={validateAndSave} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 text-white py-3 rounded-xl cursor-pointer shadow-md font-semibold text-[15px]"><Zap className="w-4.5 h-4.5" /> שמור והתחל טיפול</button>
+                  <button onClick={validateAndSave} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 text-white py-3 rounded-xl cursor-pointer shadow-md font-semibold text-[15px]">
+                    {canTreat ? <><Zap className="w-4.5 h-4.5" /> שמור והתחל טיפול</> : "שמור והכנס ליומן הממתינים"}
+                  </button>
                   <button onClick={() => { setModalView("list"); setNewForm(emptyForm); setFormErrors({}); }} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-500 hover:bg-gray-50 font-medium cursor-pointer text-[14px]">ביטול</button>
                 </div>
               </div>
@@ -236,7 +243,6 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* ── Treatment Modal (Walk-in) ── */}
       {treatmentPatient && (
         <TreatmentModal
           isOpen={true} onClose={() => setTreatmentPatient(null)}

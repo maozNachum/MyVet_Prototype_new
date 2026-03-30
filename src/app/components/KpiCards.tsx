@@ -1,4 +1,4 @@
-import { Calendar, PawPrint, AlertTriangle, ChevronDown, Clock, MapPin, Dog, Cat, Rabbit, X } from "lucide-react";
+import { Calendar, Activity, AlertTriangle, ChevronDown, Clock, MapPin, Dog, Cat, Rabbit, X } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -31,13 +31,16 @@ const todayAppointments = [
   { id: 12, time: "17:30", pet: "צ׳רלי", owner: "רון גפן", type: "חיסון כלבת" },
 ];
 
+const totalHospitalized = departments.reduce((total, dept) => total + dept.patients.length, 0);
+
 const kpis = [
-  { id: "appointments", label: "תורים היום", value: 12, icon: Calendar, iconBg: "bg-blue-50", iconColor: "text-blue-600", hoverBorder: "hover:border-blue-200", activeBorder: "border-blue-300" },
-  { id: "patients", label: "מטופלים פעילים", value: 85, icon: PawPrint, iconBg: "bg-green-50", iconColor: "text-green-600", hoverBorder: "hover:border-green-200", activeBorder: "border-green-300" },
-  { id: "urgent", label: "מקרים דחופים", value: 3, icon: AlertTriangle, iconBg: "bg-orange-50", iconColor: "text-orange-500", hoverBorder: "hover:border-orange-200", activeBorder: "border-orange-300" },
+  { id: "appointments", label: "תורים היום", value: todayAppointments.length, icon: Calendar, iconBg: "bg-blue-50", iconColor: "text-blue-600", hoverBorder: "hover:border-blue-200", activeBorder: "border-blue-300" },
+  { id: "hospitalized", label: "מאושפזים במחלקה", value: totalHospitalized, icon: Activity, iconBg: "bg-emerald-50", iconColor: "text-emerald-600", hoverBorder: "hover:border-emerald-200", activeBorder: "border-emerald-300" },
+  { id: "urgent", label: "מקרים דחופים", value: urgentCases.length, icon: AlertTriangle, iconBg: "bg-orange-50", iconColor: "text-orange-500", hoverBorder: "hover:border-orange-200", activeBorder: "border-orange-300" },
 ];
 
 // ─── Component ──────────────────────────────────────────────────────────
+// הנה ה-export שהיה חסר וגרם לשגיאה!
 export function KpiCards() {
   const [expandedKpi, setExpandedKpi] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -71,7 +74,6 @@ export function KpiCards() {
                 <Icon className={`w-7 h-7 ${kpi.iconColor}`} />
               </div>
               <div className="flex-1">
-                {/* חזרנו לפרופורציות הנכונות: כותרת מודגשת אך מעט קטנה מהמספר שחוזר להיות ענק */}
                 <p className="text-gray-700 text-[16px] mb-1" style={{ fontWeight: 700 }}>
                   {kpi.label}
                 </p>
@@ -87,7 +89,7 @@ export function KpiCards() {
 
       {/* Expanded Panel for Appointments */}
       {expandedKpi === "appointments" && (
-        <div className="bg-white rounded-2xl shadow-md border border-blue-200 overflow-hidden animate-in">
+        <div className="bg-white rounded-2xl shadow-md border border-blue-200 overflow-hidden animate-in fade-in slide-in-from-top-2">
           <div className="px-6 py-4 bg-gradient-to-l from-blue-50 to-white border-b border-blue-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Clock className="w-5 h-5 text-blue-600" />
@@ -111,13 +113,13 @@ export function KpiCards() {
         </div>
       )}
 
-      {/* Expanded Panel for Active Patients / Departments */}
-      {expandedKpi === "patients" && (
-        <div className="bg-white rounded-2xl shadow-md border border-green-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gradient-to-l from-green-50 to-white border-b border-green-100 flex items-center justify-between">
+      {/* Expanded Panel for Hospitalized Patients */}
+      {expandedKpi === "hospitalized" && (
+        <div className="bg-white rounded-2xl shadow-md border border-emerald-200 overflow-hidden animate-in fade-in slide-in-from-top-2">
+          <div className="px-6 py-4 bg-gradient-to-l from-emerald-50 to-white border-b border-emerald-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <MapPin className="w-5 h-5 text-green-600" />
-              <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>מחלקות אשפוז ומטופלים פעילים</h3>
+              <MapPin className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 700 }}>מחלקות אשפוז והשגחה</h3>
             </div>
             <button onClick={() => setExpandedKpi(null)} className="text-gray-500 font-medium hover:text-gray-600 cursor-pointer p-1"><X className="w-4 h-4" /></button>
           </div>
@@ -133,7 +135,7 @@ export function KpiCards() {
                   {dept.patients.map((p) => {
                     const SIcon = PetSpeciesIcon(p.species);
                     return (
-                      <button key={p.id} onClick={() => navigate(`/patients?selected=${p.id}`)} className="w-full flex items-center gap-3 bg-white/80 rounded-lg px-3 py-2.5 text-right hover:bg-white transition-colors cursor-pointer group shadow-sm border border-transparent hover:border-green-100">
+                      <button key={p.id} onClick={() => navigate(`/patients?selected=${p.id}`)} className="w-full flex items-center gap-3 bg-white/80 rounded-lg px-3 py-2.5 text-right hover:bg-white transition-colors cursor-pointer group shadow-sm border border-transparent hover:border-emerald-100">
                         <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-blue-50 transition-colors"><SIcon className="w-4 h-4 text-gray-500 group-hover:text-blue-600" /></div>
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{p.name} <span className="text-gray-500 font-medium text-[12px] mr-1" style={{ fontWeight: 400 }}>({p.owner})</span></p>
@@ -151,7 +153,7 @@ export function KpiCards() {
 
       {/* Expanded Panel for Urgent Cases */}
       {expandedKpi === "urgent" && (
-        <div className="bg-white rounded-2xl shadow-md border border-orange-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-md border border-orange-200 overflow-hidden animate-in fade-in slide-in-from-top-2">
           <div className="px-6 py-4 bg-gradient-to-l from-orange-50 to-white border-b border-orange-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
