@@ -85,7 +85,7 @@ export function Login() {
           <div className="max-w-md">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 backdrop-blur-md rounded-xl p-2.5 border border-white/20">
-                <MyVetLogo size={28} color="white" />
+                <MyVetLogo  size={28} color="white" />
               </div>
             </div>
           </div>

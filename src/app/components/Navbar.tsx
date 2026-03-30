@@ -95,8 +95,8 @@ export function Navbar() {
         
         {/* ─── צד ימין (קצה המסך הימני למעלה): לוגו וניווט ─── */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity shrink-0 mr-2">
-            <div className="h-9 w-auto flex items-center justify-center">
+          <Link to="/" className="max-w-7xl mx-auto px-30 h-16 flex items-center justify-between">
+            <div className="h-19 w-auto flex items-center justify-center">
               <MyVetLogo color="white" className="h-full w-auto" />
             </div>
           </Link>
@@ -141,7 +141,7 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* ─── צד שמאל (קצה המסך השמאלי למעלה): חיפוש, פרופיל והתנתקות ─── */}
+        {/* ─── קצה השמאלי של הסרגל ניווט ─── */}
         <div className="flex items-center gap-5">
           
           <div className="hidden lg:block w-72" ref={searchRef}>
@@ -242,7 +242,7 @@ export function Navbar() {
           <div className="hidden lg:block w-px h-6 bg-white/20"></div>
 
           {/* אזור המשתמש - שודרג כדי להראות את השם ואת התפקיד */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 ml-12 xl:ml-79">
             <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-3 py-1.5 border border-white/10 shadow-inner">
               <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />
               <span className="text-[13px] text-white font-medium whitespace-nowrap">
