@@ -30,7 +30,7 @@ export function CalendarSidebar({
         <div className="flex items-center gap-2.5">
           <Clock className="w-4 h-4 text-white/80" />
           <div>
-            <h3 className="text-white text-[14px]" style={{ fontWeight: 600 }}>
+            <h3 className="text-white text-[14px] flex" style={{ fontWeight: 600 }}>
               יום {dayName}
             </h3>
             <p className="text-white/60 text-[13px]">
@@ -38,13 +38,14 @@ export function CalendarSidebar({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className="bg-white/20 text-white text-[13px] px-2 py-0.5 rounded-full"
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex flex-col items-center justify-center gap-0.5 bg-white/20 text-white rounded-full px-3 py-2"
             style={{ fontWeight: 600 }}
           >
-            {appointments.length} תורים
-          </span>
+            <span className="text-[13px] leading-none">{appointments.length}</span>
+            <span className="text-[12px] leading-none">תורים</span>
+          </div>
           <button
             onClick={onClose}
             className="text-white/50 hover:text-white cursor-pointer p-1 transition-colors"

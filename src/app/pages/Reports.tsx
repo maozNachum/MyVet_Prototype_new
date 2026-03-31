@@ -67,8 +67,8 @@ export function Reports() {
           <BarChart3 className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-gray-900 text-[24px] font-bold">BUSINESS INTELLIGENCE DASHBOARD</h1>
-          <p className="text-gray-500 text-[14px]">תובנות מבוססות נתונים</p>דד
+          <h1 className="text-gray-900 text-[24px] font-bold">Business Intelligence Dashboard</h1>
+          <p className="text-gray-500 text-[14px]">תובנות מבוססות נתונים</p>
         </div>
       </div>
 

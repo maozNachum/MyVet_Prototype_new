@@ -103,25 +103,6 @@ export function DeptFilterPanel({
           );
         })}
       </div>
-
-      {/* Status legend */}
-      <div className="px-4 py-3 border-t border-gray-100 space-y-2">
-        <p className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 600 }}>
-          סטטוס תורים
-        </p>
-        {[
-          { color: "bg-green-500", label: "שולם" },
-          { color: "bg-blue-500",  label: "ביקור פתוח" },
-          { color: "bg-red-500",   label: "מאחר / לא הגיע" },
-        ].map((s) => (
-          <div key={s.label} className="flex items-center gap-2.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${s.color}`} />
-            <span className="text-gray-500 text-[11.5px]" style={{ fontWeight: 500 }}>
-              {s.label}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

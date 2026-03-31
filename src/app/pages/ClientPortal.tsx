@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { ChatWidget } from "../components/ChatWidget";
+import { Footer } from "../components/Footer";
 import { OwnerBookAppointment } from "../components/OwnerBookAppointment";
 import { useAppointmentStore } from "../data/AppointmentStore";
 import { NotificationPanel } from "../components/shared/NotificationPanel";
@@ -934,6 +935,7 @@ export function ClientPortal() {
         </ModalOverlay>
       )}
 
+      <Footer />
       <ChatWidget mode="owner" />
     </div>
   );

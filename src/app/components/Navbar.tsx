@@ -2,7 +2,6 @@ import { LogOut, Search, Cat, Dog, X, Phone, Stethoscope, Scissors } from "lucid
 import { Link, useLocation, useNavigate } from "react-router";
 import { useState, useRef, useEffect } from "react";
 import { patients } from "../data/patients";
-// שים לב שייבאנו לכאן גם את getStaffName
 import { getStaffType, getStaffLabel, canAccessReportsPage, getStaffName } from "../data/staffAuth";
 import { MyVetLogo } from "./MyVetLogo";
 import { useSearchFilter } from "../hooks/useSearchFilter";
@@ -48,7 +47,7 @@ export function Navbar() {
 
   const staffType = getStaffType();
   const staffLabel = getStaffLabel(staffType);
-  const staffName = getStaffName(); // שולפים את השם של המשתמש
+  const staffName = getStaffName();
   const StaffIcon = staffType === "vet" ? Stethoscope : staffType === "nurse" ? Scissors : Phone;
 
   const isActive = (path: string) => location.pathname === path;
@@ -91,22 +90,21 @@ export function Navbar() {
 
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
-      <div className="w-full px-6 h-16 flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
         
-        {/* ─── צד ימין (קצה המסך הימני למעלה): לוגו וניווט ─── */}
-        <div className="flex items-center gap-6">
-          <Link to="/" className="max-w-7xl mx-auto px-30 h-16 flex items-center justify-between">
-            <div className="h-19 w-auto flex items-center justify-center">
-              <MyVetLogo color="white" className="h-full w-auto" />
+        {/* קבוצה ימנית: לוגו, ניווט וחיפוש */}
+        <div className="flex items-center gap-4 xl:gap-6">
+          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity shrink-0">
+            {/* לוגו */}
+            <div className="w-22 h-19 flex items-center justify-center transform scale-[1.6] origin-right">
+              <MyVetLogo color="white" />
             </div>
           </Link>
-
-          <div className="hidden md:block w-px h-6 bg-white/20"></div>
-
+          <div className="hidden md:block w-px h-6 bg-white/20 ml-2"></div>
           <div className="hidden md:flex items-center gap-1">
             <Link
               to="/appointments"
-              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer ${
+              className={`px-1 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/appointments") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -114,7 +112,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/patients"
-              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/patients") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -122,7 +120,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/inventory"
-              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/inventory") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -131,7 +129,7 @@ export function Navbar() {
             {canAccessReportsPage() && (
               <Link
                 to="/reports"
-                className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                   isActive("/reports") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
                 }`}
               >
@@ -139,12 +137,9 @@ export function Navbar() {
               </Link>
             )}
           </div>
-        </div>
 
-        {/* ─── קצה השמאלי של הסרגל ניווט ─── */}
-        <div className="flex items-center gap-5">
-          
-          <div className="hidden lg:block w-72" ref={searchRef}>
+          {/* חיפוש */}
+          <div className="hidden lg:block w-64 xl:w-72" ref={searchRef}>
             <div className="relative w-full">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 pointer-events-none" />
               {searchQuery && (
@@ -188,7 +183,7 @@ export function Navbar() {
                                 <div className="bg-blue-50 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
                                   <PetIcon className="w-4.5 h-4.5 text-[#1e40af]" />
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 text-right">
                                   <div className="flex items-center gap-2">
                                     <span className="text-gray-900 text-[14px] font-semibold">{patient.pet.name}</span>
                                     <span className="text-gray-500 font-medium text-[12px]">{patient.pet.species} · {patient.pet.breed}</span>
@@ -214,7 +209,7 @@ export function Navbar() {
                               <div className="bg-violet-50 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
                                 <InvCategoryIcon category={item.category} />
                               </div>
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 text-right">
                                 <div className="flex items-center gap-2">
                                   <span className="text-gray-900 text-[14px] font-semibold">{item.name}</span>
                                 </div>
@@ -238,27 +233,26 @@ export function Navbar() {
               )}
             </div>
           </div>
-
-          <div className="hidden lg:block w-px h-6 bg-white/20"></div>
-
-          {/* אזור המשתמש - שודרג כדי להראות את השם ואת התפקיד */}
-          <div className="flex items-center gap-4 ml-12 xl:ml-79">
-            <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-3 py-1.5 border border-white/10 shadow-inner">
-              <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />
-              <span className="text-[13px] text-white font-medium whitespace-nowrap">
-                {staffName} <span className="text-blue-300/60 font-normal mx-1">|</span> {staffLabel}
-              </span>
-            </div>
-            <button
-              onClick={() => navigate("/login")}
-              className="flex items-center gap-2 text-white/80 hover:text-white hover:bg-red-500/90 transition-all px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
-            >
-              <span>התנתקות</span>
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-          
         </div>
+
+        {/* ─── קבוצה שמאלית: פרופיל והתנתקות ─── */}
+        <div className="flex items-center gap-4">
+          <div className="hidden lg:block w-px h-6 bg-white/20 ml-2"></div>
+          <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-3 py-1.5 border border-white/10 shadow-inner">
+            <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />
+            <span className="text-[13px] text-white font-medium whitespace-nowrap">
+              {staffName} <span className="text-blue-300/60 font-normal mx-1">|</span> {staffLabel}
+            </span>
+          </div>
+          <button
+            onClick={() => navigate("/login")}
+            className="flex items-center gap-2 text-white/80 hover:text-white hover:bg-red-500/90 transition-all px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
+          >
+            <span>התנתקות</span>
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+
       </div>
     </nav>
   );

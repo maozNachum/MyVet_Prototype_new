@@ -101,7 +101,25 @@ export function AppointmentSchedule() {
       {/* Main layout: [calendar] [right sidebar column] */}
       <div className="flex gap-5 items-start">
         {/* ── Calendar area ── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
+          {/* Status legend - top left corner */}
+          <div className="absolute -top-14 left-0 flex items-center gap-4 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-100 shadow-sm">
+            <span className="text-gray-500 font-medium text-[12px]" style={{ fontWeight: 600 }}>
+              סטטוס:
+            </span>
+            {[
+              { color: "bg-green-500", label: "שולם" },
+              { color: "bg-blue-500",  label: "ביקור פתוח" },
+              { color: "bg-red-500",   label: "מאחר / לא הגיע" },
+            ].map((s) => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${s.color}`} />
+                <span className="text-gray-500 text-[11.5px]" style={{ fontWeight: 500 }}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
           {nav.viewMode === "monthly" && (
             <MonthlyView
               calendarCells={nav.calendarCells}
@@ -129,15 +147,6 @@ export function AppointmentSchedule() {
 
         {/* ── Right sidebar column ── */}
         <div className="w-[220px] shrink-0 flex flex-col gap-4 sticky top-[80px]">
-          {/* Department filter — always visible */}
-          <DeptFilterPanel
-            activeDepts={activeDepts}
-            onToggle={toggleDept}
-            onClearAll={clearDepts}
-            totalCount={totalCount}
-            filteredCount={filteredCount}
-          />
-
           {/* Day detail sidebar — monthly only, when a day is selected */}
           {nav.sidebarOpen &&
             nav.selectedDay !== null &&
@@ -151,6 +160,15 @@ export function AppointmentSchedule() {
                 onApptAction={actions.openAction}
               />
             )}
+
+          {/* Department filter — always visible */}
+          <DeptFilterPanel
+            activeDepts={activeDepts}
+            onToggle={toggleDept}
+            onClearAll={clearDepts}
+            totalCount={totalCount}
+            filteredCount={filteredCount}
+          />
         </div>
       </div>
 

@@ -85,7 +85,7 @@ export function Login() {
           <div className="max-w-md">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 backdrop-blur-md rounded-xl p-2.5 border border-white/20">
-                <MyVetLogo  size={28} color="white" />
+                <MyVetLogo color="white" className="w-7 h-7" />
               </div>
             </div>
           </div>
@@ -98,7 +98,7 @@ export function Login() {
           {/* Logo for mobile */}
           <div className="flex items-center justify-center gap-2.5 mb-10 lg:mb-12">
             <div className="bg-[#1e40af] rounded-xl p-2.5 shadow-lg shadow-blue-500/20">
-              <MyVetLogo size={24} color="white" />
+              <MyVetLogo color="white" className="w-6 h-6" />
             </div>
           </div>
 
