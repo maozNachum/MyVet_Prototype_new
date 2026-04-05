@@ -224,6 +224,7 @@ export function TreatmentModal({
       const diagTexts = finalDiagnoses.map((d) => d.text).join(", ");
       const treatTexts = finalTreatments.map((t) => t.name).join(", ");
       const prescTexts = finalPrescriptions.map((p) => `${p.medication} ${p.dosage}`).join(", ");
+      
       const descParts = [
         diagTexts && `אבחנה: ${diagTexts}`,
         treatTexts && `טיפולים: ${treatTexts}`,
@@ -232,15 +233,17 @@ export function TreatmentModal({
       ].filter(Boolean);
 
       const visitTypeLabel = visitTypes.find((v) => v.id === data.visitType)?.label || "בדיקה כללית";
-      const validType = (["checkup", "surgery", "vaccination", "emergency", "dental"].includes(data.visitType) ? data.visitType : "checkup") as any;
-
+      
       // שמירה אסינכרונית ל-MedicalStore
       await addVisit({
         patientId,
         date: dateStr,
-        description: visitTypeLabel + (diagTexts ? ` — ${diagTexts}` : "") || descParts.join(" | ") || "ביקור רפואי",
-        vet: currentVet,
-        type: validType,
+        vetName: currentVet,
+        reason: visitTypeLabel,
+        diagnosis: diagTexts || "לא צוין",
+        treatment: treatTexts || "לא צוין",
+        notes: descParts.join(" | ") || "ביקור רפואי",
+        attachments: 0,
       });
 
       // שמירה אסינכרונית ל-LabStore
@@ -300,7 +303,6 @@ export function TreatmentModal({
     </div>
   );
 
-  // Restrict access for secretary role
   const canTreat = canPerformTreatment();
   
   return (
@@ -410,7 +412,7 @@ export function TreatmentModal({
                 <div className="space-y-5">
                   <div className="mb-2">
                     <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מדדים חיוניים</h4>
-                    <p className="text-gray-500 font-medium text-[14px]">מלאו את כל המדדים החיוניים של {petName}</p>
+                    <p className="text-gray-500 font-medium text-[14px]">מלאו את כל מדדי החיוניות של {petName}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -689,7 +691,6 @@ export function TreatmentModal({
                     </div>,
                     !formValues.treatments.some((t) => t.name.trim())
                   )}
-                  {/* ... Summaries for Prescriptions, Labs, Notes work similarly based on formValues */}
                 </div>
               )}
             </form>
