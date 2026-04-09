@@ -293,7 +293,7 @@ export function ClientPortal() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f8f9fb]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+    <div dir="rtl" className="min-h-screen bg-[#f8f9fb] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
       
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50 w-full">
@@ -303,7 +303,7 @@ export function ClientPortal() {
           <div className="flex items-center gap-5">
             <div className="flex items-center shrink-0 mr-2 cursor-pointer hover:opacity-90 transition-opacity">
               {/* הלוגו המקורי בפרופורציה מלאה (סמל + טקסט מובנה), ללא קופסאות או טקסטים כפולים לידו */}
-              <MyVetLogo color="#1e40af" className="h-12 w-auto" />
+              <MyVetLogo color="#1e40af" className="h-19 w-auto" />
             </div>
 
             <div className="hidden md:block w-px h-6 bg-gray-200"></div>
@@ -357,7 +357,7 @@ export function ClientPortal() {
       </header>
 
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
         <div className="mb-8">
           <h1 className="text-gray-900 text-[26px] mb-1" style={{ fontWeight: 700 }}>
             שלום, משפחת ישראלי<span className="inline-block mr-2">👋</span>

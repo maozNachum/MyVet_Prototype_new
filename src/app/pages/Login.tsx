@@ -85,7 +85,7 @@ export function Login() {
           <div className="max-w-md">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 backdrop-blur-md rounded-xl p-2.5 border border-white/20">
-                <MyVetLogo color="white" className="w-7 h-7" />
+                <MyVetLogo color="white" className="w-85 h-60" />
               </div>
             </div>
           </div>
@@ -93,12 +93,12 @@ export function Login() {
       </div>
 
       {/* צד שמאל */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50/50 px-6 py-12">
+      <div className="flex-1 flex items-center justify-center bg-gray-50/50 px-6 py-12 transform -translate-y-6">
         <div className="w-full max-w-[520px]">
-          {/* Logo for mobile */}
+          {/* Logo */}
           <div className="flex items-center justify-center gap-2.5 mb-10 lg:mb-12">
             <div className="bg-[#1e40af] rounded-xl p-2.5 shadow-lg shadow-blue-500/20">
-              <MyVetLogo color="white" className="w-6 h-6" />
+              <MyVetLogo color="white" className="w-60 h-33"  />
             </div>
           </div>
 
