@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from '../../services/supabaseClient'; // או הנתיב המדויק שבו הקובץ נמצא
 import {
   Users, UserPlus, Eye, Search, Cat, Dog, AlertTriangle,
   Calendar, AlertCircle, CalendarCheck, ChevronLeft, Stethoscope,
