@@ -126,9 +126,9 @@ export function ChatWidget({ mode }: { mode: "owner" | "staff" }) {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-24 left-8 z-[999] w-16 h-16 rounded-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
+        className="fixed bottom-24 left-8 z-[999] w-12 h-12 rounded-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
       >
-        {isOpen ? <X className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
+        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-8 h-8" />}
         {!isOpen && totalUnread > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[15px] font-bold rounded-full min-w-[23px] h-[23px] flex items-center justify-center border-2 border-white shadow-sm">{totalUnread}</span>}
       </button>
 

@@ -90,7 +90,7 @@ export function Navbar() {
 
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
-      <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="w-full px-4 h-16 flex items-center justify-between mx-auto">
         
         {/* קבוצה ימנית: לוגו, ניווט וחיפוש */}
         <div className="flex items-center gap-4 xl:gap-6">
