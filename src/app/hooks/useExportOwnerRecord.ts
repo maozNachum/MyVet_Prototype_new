@@ -9,9 +9,9 @@ interface PetMedicalEntry {
 
 interface ExportablePet {
   name: string;
-  type: "dog" | "cat";
+  type: "dog" | "cat" | "other";
   breed: string;
-  age: number;
+  age: number | string;
   gender: string;
   weight: string;
   lastVisit: string;
@@ -27,6 +27,12 @@ interface FutureAppt {
   vet: string;
   room: string;
   notes: string;
+}
+
+function getSpeciesLabel(type: ExportablePet["type"]) {
+  if (type === "dog") return "כלב";
+  if (type === "cat") return "חתול";
+  return "אחר";
 }
 
 /**
@@ -56,7 +62,7 @@ export function exportOwnerMedicalRecord(
   XLSX.utils.book_append_sheet(wb, metaSheet, "מטא-דאטה");
 
   // ── Sheet 2: Pet Info ──
-  const species = pet.type === "dog" ? "כלב" : "חתול";
+  const species = getSpeciesLabel(pet.type);
   const infoRows = [
     ["═══ פרטי חיית מחמד ═══", ""],
     ["שם", pet.name],

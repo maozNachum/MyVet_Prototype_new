@@ -5,6 +5,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { AppointmentSchedule } from "./pages/AppointmentSchedule";
 import { NewAppointment } from "./pages/NewAppointment";
 import { Patients } from "./pages/Patients";
+import { Clients } from "./pages/Clients";
 import { Inventory } from "./pages/Inventory";
 import { ClientPortal } from "./pages/ClientPortal";
 import { Reports } from "./pages/Reports";
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: "appointments", Component: AppointmentSchedule },
       { path: "appointments/new", Component: NewAppointment },
+      { path: "clients", Component: Clients },
       { path: "patients", Component: Patients },
       { path: "inventory", Component: Inventory },
       { path: "reports", Component: Reports },

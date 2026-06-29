@@ -111,12 +111,12 @@ export function Navbar() {
               יומן תורים
             </Link>
             <Link
-              to="/patients"
+              to="/clients"
               className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
-                isActive("/patients") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                isActive("/clients") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
             >
-              מטופלים
+              לקוחות
             </Link>
             <Link
               to="/inventory"

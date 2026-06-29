@@ -912,24 +912,9 @@ export function Patients() {
           <Users className="w-6 h-6 text-[#1e40af]" />
         </div>
         <div>
-          <h1 className="text-gray-900 text-[22px] font-bold">מטופלים</h1>
-          <p className="text-gray-500 text-[14px]">ניהול מטופלים, רישום חדשים וצפייה בתיקים</p>
+          <h1 className="text-gray-900 text-[22px] font-bold">בעלי חיים</h1>
+          <p className="text-gray-500 text-[14px]">ניהול בעלי חיים וצפייה בתיקים</p>
         </div>
-      </div>
-
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-8 w-fit">
-        <button
-          onClick={() => setActiveTab("list")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all cursor-pointer text-[14px] ${activeTab === "list" ? "bg-white text-[#1e40af] shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700 font-normal"}`}
-        >
-          <Eye className="w-4 h-4" /> צפייה במטופלים
-        </button>
-        <button
-          onClick={() => setActiveTab("register")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all cursor-pointer text-[14px] ${activeTab === "register" ? "bg-white text-[#1e40af] shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700 font-normal"}`}
-        >
-          <UserPlus className="w-4 h-4" /> רישום מטופל חדש
-        </button>
       </div>
 
       {activeTab === "list" ? (
