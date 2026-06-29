@@ -7,7 +7,7 @@ import {
   Download, Upload, File, Image, Paperclip, Eye,
   Receipt, CheckCircle2, CreditCard, AlertCircle,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import { ChatWidget } from "../components/ChatWidget";
 import { Footer } from "../components/Footer";
 import { OwnerBookAppointment } from "../components/OwnerBookAppointment";
@@ -147,11 +147,45 @@ interface VisitSummary {
   amount: number;
 }
 
-// Visit summaries are loaded from Supabase medical_visits.
+const petVisitSummaries: Record<number, VisitSummary[]> = {
+  1: [ // רקס
+    { id: 1, date: "25/02/2026", title: "חיסון שנתי ובדיקה כללית",  status: "paid",   amount: 320 },
+    { id: 2, date: "10/11/2025", title: "בדיקה כללית ובדיקת דם",    status: "paid",   amount: 190 },
+    { id: 3, date: "05/06/2025", title: "סירוס וטיפול מונע",         status: "paid",   amount: 650 },
+  ],
+  2: [ // ניקו
+    { id: 1, date: "15/03/2026", title: "חיסון מרובע ובדיקה שגרתית", status: "paid",   amount: 250 },
+    { id: 2, date: "01/03/2026", title: "טיפול שיניים וניקוי אבן",   status: "unpaid", amount: 800 },
+    { id: 3, date: "10/01/2025", title: "טיפול מונע תולעים",          status: "paid",   amount: 120 },
+  ],
+};
 
-// ─── Portal Data ─────────────────────────────────────────────────────
-const portalNotifications: PortalNotification[] = [];
+// ─── Static Data ─────────────────────────────────────────────────────
+const portalNotifications: PortalNotification[] = [
+  { id: 1, petName: "רקס", petType: "dog", petImage: dogImg, text: "תזכורת: חיסון כלבת בעוד חודש", type: "warning", date: "02/04/2026" },
+  { id: 2, petName: "ניקו", petType: "cat", petImage: catImg, text: "ביקורת שגרתית לאחר טיפול תולעים", type: "info", date: "15/03/2026" },
+  { id: 3, petName: "רקס", petType: "dog", petImage: dogImg, text: "תוצאות בדיקת דם מוכנות לצפייה", type: "success", date: "01/03/2026" },
+];
 
+const fallbackPets: Pet[] = [
+  {
+    id: 1, name: "רקס", type: "dog", image: dogImg, breed: "גולדן רטריבר",
+    age: 4, gender: "זכר", weight: "32 ק״ג", lastVisit: "25/02/2026", nextVaccine: "02/04/2026",
+    medicalHistory: [
+      { id: 1, date: "25/02/2026", title: "חיסון שנתי", vet: 'ד"ר יוסי כהן', icon: Syringe, color: "bg-blue-50 text-blue-600 border-blue-200" },
+      { id: 2, date: "10/11/2025", title: "בדיקה כללית", vet: 'ד"ר שרה לוי', icon: Stethoscope, color: "bg-amber-50 text-amber-600 border-amber-200" },
+      { id: 3, date: "05/06/2025", title: "סירוס", vet: 'ד"ר דוד מזרחי', icon: Scissors, color: "bg-purple-50 text-purple-600 border-purple-200" },
+    ],
+  },
+  {
+    id: 2, name: "ניקו", type: "cat", image: catImg, breed: "מעורב",
+    age: 3, gender: "זכר", weight: "4.8 ק״ג", lastVisit: "18/02/2026", nextVaccine: "15/05/2026",
+    medicalHistory: [
+      { id: 1, date: "18/02/2026", title: "טיפול תולעים", vet: 'ד"ר שרה לוי', icon: Heart, color: "bg-pink-50 text-pink-600 border-pink-200" },
+      { id: 2, date: "01/01/2026", title: "חיסון משושה", vet: 'ד"ר יוסי כהן', icon: Syringe, color: "bg-blue-50 text-blue-600 border-blue-200" },
+    ],
+  },
+];
 
 // ─── Notification style mapping ──────────────────────────────────────
 const NOTIF_STYLE = {
@@ -167,8 +201,6 @@ const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
 // ─── Component ───────────────────────────────────────────────────────
 export function ClientPortal() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const ownerIdFromUrl = searchParams.get("owner_id") || searchParams.get("ownerId") || "";
   const store = useAppointmentStore();
   const ownerNotifs = store.notifications.filter((n) => n.target === "owner");
   const ownerUnread = store.unreadCount("owner");
@@ -189,9 +221,7 @@ export function ClientPortal() {
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
   const [appointments, setAppointments] = useState<FutureAppointment[]>([]);
-  const [visitSummariesByPet, setVisitSummariesByPet] = useState<Record<number, VisitSummary[]>>({});
   const [isPortalLoading, setIsPortalLoading] = useState(true);
-  const [portalError, setPortalError] = useState<string | null>(null);
   const ownerDisplayName = getOwnerDisplayName(ownerProfile);
 
   const [rescheduleAppt, setRescheduleAppt] = useState<FutureAppointment | null>(null);
@@ -201,39 +231,34 @@ export function ClientPortal() {
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
-  const refreshPortalData = useCallback(async (ownerIdOverride?: string | null) => {
+  const refreshPortalData = useCallback(async () => {
     setIsPortalLoading(true);
-    setPortalError(null);
 
     try {
-      const requestedOwnerId = (ownerIdOverride ?? ownerIdFromUrl).trim();
+      const queryOwnerId = new URLSearchParams(window.location.search).get("ownerId");
+      const savedOwnerId = localStorage.getItem("myvet_owner_id");
+      const requestedOwnerId = queryOwnerId || savedOwnerId;
 
-      if (!requestedOwnerId) {
-        setOwnerProfile(null);
-        setPets([]);
-        setAppointments([]);
-        setVisitSummariesByPet({});
-        setPortalError("לא נבחר בעלים. היכנסו עם ‎?owner_id=תעודת_זהות של בעלים שקיים במסד.");
-        return;
-      }
-
-      const { data: ownerData, error: ownerError } = await supabase
+      let ownerQuery = supabase
         .from("owners")
         .select("owner_id, owner_first_name, owner_last_name, phone, email, address")
-        .eq("owner_id", requestedOwnerId)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
 
+      if (requestedOwnerId) {
+        ownerQuery = ownerQuery.eq("owner_id", requestedOwnerId);
+      }
+
+      const { data: ownerData, error: ownerError } = await ownerQuery.limit(1).maybeSingle();
       if (ownerError) throw ownerError;
 
       if (!ownerData) {
         setOwnerProfile(null);
         setPets([]);
         setAppointments([]);
-        setVisitSummariesByPet({});
-        setPortalError(`לא נמצא בעלים עם owner_id=${requestedOwnerId}. בדקו שהמספר קיים בטבלת owners.`);
         return;
       }
 
+      localStorage.setItem("myvet_owner_id", ownerData.owner_id);
       setOwnerProfile(ownerData);
 
       const { data: patientRows, error: patientError } = await supabase
@@ -244,7 +269,7 @@ export function ClientPortal() {
 
       if (patientError) throw patientError;
 
-      const mappedPetsBase: Pet[] = (patientRows || []).map((row: any) => {
+      const mappedPets: Pet[] = (patientRows || []).map((row: any) => {
         const petType = getSpeciesType(row.species);
 
         return {
@@ -262,69 +287,14 @@ export function ClientPortal() {
         };
       });
 
-      const petIds = mappedPetsBase.map((pet) => pet.id);
+      setPets(mappedPets);
+      setUploadPetId((current) => current || mappedPets[0]?.id || 0);
 
+      const petIds = mappedPets.map((pet) => pet.id);
       if (petIds.length === 0) {
-        setPets([]);
         setAppointments([]);
-        setVisitSummariesByPet({});
         return;
       }
-
-      const { data: visitRows, error: visitsError } = await supabase
-        .from("medical_visits")
-        .select("visit_id, pet_id, visit_date, vet_name, reason, diagnosis, treatment, notes")
-        .in("pet_id", petIds)
-        .order("visit_date", { ascending: false });
-
-      if (visitsError) throw visitsError;
-
-      const summariesByPet: Record<number, VisitSummary[]> = Object.fromEntries(
-        petIds.map((petId) => [petId, []])
-      );
-
-      const historyByPet = new Map<number, Pet["medicalHistory"]>();
-      petIds.forEach((petId) => historyByPet.set(petId, []));
-
-      (visitRows || []).forEach((row: any) => {
-        const petId = Number(row.pet_id);
-        const title = row.reason || row.diagnosis || row.treatment || "ביקור רפואי";
-        const date = formatPortalDate(row.visit_date);
-        const vet = row.vet_name || "לא צוין רופא";
-
-        summariesByPet[petId] = [
-          ...(summariesByPet[petId] || []),
-          {
-            id: row.visit_id,
-            date,
-            title,
-            status: "paid",
-            amount: 0,
-          },
-        ];
-
-        historyByPet.set(petId, [
-          ...(historyByPet.get(petId) || []),
-          {
-            id: row.visit_id,
-            date,
-            title,
-            vet,
-            icon: Stethoscope,
-            color: "bg-blue-50 text-blue-600 border-blue-200",
-          },
-        ]);
-      });
-
-      const mappedPets = mappedPetsBase.map((pet) => ({
-        ...pet,
-        lastVisit: summariesByPet[pet.id]?.[0]?.date || "טרם נקבע",
-        medicalHistory: historyByPet.get(pet.id) || [],
-      }));
-
-      setVisitSummariesByPet(summariesByPet);
-      setPets(mappedPets);
-      setUploadPetId(mappedPets[0]?.id || 0);
 
       const { data: appointmentRows, error: appointmentsError } = await supabase
         .from("appointments")
@@ -357,19 +327,16 @@ export function ClientPortal() {
       setAppointments(mappedAppointments);
     } catch (error) {
       console.error("Error loading owner portal from Supabase:", error);
-      setOwnerProfile(null);
-      setPets([]);
+      setPets(fallbackPets);
       setAppointments([]);
-      setVisitSummariesByPet({});
-      setPortalError("שגיאה בטעינת האזור האישי מ-Supabase. בדקו Console / הרשאות RLS / שמות עמודות.");
     } finally {
       setIsPortalLoading(false);
     }
-  }, [ownerIdFromUrl]);
+  }, []);
 
   useEffect(() => {
-    refreshPortalData(ownerIdFromUrl);
-  }, [ownerIdFromUrl, refreshPortalData]);
+    refreshPortalData();
+  }, [refreshPortalData]);
 
   // 2. עדכון להזזת תור מול Supabase
   const handleReschedule = async () => {
@@ -469,7 +436,7 @@ export function ClientPortal() {
       newFiles.push(entry);
     });
     setUploadedFiles((prev) => [...newFiles, ...prev]);
-  }, [uploadPetId, uploadCategory, pets]);
+  }, [uploadPetId, uploadCategory]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -569,18 +536,6 @@ export function ClientPortal() {
           <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
         </div>
 
-        {isPortalLoading && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5 text-center text-gray-500 font-medium">
-            טוען נתונים מ-Supabase...
-          </div>
-        )}
-
-        {!isPortalLoading && portalError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-5 mb-5 text-[14px] font-medium">
-            {portalError}
-          </div>
-        )}
-
         {/* ── Accordion Sections ── */}
         <div className="space-y-5">
 
@@ -602,9 +557,6 @@ export function ClientPortal() {
 
             {openSections.notifications && (
               <div className="border-t border-gray-100 p-4 space-y-3">
-                {portalNotifications.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 font-medium text-[14px]">אין כרגע התראות במסד הנתונים</div>
-                )}
                 {portalNotifications.map((notif) => {
                   const s = NOTIF_STYLE[notif.type];
                   return (
@@ -803,20 +755,20 @@ export function ClientPortal() {
                                 <FileText className="w-4 h-4 text-[#1e40af]" />
                                 <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 700 }}>סיכומי ביקור</h4>
                                 <span className="bg-blue-100 text-[#1e40af] text-[13px] px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
-                                  {(visitSummariesByPet[pet.id] ?? []).length} ביקורים
+                                  {(petVisitSummaries[pet.id] ?? []).length} ביקורים
                                 </span>
                               </div>
-                              {(visitSummariesByPet[pet.id] ?? []).some((v) => v.status === "unpaid") && (
+                              {(petVisitSummaries[pet.id] ?? []).some((v) => v.status === "unpaid") && (
                                 <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
                                   <AlertCircle className="w-3.5 h-3.5 text-red-500" />
                                   <span className="text-red-600 text-[12px]" style={{ fontWeight: 600 }}>
-                                    חוב פתוח: ₪{(visitSummariesByPet[pet.id] ?? []).filter((v) => v.status === "unpaid").reduce((s, v) => s + v.amount, 0).toLocaleString()}
+                                    חוב פתוח: ₪{(petVisitSummaries[pet.id] ?? []).filter((v) => v.status === "unpaid").reduce((s, v) => s + v.amount, 0).toLocaleString()}
                                   </span>
                                 </div>
                               )}
                             </div>
                             <div className="divide-y divide-gray-100">
-                              {(visitSummariesByPet[pet.id] ?? []).map((visit) => (
+                              {(petVisitSummaries[pet.id] ?? []).map((visit) => (
                                 <div
                                   key={visit.id}
                                   className={`flex items-center justify-between py-3.5 gap-4 -mx-6 px-6 transition-colors hover:bg-white/80 ${

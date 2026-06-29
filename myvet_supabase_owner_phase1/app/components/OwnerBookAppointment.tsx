@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
-import { supabase } from "../../services/supabaseClient";
 
 interface TimeSlot {
   time: string;
@@ -37,6 +36,10 @@ interface OwnerPortalPet {
   breed: string;
 }
 
+const fallbackPets: OwnerPortalPet[] = [
+  { id: 1, name: "רקס", type: "dog", breed: "גולדן רטריבר" },
+  { id: 2, name: "ניקו", type: "cat", breed: "מעורב" },
+];
 
 // Generate next 7 days with mock availability
 function generateWeek(): DaySlots[] {
@@ -107,7 +110,7 @@ export function OwnerBookAppointment({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [week] = useState<DaySlots[]>(generateWeek);
-  const displayPets = pets;
+  const displayPets = pets.length > 0 ? pets : fallbackPets;
 
   if (!isOpen) return null;
 
@@ -239,11 +242,6 @@ export function OwnerBookAppointment({
                   בחרו חיה
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  {displayPets.length === 0 && (
-                    <div className="col-span-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px] font-medium">
-                      לא נמצאו חיות מחוברות לבעלים במסד הנתונים.
-                    </div>
-                  )}
                   {displayPets.map((pet) => {
                     const PIcon = pet.type === "dog" ? Dog : Cat;
                     const isSelected = selectedPet === pet.id;
