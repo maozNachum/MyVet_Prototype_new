@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
+import { supabase } from "../../services/supabaseClient";
 
 interface TimeSlot {
   time: string;
