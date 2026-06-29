@@ -244,7 +244,7 @@ export function Patients() {
 
         if (data) {
           // מיפוי הנתונים למבנה שהממשק שלך צריך
-          const mappedData: Patient[] = data.map((row: any) => {
+          const mappedData: Patient[] = data.map((row: any) => { id: Number(row.pet_id)
             const owner = Array.isArray(row.owner) ? row.owner[0] : row.owner;
             const ownerFullName = `${owner?.owner_first_name || ""} ${owner?.owner_last_name || ""}`.trim();
 
@@ -891,7 +891,7 @@ export function Patients() {
           petName={pet.name}
           petSpecies={pet.speciesType}
           ownerName={owner.name}
-          patientId={selectedPatient.id}
+          patientId={Number(selectedPatient.id)}
         />
 
         {isAnesthesiaOpen && (

@@ -70,20 +70,51 @@ export function getApptStatus(id: number): { dotColor: string; label: string } {
 
 export interface DateOption { label: string; day: number; month: number; year: number }
 
-export const AVAILABLE_DATES: DateOption[] = [
-  { label: "ראשון 08/03", day: 8, month: 2, year: 2026 },
-  { label: "שלישי 10/03", day: 10, month: 2, year: 2026 },
-  { label: "חמישי 12/03", day: 12, month: 2, year: 2026 },
-  { label: "ראשון 15/03", day: 15, month: 2, year: 2026 },
-  { label: "שלישי 17/03", day: 17, month: 2, year: 2026 },
-  { label: "חמישי 19/03", day: 19, month: 2, year: 2026 },
-  { label: "ראשון 22/03", day: 22, month: 2, year: 2026 },
-  { label: "שלישי 24/03", day: 24, month: 2, year: 2026 },
-  { label: "ראשון 29/03", day: 29, month: 2, year: 2026 },
-  { label: "שלישי 31/03", day: 31, month: 2, year: 2026 },
-  { label: "חמישי 02/04", day: 2, month: 3, year: 2026 },
-  { label: "ראשון 05/04", day: 5, month: 3, year: 2026 },
-];
+function formatDateLabel(date: Date) {
+  const dayName = HEBREW_DAY_NAMES[date.getDay()];
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dayName} ${day}/${month}`;
+}
+
+function formatDateValue(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${date.getFullYear()}`;
+}
+
+function startOfToday() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+function buildUpcomingDateOptions(count = 12): DateOption[] {
+  const options: DateOption[] = [];
+  const current = startOfToday();
+
+  // מציגים תאריכים זמינים החל ממחר, כדי שלא ייקבע תור בשעה שכבר עברה היום.
+  current.setDate(current.getDate() + 1);
+
+  while (options.length < count) {
+    const dayOfWeek = current.getDay();
+
+    // ראשון עד שישי. כרגע מדלגים על שבת.
+    if (dayOfWeek !== 6) {
+      options.push({
+        label: formatDateLabel(current),
+        day: current.getDate(),
+        month: current.getMonth(), // JS month index: 0-11
+        year: current.getFullYear(),
+      });
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return options;
+}
+
+export const AVAILABLE_DATES: DateOption[] = buildUpcomingDateOptions(12);
 
 export const AVAILABLE_TIMES = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -92,23 +123,16 @@ export const AVAILABLE_TIMES = [
 ];
 
 // Also used in ClientPortal rescheduling (string-format dates)
-export const AVAILABLE_DATE_STRINGS = [
-  { label: "ראשון 08/03", value: "08/03/2026" },
-  { label: "שלישי 10/03", value: "10/03/2026" },
-  { label: "חמישי 12/03", value: "12/03/2026" },
-  { label: "ראשון 15/03", value: "15/03/2026" },
-  { label: "שלישי 17/03", value: "17/03/2026" },
-  { label: "חמישי 19/03", value: "19/03/2026" },
-  { label: "ראשון 22/03", value: "22/03/2026" },
-  { label: "שלישי 24/03", value: "24/03/2026" },
-  { label: "ראשון 29/03", value: "29/03/2026" },
-  { label: "שלישי 31/03", value: "31/03/2026" },
-  { label: "חמישי 02/04", value: "02/04/2026" },
-  { label: "ראשון 05/04", value: "05/04/2026" },
-];
+export const AVAILABLE_DATE_STRINGS = AVAILABLE_DATES.map((d) => {
+  const date = new Date(d.year, d.month, d.day);
+  return {
+    label: d.label,
+    value: formatDateValue(date),
+  };
+});
 
 export const TIMELINE_HOURS = Array.from({ length: 11 }, (_, i) => i + 8);
-export const TODAY = new Date(2026, 2, 2);
+export const TODAY = startOfToday();
 
 // ─── Utility Functions ───────────────────────────────────────────────
 export const getDaysInMonth = (year: number, month: number) =>

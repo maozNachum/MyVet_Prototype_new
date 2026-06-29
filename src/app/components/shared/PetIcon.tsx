@@ -1,12 +1,12 @@
-import { Dog, Cat } from "lucide-react";
+import { Dog, Cat, PawPrint } from "lucide-react";
 
 interface PetIconProps {
-  species: "dog" | "cat";
+  species: "dog" | "cat" | "other" | string;
   className?: string;
 }
 
 export function PetIcon({ species, className = "w-6 h-6" }: PetIconProps) {
-  return species === "dog"
-    ? <Dog className={className} />
-    : <Cat className={className} />;
+  if (species === "cat") return <Cat className={className} />;
+  if (species === "dog") return <Dog className={className} />;
+  return <PawPrint className={className} />;
 }

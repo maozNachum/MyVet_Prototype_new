@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Dog,
   Cat,
+  PawPrint,
 } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
@@ -245,7 +246,7 @@ export function OwnerBookAppointment({
                     </div>
                   )}
                   {displayPets.map((pet) => {
-                    const PIcon = pet.type === "dog" ? Dog : Cat;
+                    const PIcon = pet.type === "dog" ? Dog : pet.type === "cat" ? Cat : PawPrint;
                     const isSelected = selectedPet === pet.id;
                     return (
                       <button

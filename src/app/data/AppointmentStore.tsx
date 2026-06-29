@@ -1,16 +1,22 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
+import { supabase } from "../../services/supabaseClient";
+
+export type PetSpecies = "dog" | "cat" | "other";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface CalendarAppointment {
   id: number;
+  appointmentId?: number;
+  petId?: number;
+  ownerId?: string;
   day: number;
-  month: number;
+  month: number; // JS month index: 0-11
   year: number;
   time: string;
   endTime: string;
   petName: string;
-  petSpecies: "dog" | "cat";
+  petSpecies: PetSpecies;
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
@@ -34,18 +40,12 @@ export interface AppNotification {
   read: boolean;
 }
 
-// ─── Initial Data (Fallback) ─────────────────────────────────────────
-const initialCalendarAppointments: CalendarAppointment[] = [
-  { id: 1,  day: 1,  month: 2, year: 2026, time: "09:00", endTime: "09:30", petName: "רקס",  petSpecies: "dog", ownerName: "יוסי כהן",     ownerPhone: "052-3456789", ownerEmail: "yosi.cohen@example.com", department: "פנימית",     vet: 'ד"ר יוסי כהן',  room: "חדר 1",       type: "חיסון שנתי",    color: "blue",   notes: "חיסון כלבת + משושה" },
-  { id: 2,  day: 1,  month: 2, year: 2026, time: "10:00", endTime: "10:45", petName: "ניקו",  petSpecies: "cat", ownerName: "שרה לוי",      ownerPhone: "054-7891234", ownerEmail: "shira.levi@example.com", department: "פנימית",     vet: 'ד"ר שרה לוי',   room: "חדר 2",       type: "בדיקה כללית",   color: "green",  notes: "בדיקה שגרתית חצי שנתית" },
-];
-
-// ─── Context ─────────────────────────────────────────────────────────
 interface AppointmentStoreValue {
   calendarAppointments: CalendarAppointment[];
   notifications: AppNotification[];
   isLoading: boolean;
   error: string | null;
+  refreshAppointments: () => Promise<void>;
   unreadCount: (target: "owner" | "staff") => number;
   markAllRead: (target: "owner" | "staff") => void;
   dismissNotification: (id: number) => void;
@@ -65,35 +65,34 @@ export function useAppointmentStore() {
 
 let notifIdCounter = 100;
 
-const simulateNetwork = async (shouldFail = false) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  if (shouldFail && Math.random() > 0.8) {
-    throw new Error("שגיאת רשת מדומה");
-  }
-};
+function normalizeSpecies(species?: string | null): PetSpecies {
+  const value = (species || "").toLowerCase().trim();
+  if (value === "cat" || value === "חתול") return "cat";
+  if (value === "dog" || value === "כלב") return "dog";
+  return "other";
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function buildDateTime(year: number, month: number, day: number, time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Date(year, month, day, hours || 0, minutes || 0, 0, 0);
+}
+
+function fullName(first?: string | null, last?: string | null) {
+  return `${first || ""} ${last || ""}`.trim();
+}
 
 export function AppointmentStoreProvider({ children }: { children: ReactNode }) {
-  // 1. טעינה ראשונית: מנסה למשוך מהדפדפן, ואם אין - משתמש בנתוני הדיפולט
-  const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointment[]>(() => {
-    try {
-      const saved = localStorage.getItem("myvet_appointments");
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("שגיאה בטעינת נתונים מהדפדפן", e);
-    }
-    return initialCalendarAppointments;
-  });
-
+  const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-
-  // 2. שמירה אוטומטית: בכל פעם שהתורים משתנים, הם נשמרים מיד לדפדפן
-  useEffect(() => {
-    localStorage.setItem("myvet_appointments", JSON.stringify(calendarAppointments));
-  }, [calendarAppointments]);
 
   const pushNotification = useCallback(
     (target: "owner" | "staff", type: AppNotification["type"], message: string, detail: string, petName: string, changedBy: "owner" | "staff") => {
@@ -115,6 +114,97 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     []
   );
 
+  const refreshAppointments = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data: appointmentRows, error: appointmentsError } = await supabase
+        .from("appointments")
+        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
+        .order("start_time", { ascending: true });
+
+      if (appointmentsError) throw appointmentsError;
+
+      const rows = appointmentRows || [];
+      const petIds = Array.from(new Set(rows.map((row: any) => Number(row.pet_id)).filter(Boolean)));
+
+      const petById = new Map<number, any>();
+      const ownerIds = new Set<string>();
+
+      if (petIds.length > 0) {
+        const { data: patientRows, error: patientError } = await supabase
+          .from("patients")
+          .select("pet_id, pet_name, species, owner_id")
+          .in("pet_id", petIds);
+
+        if (patientError) throw patientError;
+
+        for (const patient of patientRows || []) {
+          petById.set(Number(patient.pet_id), patient);
+          if (patient.owner_id) ownerIds.add(String(patient.owner_id));
+        }
+      }
+
+      const ownerById = new Map<string, any>();
+
+      if (ownerIds.size > 0) {
+        const { data: ownerRows, error: ownerError } = await supabase
+          .from("owners")
+          .select("owner_id, owner_first_name, owner_last_name, phone, email")
+          .in("owner_id", Array.from(ownerIds));
+
+        if (ownerError) throw ownerError;
+
+        for (const owner of ownerRows || []) {
+          ownerById.set(String(owner.owner_id), owner);
+        }
+      }
+
+      const mapped: CalendarAppointment[] = rows.map((row: any) => {
+        const start = new Date(row.start_time);
+        const end = new Date(row.end_time || row.start_time);
+        const pet = petById.get(Number(row.pet_id));
+        const owner = pet?.owner_id ? ownerById.get(String(pet.owner_id)) : undefined;
+
+        return {
+          id: Number(row.appointment_id),
+          appointmentId: Number(row.appointment_id),
+          petId: row.pet_id !== null && row.pet_id !== undefined ? Number(row.pet_id) : undefined,
+          ownerId: pet?.owner_id ? String(pet.owner_id) : undefined,
+          day: start.getDate(),
+          month: start.getMonth(),
+          year: start.getFullYear(),
+          time: formatTime(row.start_time),
+          endTime: formatTime(row.end_time),
+          petName: pet?.pet_name || "חיה לא מזוהה",
+          petSpecies: normalizeSpecies(pet?.species),
+          ownerName: owner ? fullName(owner.owner_first_name, owner.owner_last_name) || "ללא שם" : "בעלים לא ידוע",
+          ownerPhone: owner?.phone || "",
+          ownerEmail: owner?.email || "",
+          department: row.department || "כללי",
+          vet: row.vet_name || "טרם שובץ",
+          room: row.room || "—",
+          type: row.appointment_type || "ביקור",
+          color: row.color || "blue",
+          notes: row.notes || "",
+        };
+      });
+
+      setCalendarAppointments(mapped);
+    } catch (err: any) {
+      console.error("Error loading appointments from Supabase:", err);
+      setError(err?.message || "שגיאה בטעינת תורים");
+      toast.error("שגיאה בטעינת תורים מהענן");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAppointments();
+  }, [refreshAppointments]);
+
   const unreadCount = useCallback(
     (target: "owner" | "staff") => notifications.filter((n) => n.target === target && !n.read).length,
     [notifications]
@@ -128,48 +218,78 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  // 3. הוספת תור עם מזהה חד-משמעי
   const addAppointment = useCallback(
     async (appt: Omit<CalendarAppointment, "id">) => {
       setIsLoading(true);
-      setError(null); // ניקוי שגיאות קודמות
-      try {
-        await simulateNetwork();
-        
-        setCalendarAppointments((prev) => {
-          // מזהה מאובטח מבוסס זמן, למניעת דריסת נתונים
-          const newId = Date.now() + Math.floor(Math.random() * 1000);
-          return [...prev, { ...appt, id: newId }];
-        });
+      setError(null);
 
+      try {
+        if (!appt.petId) {
+          throw new Error("לא נבחרה חיה תקינה לתור");
+        }
+
+        const startDate = buildDateTime(appt.year, appt.month, appt.day, appt.time);
+        const endDate = buildDateTime(appt.year, appt.month, appt.day, appt.endTime || appt.time);
+
+        const { error: insertError } = await supabase.from("appointments").insert([
+          {
+            pet_id: appt.petId,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+            department: appt.department || "כללי",
+            vet_name: appt.vet || "טרם שובץ",
+            room: appt.room || "—",
+            appointment_type: appt.type || "ביקור",
+            color: appt.color || "blue",
+            notes: appt.notes || null,
+          },
+        ]);
+
+        if (insertError) throw insertError;
+
+        await refreshAppointments();
+        pushNotification("staff", "created", "תור חדש נוסף ליומן", `התור של ${appt.petName} נוסף`, appt.petName, "staff");
         toast.success("התור נוסף ליומן בהצלחה");
-      } catch (err) {
-        setError("שגיאה בהוספת התור");
-        toast.error("לא הצלחנו לקבוע את התור, נסה שוב");
+      } catch (err: any) {
+        console.error("Error adding appointment:", err);
+        setError(err?.message || "שגיאה בהוספת התור");
+        toast.error(err?.message || "לא הצלחנו לקבוע את התור");
+        throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [refreshAppointments, pushNotification]
   );
 
   const deleteAppointment = useCallback(
     async (id: number, by: "owner" | "staff") => {
       setIsLoading(true);
       setError(null);
+
       try {
-        await simulateNetwork(true);
         const appt = calendarAppointments.find((a) => a.id === id);
-        if (!appt) return;
-        
+
+        const { error: deleteError } = await supabase
+          .from("appointments")
+          .delete()
+          .eq("appointment_id", id);
+
+        if (deleteError) throw deleteError;
+
         setCalendarAppointments((prev) => prev.filter((a) => a.id !== id));
-        
-        const target = by === "owner" ? "staff" : "owner";
-        pushNotification(target, "cancelled", `${by === "owner" ? appt.ownerName : "המרפאה"} — ביטול תור`, `התור של ${appt.petName} בוטל`, appt.petName, by);
+
+        if (appt) {
+          const target = by === "owner" ? "staff" : "owner";
+          pushNotification(target, "cancelled", `${by === "owner" ? appt.ownerName : "המרפאה"} — ביטול תור`, `התור של ${appt.petName} בוטל`, appt.petName, by);
+        }
+
         toast.success("התור בוטל בהצלחה");
-      } catch (err) {
-        setError("שגיאה במחיקת התור");
-        toast.error("שגיאת רשת: לא הצלחנו למחוק את התור");
+      } catch (err: any) {
+        console.error("Error deleting appointment:", err);
+        setError(err?.message || "שגיאה במחיקת התור");
+        toast.error("לא הצלחנו למחוק את התור");
+        throw err;
       } finally {
         setIsLoading(false);
       }
@@ -181,38 +301,98 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     async (id: number, newDay: number, newMonth: number, newYear: number, newTime: string, newEndTime: string, by: "owner" | "staff") => {
       setIsLoading(true);
       setError(null);
+
       try {
-        await simulateNetwork();
+        const startDate = buildDateTime(newYear, newMonth, newDay, newTime);
+        const endDate = buildDateTime(newYear, newMonth, newDay, newEndTime || newTime);
+
+        const { error: updateError } = await supabase
+          .from("appointments")
+          .update({
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+          })
+          .eq("appointment_id", id);
+
+        if (updateError) throw updateError;
+
         setCalendarAppointments((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, day: newDay, month: newMonth, year: newYear, time: newTime, endTime: newEndTime } : a))
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, day: newDay, month: newMonth, year: newYear, time: newTime, endTime: newEndTime }
+              : a
+          )
         );
-        toast.success("התור עודכן בהצלחה!");
-      } catch (err) {
-        setError("שגיאה בעדכון התור");
+
+        const appt = calendarAppointments.find((a) => a.id === id);
+        if (appt) {
+          const target = by === "owner" ? "staff" : "owner";
+          pushNotification(target, "rescheduled", "התור הוזז", `התור של ${appt.petName} הוזז ל-${newDay}/${newMonth + 1}/${newYear} בשעה ${newTime}`, appt.petName, by);
+        }
+
+        toast.success("התור עודכן בהצלחה");
+      } catch (err: any) {
+        console.error("Error rescheduling appointment:", err);
+        setError(err?.message || "שגיאה בעדכון התור");
         toast.error("שגיאה בעדכון התור");
+        throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [calendarAppointments, pushNotification]
   );
 
   const editAppointment = useCallback(
     async (id: number, updates: Partial<CalendarAppointment>, by: "owner" | "staff") => {
       setIsLoading(true);
       setError(null);
+
       try {
-        await simulateNetwork();
+        const current = calendarAppointments.find((a) => a.id === id);
+        if (!current) throw new Error("התור לא נמצא");
+
+        const patch: Record<string, any> = {};
+
+        if (updates.type !== undefined) patch.appointment_type = updates.type;
+        if (updates.department !== undefined) patch.department = updates.department;
+        if (updates.vet !== undefined) patch.vet_name = updates.vet;
+        if (updates.room !== undefined) patch.room = updates.room;
+        if (updates.notes !== undefined) patch.notes = updates.notes || null;
+        if (updates.color !== undefined) patch.color = updates.color;
+
+        if (updates.time !== undefined) {
+          const startDate = buildDateTime(current.year, current.month, current.day, updates.time);
+          patch.start_time = startDate.toISOString();
+        }
+
+        if (updates.endTime !== undefined) {
+          const endDate = buildDateTime(current.year, current.month, current.day, updates.endTime);
+          patch.end_time = endDate.toISOString();
+        }
+
+        const { error: updateError } = await supabase
+          .from("appointments")
+          .update(patch)
+          .eq("appointment_id", id);
+
+        if (updateError) throw updateError;
+
         setCalendarAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+
+        const target = by === "owner" ? "staff" : "owner";
+        pushNotification(target, "edited", "פרטי תור עודכנו", `התור של ${current.petName} עודכן`, current.petName, by);
         toast.success("הפרטים נשמרו בהצלחה");
-      } catch (err) {
-        setError("שגיאה בעריכת התור");
+      } catch (err: any) {
+        console.error("Error editing appointment:", err);
+        setError(err?.message || "שגיאה בעריכת התור");
         toast.error("לא הצלחנו לשמור את העריכה");
+        throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [calendarAppointments, pushNotification]
   );
 
   return (
@@ -222,6 +402,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         notifications,
         isLoading,
         error,
+        refreshAppointments,
         unreadCount,
         markAllRead,
         dismissNotification,

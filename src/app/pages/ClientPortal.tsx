@@ -11,8 +11,6 @@ import { useNavigate, useSearchParams } from "react-router";
 import { ChatWidget } from "../components/ChatWidget";
 import { Footer } from "../components/Footer";
 import { OwnerBookAppointment } from "../components/OwnerBookAppointment";
-import { useAppointmentStore } from "../data/AppointmentStore";
-import { NotificationPanel } from "../components/shared/NotificationPanel";
 import { SuccessMessage } from "../components/shared/SuccessMessage";
 import { PillPicker } from "../components/shared/PillPicker";
 import { ModalOverlay, ModalHeader } from "../components/shared/ModalOverlay";
@@ -28,8 +26,17 @@ const catImg = "https://images.unsplash.com/photo-1767446516607-02cb627b342f?cro
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface PortalNotification {
-  id: number; petName: string; petType: "dog" | "cat" | "other"; petImage: string;
-  text: string; type: "warning" | "info" | "success"; date: string;
+  id: number;
+  source: "notification" | "reminder";
+  sourceId: number;
+  petName: string;
+  petType: "dog" | "cat" | "other";
+  petImage: string;
+  title: string;
+  text: string;
+  type: "warning" | "info" | "success" | "payment" | "appointment" | "medical" | "lab";
+  date: string;
+  isRead?: boolean;
 }
 
 interface Pet {
@@ -46,6 +53,7 @@ interface FutureAppointment {
 
 interface UploadedFile {
   id: number;
+  documentId: number;
   name: string;
   size: number;
   type: string;
@@ -53,6 +61,8 @@ interface UploadedFile {
   petName: string;
   category: string;
   uploadDate: string;
+  filePath: string;
+  fileUrl?: string | null;
   previewUrl?: string;
 }
 
@@ -62,6 +72,8 @@ const FILE_CATEGORIES = [
   { key: "insurance", label: "ביטוח" },
   { key: "prescription", label: "מרשם" },
   { key: "xray", label: "צילום רנטגן" },
+  { key: "invoice", label: "חשבונית / קבלה" },
+  { key: "medical_summary", label: "סיכום רפואי" },
   { key: "other", label: "אחר" },
 ] as const;
 
@@ -78,6 +90,33 @@ function formatFileSize(bytes: number): string {
 function getFileIcon(type: string) {
   if (type.startsWith("image/")) return Image;
   return File;
+}
+
+function getSafeFileExtension(fileName: string) {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
+  const safeExt = ext.replace(/[^a-z0-9]/g, "").slice(0, 10);
+  return safeExt || "bin";
+}
+
+function sanitizeStorageFileName(fileName: string) {
+  const ext = getSafeFileExtension(fileName);
+  const baseName = fileName.includes(".")
+    ? fileName.split(".").slice(0, -1).join(".")
+    : fileName;
+
+  const safeBaseName = baseName
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40) || "document";
+
+  return `${safeBaseName}.${ext}`;
+}
+
+function getStorageContentType(file: File) {
+  return file.type || "application/octet-stream";
 }
 
 interface OwnerProfile {
@@ -145,19 +184,46 @@ interface VisitSummary {
   title: string;
   status: "paid" | "unpaid";
   amount: number;
+  paymentId?: number;
+}
+
+interface PaymentSummary {
+  id: number;
+  petId: number | null;
+  visitId: number | null;
+  appointmentId: number | null;
+  title: string;
+  amount: number;
+  status: "unpaid" | "paid" | "partial" | "cancelled" | "refunded";
+  method?: string | null;
+  date: string;
+  dueDate?: string;
+  notes?: string | null;
+}
+
+function getPaymentStatusLabel(status: PaymentSummary["status"]) {
+  if (status === "paid") return "שולם";
+  if (status === "partial") return "שולם חלקית";
+  if (status === "cancelled") return "בוטל";
+  if (status === "refunded") return "זוכה";
+  return "לתשלום";
+}
+
+function isOpenPayment(status: PaymentSummary["status"]) {
+  return status === "unpaid" || status === "partial";
 }
 
 // Visit summaries are loaded from Supabase medical_visits.
-
-// ─── Portal Data ─────────────────────────────────────────────────────
-const portalNotifications: PortalNotification[] = [];
-
 
 // ─── Notification style mapping ──────────────────────────────────────
 const NOTIF_STYLE = {
   warning: { border: "border-r-orange-400", bg: "bg-orange-50", iconColor: "text-orange-500", Icon: AlertTriangle },
   info:    { border: "border-r-blue-400",   bg: "bg-blue-50",   iconColor: "text-blue-500",   Icon: Info },
   success: { border: "border-r-emerald-400", bg: "bg-emerald-50", iconColor: "text-emerald-500", Icon: FileText },
+  payment: { border: "border-r-emerald-400", bg: "bg-emerald-50", iconColor: "text-emerald-600", Icon: CreditCard },
+  appointment: { border: "border-r-indigo-400", bg: "bg-indigo-50", iconColor: "text-indigo-500", Icon: CalendarClock },
+  medical: { border: "border-r-blue-400", bg: "bg-blue-50", iconColor: "text-blue-500", Icon: Stethoscope },
+  lab: { border: "border-r-purple-400", bg: "bg-purple-50", iconColor: "text-purple-500", Icon: FileText },
 } as const;
 
 // ─── PillPicker data ─────────────────────────────────────────────────
@@ -169,9 +235,6 @@ export function ClientPortal() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ownerIdFromUrl = searchParams.get("owner_id") || searchParams.get("ownerId") || "";
-  const store = useAppointmentStore();
-  const ownerNotifs = store.notifications.filter((n) => n.target === "owner");
-  const ownerUnread = store.unreadCount("owner");
 
   const [expandedPet, setExpandedPet] = useState<number | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -189,7 +252,12 @@ export function ClientPortal() {
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
   const [appointments, setAppointments] = useState<FutureAppointment[]>([]);
+  const [portalNotifications, setPortalNotifications] = useState<PortalNotification[]>([]);
   const [visitSummariesByPet, setVisitSummariesByPet] = useState<Record<number, VisitSummary[]>>({});
+  const [paymentsByPet, setPaymentsByPet] = useState<Record<number, PaymentSummary[]>>({});
+  const [payingPaymentId, setPayingPaymentId] = useState<number | null>(null);
+  const [paymentToPay, setPaymentToPay] = useState<PaymentSummary | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(true);
   const [portalError, setPortalError] = useState<string | null>(null);
   const ownerDisplayName = getOwnerDisplayName(ownerProfile);
@@ -212,7 +280,10 @@ export function ClientPortal() {
         setOwnerProfile(null);
         setPets([]);
         setAppointments([]);
+        setPortalNotifications([]);
         setVisitSummariesByPet({});
+        setPaymentsByPet({});
+        setUploadedFiles([]);
         setPortalError("לא נבחר בעלים. היכנסו עם ‎?owner_id=תעודת_זהות של בעלים שקיים במסד.");
         return;
       }
@@ -229,7 +300,10 @@ export function ClientPortal() {
         setOwnerProfile(null);
         setPets([]);
         setAppointments([]);
+        setPortalNotifications([]);
         setVisitSummariesByPet({});
+        setPaymentsByPet({});
+        setUploadedFiles([]);
         setPortalError(`לא נמצא בעלים עם owner_id=${requestedOwnerId}. בדקו שהמספר קיים בטבלת owners.`);
         return;
       }
@@ -264,20 +338,74 @@ export function ClientPortal() {
 
       const petIds = mappedPetsBase.map((pet) => pet.id);
 
-      if (petIds.length === 0) {
-        setPets([]);
-        setAppointments([]);
-        setVisitSummariesByPet({});
-        return;
+      let visitRows: any[] = [];
+      if (petIds.length > 0) {
+        const { data, error: visitsError } = await supabase
+          .from("medical_visits")
+          .select("visit_id, pet_id, visit_date, vet_name, reason, diagnosis, treatment, notes")
+          .in("pet_id", petIds)
+          .order("visit_date", { ascending: false });
+
+        if (visitsError) throw visitsError;
+        visitRows = data || [];
       }
 
-      const { data: visitRows, error: visitsError } = await supabase
-        .from("medical_visits")
-        .select("visit_id, pet_id, visit_date, vet_name, reason, diagnosis, treatment, notes")
-        .in("pet_id", petIds)
-        .order("visit_date", { ascending: false });
+      let paymentRows: any[] = [];
+      if (petIds.length > 0) {
+        const { data, error: paymentsError } = await supabase
+          .from("payments")
+          .select("payment_id, owner_id, pet_id, visit_id, appointment_id, amount, status, payment_method, paid_at, due_date, notes, created_at")
+          .eq("owner_id", ownerData.owner_id)
+          .order("created_at", { ascending: false });
 
-      if (visitsError) throw visitsError;
+        if (paymentsError) throw paymentsError;
+        paymentRows = data || [];
+      }
+
+      const visitPetById = new Map<number, number>();
+      visitRows.forEach((row: any) => {
+        if (row.visit_id !== null && row.visit_id !== undefined && row.pet_id !== null && row.pet_id !== undefined) {
+          visitPetById.set(Number(row.visit_id), Number(row.pet_id));
+        }
+      });
+
+      const paymentsByVisitId = new Map<number, any>();
+      paymentRows.forEach((row: any) => {
+        if (row.visit_id !== null && row.visit_id !== undefined) {
+          paymentsByVisitId.set(Number(row.visit_id), row);
+        }
+      });
+
+      const paymentSummariesByPet: Record<number, PaymentSummary[]> = Object.fromEntries(
+        petIds.map((petId) => [petId, []])
+      );
+
+      paymentRows.forEach((row: any) => {
+        const petId = row.pet_id !== null && row.pet_id !== undefined
+          ? Number(row.pet_id)
+          : row.visit_id !== null && row.visit_id !== undefined
+            ? visitPetById.get(Number(row.visit_id)) || null
+            : null;
+
+        if (!petId || !petIds.includes(petId)) return;
+
+        paymentSummariesByPet[petId] = [
+          ...(paymentSummariesByPet[petId] || []),
+          {
+            id: Number(row.payment_id),
+            petId,
+            visitId: row.visit_id !== null && row.visit_id !== undefined ? Number(row.visit_id) : null,
+            appointmentId: row.appointment_id !== null && row.appointment_id !== undefined ? Number(row.appointment_id) : null,
+            title: row.notes || `חיוב #${row.payment_id}`,
+            amount: Number(row.amount || 0),
+            status: (row.status || "unpaid") as PaymentSummary["status"],
+            method: row.payment_method || null,
+            date: formatPortalDate(row.paid_at || row.created_at),
+            dueDate: row.due_date ? formatPortalDate(row.due_date) : undefined,
+            notes: row.notes || null,
+          },
+        ];
+      });
 
       const summariesByPet: Record<number, VisitSummary[]> = Object.fromEntries(
         petIds.map((petId) => [petId, []])
@@ -286,11 +414,14 @@ export function ClientPortal() {
       const historyByPet = new Map<number, Pet["medicalHistory"]>();
       petIds.forEach((petId) => historyByPet.set(petId, []));
 
-      (visitRows || []).forEach((row: any) => {
+      visitRows.forEach((row: any) => {
         const petId = Number(row.pet_id);
         const title = row.reason || row.diagnosis || row.treatment || "ביקור רפואי";
         const date = formatPortalDate(row.visit_date);
         const vet = row.vet_name || "לא צוין רופא";
+
+        const payment = paymentsByVisitId.get(Number(row.visit_id));
+        const paymentStatus = payment && payment.status !== "paid" ? "unpaid" : "paid";
 
         summariesByPet[petId] = [
           ...(summariesByPet[petId] || []),
@@ -298,8 +429,9 @@ export function ClientPortal() {
             id: row.visit_id,
             date,
             title,
-            status: "paid",
-            amount: 0,
+            status: paymentStatus,
+            amount: payment ? Number(payment.amount || 0) : 0,
+            paymentId: payment ? Number(payment.payment_id) : undefined,
           },
         ];
 
@@ -323,44 +455,149 @@ export function ClientPortal() {
       }));
 
       setVisitSummariesByPet(summariesByPet);
+      setPaymentsByPet(paymentSummariesByPet);
       setPets(mappedPets);
       setUploadPetId(mappedPets[0]?.id || 0);
 
-      const { data: appointmentRows, error: appointmentsError } = await supabase
-        .from("appointments")
-        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
-        .in("pet_id", petIds)
-        .gte("start_time", new Date().toISOString())
-        .order("start_time", { ascending: true });
-
-      if (appointmentsError) throw appointmentsError;
-
+      let mappedAppointments: FutureAppointment[] = [];
       const petById = new Map(mappedPets.map((pet) => [pet.id, pet]));
-      const mappedAppointments: FutureAppointment[] = (appointmentRows || []).map((row: any) => {
-        const pet = petById.get(row.pet_id);
-        const petType = pet?.type || "other";
+
+      const { data: documentRows, error: documentsError } = await supabase
+        .from("documents")
+        .select("document_id, owner_id, pet_id, visit_id, file_name, file_path, file_url, mime_type, file_size, category, uploaded_at")
+        .eq("owner_id", ownerData.owner_id)
+        .order("uploaded_at", { ascending: false });
+
+      if (documentsError) throw documentsError;
+
+      const mappedDocuments: UploadedFile[] = await Promise.all((documentRows || []).map(async (row: any) => {
+        let signedUrl: string | null = null;
+
+        if (row.file_path) {
+          const { data: signedData } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(row.file_path, 60 * 60);
+
+          signedUrl = signedData?.signedUrl || null;
+        }
+
+        const petId = row.pet_id !== null && row.pet_id !== undefined ? Number(row.pet_id) : 0;
+        const pet = petById.get(petId);
+        const mimeType = row.mime_type || "application/octet-stream";
 
         return {
-          id: row.appointment_id,
-          petName: pet?.name || "חיה לא מזוהה",
+          id: Number(row.document_id),
+          documentId: Number(row.document_id),
+          name: row.file_name || "מסמך",
+          size: Number(row.file_size || 0),
+          type: mimeType,
+          petId,
+          petName: pet?.name || "כללי",
+          category: row.category || "other",
+          uploadDate: formatPortalDate(row.uploaded_at),
+          filePath: row.file_path || "",
+          fileUrl: row.file_url || signedUrl,
+          previewUrl: mimeType.startsWith("image/") ? (signedUrl || row.file_url || undefined) : undefined,
+        };
+      }));
+
+      setUploadedFiles(mappedDocuments);
+
+      if (petIds.length > 0) {
+        const { data: appointmentRows, error: appointmentsError } = await supabase
+          .from("appointments")
+          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
+          .in("pet_id", petIds)
+          .gte("start_time", new Date().toISOString())
+          .order("start_time", { ascending: true });
+
+        if (appointmentsError) throw appointmentsError;
+
+        mappedAppointments = (appointmentRows || []).map((row: any) => {
+          const pet = petById.get(row.pet_id);
+          const petType = pet?.type || "other";
+
+          return {
+            id: row.appointment_id,
+            petName: pet?.name || "חיה לא מזוהה",
+            petType,
+            petImage: getSpeciesImage(petType),
+            date: formatPortalDate(row.start_time),
+            time: formatPortalTime(row.start_time),
+            type: row.appointment_type || "ביקור",
+            vet: row.vet_name || "טרם שובץ",
+            room: row.room || "—",
+            notes: row.notes || "",
+          };
+        });
+      }
+
+      setAppointments(mappedAppointments);
+
+      const { data: notificationRows, error: notificationsError } = await supabase
+        .from("notifications")
+        .select("notification_id, owner_id, pet_id, title, message, type, is_read, created_at")
+        .eq("owner_id", ownerData.owner_id)
+        .in("target", ["owner", "both"])
+        .order("created_at", { ascending: false });
+
+      if (notificationsError) throw notificationsError;
+
+      const { data: reminderRows, error: remindersError } = await supabase
+        .from("reminders")
+        .select("reminder_id, owner_id, pet_id, title, message, reminder_type, due_at, status")
+        .eq("owner_id", ownerData.owner_id)
+        .in("status", ["open", "sent"])
+        .order("due_at", { ascending: true });
+
+      if (remindersError) throw remindersError;
+
+      const mappedNotifications: PortalNotification[] = (notificationRows || []).map((row: any) => {
+        const pet = row.pet_id ? petById.get(Number(row.pet_id)) : undefined;
+        const petType = pet?.type || "other";
+        return {
+          id: Number(row.notification_id),
+          source: "notification",
+          sourceId: Number(row.notification_id),
+          petName: pet?.name || "כללי",
           petType,
           petImage: getSpeciesImage(petType),
-          date: formatPortalDate(row.start_time),
-          time: formatPortalTime(row.start_time),
-          type: row.appointment_type || "ביקור",
-          vet: row.vet_name || "טרם שובץ",
-          room: row.room || "—",
-          notes: row.notes || "",
+          title: row.title || "התראה",
+          text: row.message || "",
+          type: (row.type || "info") as PortalNotification["type"],
+          date: formatPortalDate(row.created_at),
+          isRead: Boolean(row.is_read),
         };
       });
 
-      setAppointments(mappedAppointments);
+      const mappedReminders: PortalNotification[] = (reminderRows || []).map((row: any) => {
+        const pet = row.pet_id ? petById.get(Number(row.pet_id)) : undefined;
+        const petType = pet?.type || "other";
+        return {
+          id: Number(row.reminder_id) + 1000000,
+          source: "reminder",
+          sourceId: Number(row.reminder_id),
+          petName: pet?.name || "כללי",
+          petType,
+          petImage: getSpeciesImage(petType),
+          title: row.title || "תזכורת",
+          text: row.message || "",
+          type: (row.reminder_type === "payment" ? "payment" : row.reminder_type === "appointment" ? "appointment" : row.reminder_type === "lab_result" ? "lab" : "warning") as PortalNotification["type"],
+          date: formatPortalDate(row.due_at),
+          isRead: row.status !== "open",
+        };
+      });
+
+      setPortalNotifications([...mappedNotifications, ...mappedReminders]);
     } catch (error) {
       console.error("Error loading owner portal from Supabase:", error);
       setOwnerProfile(null);
       setPets([]);
       setAppointments([]);
+      setPortalNotifications([]);
       setVisitSummariesByPet({});
+      setPaymentsByPet({});
+      setUploadedFiles([]);
       setPortalError("שגיאה בטעינת האזור האישי מ-Supabase. בדקו Console / הרשאות RLS / שמות עמודות.");
     } finally {
       setIsPortalLoading(false);
@@ -431,7 +668,60 @@ export function ClientPortal() {
     }
   };
 
-  // File upload state (נשאר ללא שינוי בדיוק כפי שביקשת)
+  const openDemoPayment = (payment: PaymentSummary) => {
+    setPaymentSuccess(false);
+    setPaymentToPay(payment);
+  };
+
+  const openDemoPaymentById = (paymentId?: number) => {
+    if (!paymentId) return;
+
+    const payment = Object.values(paymentsByPet)
+      .flat()
+      .find((item) => item.id === paymentId);
+
+    if (payment) {
+      openDemoPayment(payment);
+    } else {
+      alert("לא נמצא חיוב מתאים במסד הנתונים.");
+    }
+  };
+
+  const handleDemoPaymentConfirm = async () => {
+    if (!paymentToPay) return;
+
+    try {
+      setPayingPaymentId(paymentToPay.id);
+
+      const { error } = await supabase
+        .from("payments")
+        .update({
+          status: "paid",
+          payment_method: "credit",
+          paid_at: new Date().toISOString(),
+          notes: paymentToPay.notes
+            ? `${paymentToPay.notes} | שולם דרך פורטל בעלים - תשלום דמו`
+            : "שולם דרך פורטל בעלים - תשלום דמו",
+        })
+        .eq("payment_id", paymentToPay.id);
+
+      if (error) throw error;
+
+      await refreshPortalData();
+      setPaymentSuccess(true);
+      setTimeout(() => {
+        setPaymentSuccess(false);
+        setPaymentToPay(null);
+      }, 1800);
+    } catch (error) {
+      console.error("Failed to complete demo payment", error);
+      alert("לא הצלחנו להשלים את תשלום הדמו. בדקו הרשאות RLS / Console.");
+    } finally {
+      setPayingPaymentId(null);
+    }
+  };
+
+  // File upload state connected to Supabase Storage + documents table
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -439,42 +729,104 @@ export function ClientPortal() {
   const [uploadCategory, setUploadCategory] = useState<string>("other");
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
   const [deleteConfirmFile, setDeleteConfirmFile] = useState<UploadedFile | null>(null);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(null);
 
-  const processFiles = useCallback((files: FileList | null) => {
-    if (!files) return;
+  const processFiles = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    if (!ownerProfile?.owner_id) {
+      alert("לא ניתן להעלות קבצים בלי בעלים מחובר.");
+      return;
+    }
+
+    if (!uploadPetId) {
+      alert("בחרו חיה לפני העלאת קובץ.");
+      return;
+    }
+
     const maxSize = 10 * 1024 * 1024; // 10 MB
     const pet = pets.find((p) => p.id === uploadPetId);
-    const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+    const uploadedEntries: UploadedFile[] = [];
 
-    const newFiles: UploadedFile[] = [];
-    Array.from(files).forEach((file) => {
+    setIsUploadingFiles(true);
+
+    for (const file of Array.from(files)) {
       if (file.size > maxSize) {
         alert(`הקובץ "${file.name}" גדול מדי (מקסימום 10MB)`);
-        return;
+        continue;
       }
-      const entry: UploadedFile = {
-        id: Date.now() + Math.random(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        petId: uploadPetId,
-        petName: pet?.name || "",
-        category: uploadCategory,
-        uploadDate: dateStr,
-      };
-      if (file.type.startsWith("image/")) {
-        entry.previewUrl = URL.createObjectURL(file);
+
+      const safeName = sanitizeStorageFileName(file.name);
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
+      const filePath = `${ownerProfile.owner_id}/${uploadPetId}/${uniqueName}`;
+
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: getStorageContentType(file),
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: documentData, error: documentError } = await supabase
+          .from("documents")
+          .insert({
+            owner_id: ownerProfile.owner_id,
+            pet_id: uploadPetId,
+            file_name: file.name,
+            file_path: filePath,
+            mime_type: getStorageContentType(file),
+            file_size: file.size,
+            category: uploadCategory,
+            uploaded_by_role: "owner",
+          })
+          .select("document_id, file_name, file_path, file_url, mime_type, file_size, category, uploaded_at")
+          .single();
+
+        if (documentError) throw documentError;
+
+        const { data: signedData } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(filePath, 60 * 60);
+
+        const signedUrl = signedData?.signedUrl || null;
+        const mimeType = documentData.mime_type || getStorageContentType(file);
+
+        uploadedEntries.push({
+          id: Number(documentData.document_id),
+          documentId: Number(documentData.document_id),
+          name: documentData.file_name || file.name,
+          size: Number(documentData.file_size || file.size),
+          type: mimeType,
+          petId: uploadPetId,
+          petName: pet?.name || "כללי",
+          category: documentData.category || uploadCategory,
+          uploadDate: formatPortalDate(documentData.uploaded_at),
+          filePath: documentData.file_path || filePath,
+          fileUrl: documentData.file_url || signedUrl,
+          previewUrl: mimeType.startsWith("image/") ? (signedUrl || undefined) : undefined,
+        });
+      } catch (error) {
+        console.error("Failed to upload document", error);
+        alert(`לא הצלחנו להעלות את הקובץ "${file.name}". בדקו הרשאות Storage / טבלת documents.`);
       }
-      newFiles.push(entry);
-    });
-    setUploadedFiles((prev) => [...newFiles, ...prev]);
-  }, [uploadPetId, uploadCategory, pets]);
+    }
+
+    if (uploadedEntries.length > 0) {
+      setUploadedFiles((prev) => [...uploadedEntries, ...prev]);
+    }
+
+    setIsUploadingFiles(false);
+  }, [ownerProfile, uploadPetId, uploadCategory, pets]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    processFiles(e.dataTransfer.files);
+    void processFiles(e.dataTransfer.files);
   }, [processFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -487,13 +839,58 @@ export function ClientPortal() {
     setIsDragging(false);
   }, []);
 
-  const handleDeleteFile = (id: number) => {
-    setUploadedFiles((prev) => {
-      const file = prev.find((f) => f.id === id);
-      if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
-      return prev.filter((f) => f.id !== id);
-    });
-    setDeleteConfirmFile(null);
+  const handleOpenFile = async (file: UploadedFile) => {
+    try {
+      let url = file.previewUrl || file.fileUrl || null;
+
+      if (!url && file.filePath) {
+        const { data, error } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(file.filePath, 60 * 60);
+
+        if (error) throw error;
+        url = data?.signedUrl || null;
+      }
+
+      if (!url) {
+        alert("לא נמצא קישור לקובץ.");
+        return;
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Failed to open document", error);
+      alert("לא הצלחנו לפתוח את הקובץ. בדקו הרשאות Storage.");
+    }
+  };
+
+  const handleDeleteFile = async (fileToDelete: UploadedFile) => {
+    try {
+      setDeletingDocumentId(fileToDelete.documentId);
+
+      if (fileToDelete.filePath) {
+        const { error: storageError } = await supabase.storage
+          .from("documents")
+          .remove([fileToDelete.filePath]);
+
+        if (storageError) throw storageError;
+      }
+
+      const { error: dbError } = await supabase
+        .from("documents")
+        .delete()
+        .eq("document_id", fileToDelete.documentId);
+
+      if (dbError) throw dbError;
+
+      setUploadedFiles((prev) => prev.filter((f) => f.documentId !== fileToDelete.documentId));
+      setDeleteConfirmFile(null);
+    } catch (error) {
+      console.error("Failed to delete document", error);
+      alert("לא הצלחנו למחוק את הקובץ. בדקו הרשאות Storage / documents.");
+    } finally {
+      setDeletingDocumentId(null);
+    }
   };
 
   return (
@@ -520,14 +917,18 @@ export function ClientPortal() {
           {/* ─── צד שמאל: התראות, פעולות ומשתמש ─── */}
           <div className="flex items-center gap-4">
             
-            <NotificationPanel
-              notifications={ownerNotifs}
-              unreadCount={ownerUnread}
-              onMarkAllRead={() => store.markAllRead("owner")}
-              onDismiss={(id) => store.dismissNotification(id)}
-              title="עדכונים מהמרפאה"
-              emptyText="אין עדכונים מהמרפאה"
-            />
+            <button
+              onClick={() => setOpenSections((prev) => ({ ...prev, notifications: true }))}
+              className="relative w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
+              title="התראות ותזכורות"
+            >
+              <Bell className="w-5 h-5 text-gray-500" />
+              {portalNotifications.filter((n) => !n.isRead).length > 0 && (
+                <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  {portalNotifications.filter((n) => !n.isRead).length}
+                </span>
+              )}
+            </button>
 
             <button 
               onClick={() => setIsBookingOpen(true)} 
@@ -594,7 +995,7 @@ export function ClientPortal() {
                 <div className="bg-orange-50 rounded-xl p-2.5"><Bell className="w-5 h-5 text-orange-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מרכז התראות ותזכורות</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{portalNotifications.length} התראות חדשות</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{portalNotifications.length} התראות / תזכורות</p>
                 </div>
               </div>
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.notifications ? "rotate-180" : ""}`} />
@@ -603,7 +1004,7 @@ export function ClientPortal() {
             {openSections.notifications && (
               <div className="border-t border-gray-100 p-4 space-y-3">
                 {portalNotifications.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 font-medium text-[14px]">אין כרגע התראות במסד הנתונים</div>
+                  <div className="text-center py-8 text-gray-500 font-medium text-[14px]">אין כרגע התראות או תזכורות במסד הנתונים</div>
                 )}
                 {portalNotifications.map((notif) => {
                   const s = NOTIF_STYLE[notif.type];
@@ -618,9 +1019,10 @@ export function ClientPortal() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-gray-900 text-[13px]" style={{ fontWeight: 600 }}>{notif.petName}</span>
+                            <span className="text-gray-900 text-[13px]" style={{ fontWeight: 700 }}>{notif.title}</span>
                             <span className="text-gray-300 text-[13px]">{notif.date}</span>
                           </div>
+                          <p className="text-gray-500 text-[12px] mb-1" style={{ fontWeight: 600 }}>{notif.petName}</p>
                           <p className="text-gray-600 text-[13px] mb-3" style={{ lineHeight: 1.6 }}>{notif.text}</p>
                           <button onClick={() => setIsBookingOpen(true)} className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm" style={{ fontWeight: 500 }}>
                             <Calendar className="w-3 h-3" /> קבע תור
@@ -785,8 +1187,11 @@ export function ClientPortal() {
                             הורדת תיק רפואי
                           </button>
                           <button
-                            className="flex items-center gap-2 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600 text-[12px] px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                            type="button"
+                            onClick={() => setExpandedPet(pet.id)}
+                            className="flex items-center gap-2 border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 text-[12px] px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
                             style={{ fontWeight: 500 }}
+                            title="פתיחת אזור חיובים ותשלומים"
                           >
                             <Receipt className="w-3.5 h-3.5" />
                             חיובים ותשלומים
@@ -850,9 +1255,14 @@ export function ClientPortal() {
                                           <AlertCircle className="w-3.5 h-3.5" />
                                           לתשלום ({visit.amount.toLocaleString()} ₪)
                                         </span>
-                                        <button className="flex items-center gap-1.5 bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-2 rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/15" style={{ fontWeight: 600 }}>
+                                        <button
+                                          onClick={() => openDemoPaymentById(visit.paymentId)}
+                                          disabled={!visit.paymentId || payingPaymentId === visit.paymentId}
+                                          className={`flex items-center gap-1.5 text-white text-[12px] px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/15 ${!visit.paymentId || payingPaymentId === visit.paymentId ? "bg-gray-300 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] cursor-pointer"}`}
+                                          style={{ fontWeight: 600 }}
+                                        >
                                           <CreditCard className="w-3.5 h-3.5" />
-                                          שלם עכשיו
+                                          {payingPaymentId === visit.paymentId ? "מעבד תשלום..." : "שלם עכשיו"}
                                         </button>
                                       </>
                                     )}
@@ -860,6 +1270,65 @@ export function ClientPortal() {
                                 </div>
                               ))}
                             </div>
+                          </div>
+
+                          <div className="px-6 py-4 bg-white border-t border-gray-100">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <Receipt className="w-4 h-4 text-emerald-600" />
+                                <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 700 }}>חיובים ותשלומים</h4>
+                                <span className="bg-emerald-50 text-emerald-700 text-[13px] px-2 py-0.5 rounded-full border border-emerald-200" style={{ fontWeight: 600 }}>
+                                  {(paymentsByPet[pet.id] ?? []).length} חיובים
+                                </span>
+                              </div>
+
+                              {(paymentsByPet[pet.id] ?? []).some((payment) => isOpenPayment(payment.status)) && (
+                                <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                                  <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                                  <span className="text-red-600 text-[12px]" style={{ fontWeight: 600 }}>
+                                    יתרה לתשלום: ₪{(paymentsByPet[pet.id] ?? []).filter((payment) => isOpenPayment(payment.status)).reduce((sum, payment) => sum + payment.amount, 0).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {(paymentsByPet[pet.id] ?? []).length === 0 ? (
+                              <div className="text-center py-6 text-gray-500 font-medium text-[13px]">
+                                אין חיובים שמורים במסד הנתונים עבור החיה הזאת
+                              </div>
+                            ) : (
+                              <div className="divide-y divide-gray-100">
+                                {(paymentsByPet[pet.id] ?? []).map((payment) => (
+                                  <div key={payment.id} className={`flex items-center justify-between py-3.5 gap-4 -mx-6 px-6 transition-colors hover:bg-gray-50 ${isOpenPayment(payment.status) ? "bg-red-50/20" : ""}`}>
+                                    <div className="min-w-0">
+                                      <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{payment.title}</p>
+                                      <p className="text-gray-500 font-medium text-[12px] mt-0.5">
+                                        ₪{payment.amount.toLocaleString()} · {payment.dueDate ? `לתשלום עד ${payment.dueDate}` : payment.date}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <span className={`inline-flex items-center gap-1.5 border text-[12px] px-3 py-1.5 rounded-full ${isOpenPayment(payment.status) ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`} style={{ fontWeight: 700 }}>
+                                        {isOpenPayment(payment.status) ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                        {getPaymentStatusLabel(payment.status)}
+                                      </span>
+
+                                      {isOpenPayment(payment.status) && (
+                                        <button
+                                          onClick={() => openDemoPayment(payment)}
+                                          disabled={payingPaymentId === payment.id}
+                                          className={`flex items-center gap-1.5 text-white text-[12px] px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/15 ${payingPaymentId === payment.id ? "bg-gray-300 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] cursor-pointer"}`}
+                                          style={{ fontWeight: 600 }}
+                                        >
+                                          <CreditCard className="w-3.5 h-3.5" />
+                                          {payingPaymentId === payment.id ? "מעבד תשלום..." : "שלם עכשיו"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           <div className="bg-gray-50/50 px-6 py-5">
@@ -884,7 +1353,7 @@ export function ClientPortal() {
                 <div className="bg-violet-50 rounded-xl p-2.5"><Paperclip className="w-5 h-5 text-violet-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מסמכים וקבצים</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים הועלו</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים בענן</p>
                 </div>
               </div>
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
@@ -925,7 +1394,7 @@ export function ClientPortal() {
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => { if (!isUploadingFiles && pets.length > 0) fileInputRef.current?.click(); }}
                   className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all mb-5 ${
                     isDragging
                       ? "border-[#1e40af] bg-blue-50/60"
@@ -938,16 +1407,16 @@ export function ClientPortal() {
                     multiple
                     className="hidden"
                     accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                    onChange={(e) => { processFiles(e.target.files); e.target.value = ""; }}
+                    onChange={(e) => { void processFiles(e.target.files); e.target.value = ""; }}
                   />
                   <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${isDragging ? "bg-blue-100" : "bg-gray-100"}`}>
                     <Upload className={`w-7 h-7 ${isDragging ? "text-[#1e40af]" : "text-gray-500 font-medium"}`} />
                   </div>
                   <p className="text-gray-700 text-[15px] mb-1" style={{ fontWeight: 600 }}>
-                    {isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
+                    {isUploadingFiles ? "מעלה קבצים לענן..." : isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
                   </p>
                   <p className="text-gray-500 font-medium text-[12px]">
-                    תמונות, PDF, Word, Excel — עד 10MB לקובץ
+                    תמונות, PDF, Word, Excel — עד 10MB לקובץ. הקבצים נשמרים ב-Supabase Storage
                   </p>
                 </div>
 
@@ -955,7 +1424,7 @@ export function ClientPortal() {
                 {uploadedFiles.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 font-medium">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-[14px]">לא הועלו קבצים עדיין</p>
+                    <p className="text-[14px]">לא נמצאו קבצים בענן</p>
                     <p className="text-[12px] mt-1">העלו תעודות חיסון, תוצאות בדיקות, מרשמים ועוד</p>
                   </div>
                 ) : (
@@ -992,15 +1461,20 @@ export function ClientPortal() {
 
                           {/* Actions */}
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {file.previewUrl && (
-                              <button
-                                onClick={() => setPreviewFile(file)}
-                                className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer"
-                                title="צפייה"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => file.type.startsWith("image/") && file.previewUrl ? setPreviewFile(file) : void handleOpenFile(file)}
+                              className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer"
+                              title="צפייה / פתיחה"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => void handleOpenFile(file)}
+                              className="p-2 rounded-lg hover:bg-emerald-50 text-gray-500 font-medium hover:text-emerald-600 transition-colors cursor-pointer"
+                              title="פתיחה בחלון חדש"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => setDeleteConfirmFile(file)}
                               className="p-2 rounded-lg hover:bg-red-50 text-gray-500 font-medium hover:text-red-500 transition-colors cursor-pointer"
@@ -1089,6 +1563,114 @@ export function ClientPortal() {
         </ModalOverlay>
       )}
 
+      {/* ── Demo Payment Modal ── */}
+      {paymentToPay && (
+        <ModalOverlay
+          onClose={() => {
+            if (!payingPaymentId) {
+              setPaymentToPay(null);
+              setPaymentSuccess(false);
+            }
+          }}
+          maxWidth="max-w-md"
+          zIndex="z-[320]"
+        >
+          <ModalHeader
+            title="תשלום מאובטח - דמו"
+            icon={<CreditCard className="w-5 h-5 text-white/80" />}
+            onClose={() => {
+              if (!payingPaymentId) {
+                setPaymentToPay(null);
+                setPaymentSuccess(false);
+              }
+            }}
+          />
+
+          <div className="p-6">
+            {paymentSuccess ? (
+              <SuccessMessage
+                title="התשלום נקלט בהצלחה"
+                subtitle={`חיוב בסך ₪${paymentToPay.amount.toLocaleString()} סומן כשולם`}
+              />
+            ) : (
+              <>
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 border border-blue-100">
+                      <CreditCard className="w-5 h-5 text-[#1e40af]" />
+                    </div>
+                    <div>
+                      <p className="text-gray-900 text-[15px]" style={{ fontWeight: 700 }}>
+                        {paymentToPay.title}
+                      </p>
+                      <p className="text-gray-500 text-[13px] mt-1">
+                        זהו מסך תשלום דמו לפרויקט. אין להזין פרטי אשראי אמיתיים.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-5">
+                  <div className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
+                    <span className="text-gray-500 text-[13px] font-medium">סכום לתשלום</span>
+                    <span className="text-gray-900 text-[18px]" style={{ fontWeight: 800 }}>
+                      ₪{paymentToPay.amount.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="border border-gray-100 rounded-xl px-4 py-3 bg-gray-50">
+                    <label className="block text-gray-500 text-[12px] font-medium mb-1">
+                      אמצעי תשלום
+                    </label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-800 text-[14px] font-semibold">כרטיס אשראי דמו</span>
+                      <span className="text-gray-500 text-[13px]">**** 4242</span>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-100 rounded-xl px-4 py-3 bg-gray-50">
+                    <label className="block text-gray-500 text-[12px] font-medium mb-1">
+                      בעל הכרטיס
+                    </label>
+                    <span className="text-gray-800 text-[14px] font-semibold">{ownerDisplayName}</span>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+                  <p className="text-amber-700 text-[12px] leading-5 font-medium">
+                    במערכת אמיתית הכפתור היה מחובר לספק סליקה. בדמו הזה אנחנו מעדכנים את הרשומה בטבלת payments לסטטוס paid.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDemoPaymentConfirm}
+                    disabled={payingPaymentId === paymentToPay.id}
+                    className={`flex-1 py-3 rounded-xl transition-colors text-[14px] shadow-sm flex items-center justify-center gap-2 ${
+                      payingPaymentId === paymentToPay.id
+                        ? "bg-gray-300 text-white cursor-not-allowed"
+                        : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer"
+                    }`}
+                    style={{ fontWeight: 700 }}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {payingPaymentId === paymentToPay.id ? "מעבד תשלום..." : "אישור תשלום דמו"}
+                  </button>
+                  <button
+                    onClick={() => setPaymentToPay(null)}
+                    disabled={payingPaymentId === paymentToPay.id}
+                    className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ fontWeight: 500 }}
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </ModalOverlay>
+      )}
+
       <OwnerBookAppointment
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
@@ -1144,11 +1726,11 @@ export function ClientPortal() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => handleDeleteFile(deleteConfirmFile.id)}
+                onClick={() => void handleDeleteFile(deleteConfirmFile)}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2"
                 style={{ fontWeight: 600 }}
               >
-                <Trash2 className="w-4 h-4" /> כן, מחקו
+                <Trash2 className="w-4 h-4" /> {deletingDocumentId === deleteConfirmFile.documentId ? "מוחק..." : "כן, מחקו"}
               </button>
               <button
                 onClick={() => setDeleteConfirmFile(null)}

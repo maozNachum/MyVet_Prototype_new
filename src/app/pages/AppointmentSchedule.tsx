@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useCalendarNav } from "../hooks/useCalendarNav";
 import { useAppointmentActions } from "../hooks/useAppointmentActions";
 import { useAppointmentStore } from "../data/AppointmentStore";
@@ -13,7 +13,11 @@ import { AppointmentActionModal } from "../components/schedule/AppointmentAction
 export function AppointmentSchedule() {
   const nav = useCalendarNav();
   const actions = useAppointmentActions();
-  const { calendarAppointments } = useAppointmentStore();
+  const { calendarAppointments, refreshAppointments, isLoading } = useAppointmentStore();
+
+  useEffect(() => {
+    refreshAppointments();
+  }, [refreshAppointments]);
 
   // ── Search & Filter state ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +101,12 @@ export function AppointmentSchedule() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
+
+      {isLoading && (
+        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 text-[13px] font-medium">
+          מסנכרן תורים מול Supabase...
+        </div>
+      )}
 
       {/* Main layout: [calendar] [right sidebar column] */}
       <div className="flex gap-5 items-start">

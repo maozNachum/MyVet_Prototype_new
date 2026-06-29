@@ -110,7 +110,7 @@ export function TreatmentModal({
   patientId,
   onSave,
 }: TreatmentModalProps) {
-  const { addVisit } = useMedicalStore();
+  const { addVisit, addPrescription } = useMedicalStore();
   const { addLabOrder } = useLabStore();
   const currentVet = getStaffLabel();
 
@@ -209,7 +209,11 @@ export function TreatmentModal({
 
   // ── Save Logic ──
   const onSubmit = async (data: TreatmentFormValues) => {
-    if (!patientId) return;
+  if (!patientId) {
+    alert("שגיאה: לא נמצא מזהה מטופל לשמירת הטיפול");
+    console.error("Missing patientId in TreatmentModal");
+    return;
+  }
 
     try {
       // ניקוי נתונים ריקים ממערכים
@@ -234,8 +238,8 @@ export function TreatmentModal({
 
       const visitTypeLabel = visitTypes.find((v) => v.id === data.visitType)?.label || "בדיקה כללית";
       
-      // שמירה אסינכרונית ל-MedicalStore
-      await addVisit({
+      // שמירה אסינכרונית ל-Supabase דרך MedicalStore
+      const savedVisit = await addVisit({
         patientId,
         date: dateStr,
         vetName: currentVet,
@@ -245,6 +249,20 @@ export function TreatmentModal({
         notes: descParts.join(" | ") || "ביקור רפואי",
         attachments: 0,
       });
+
+      // שמירת מרשמים לטבלת prescriptions, אם הוזנו
+      for (const prescription of finalPrescriptions) {
+        await addPrescription({
+          patientId,
+          visitId: savedVisit?.id || null,
+          medication: prescription.medication,
+          dosage: prescription.dosage,
+          frequency: prescription.frequency,
+          duration: prescription.duration,
+          startDate: new Date().toISOString().slice(0, 10),
+          prescribedBy: currentVet,
+        });
+      }
 
       // שמירה אסינכרונית ל-LabStore
       for (const lab of finalLabs) {
