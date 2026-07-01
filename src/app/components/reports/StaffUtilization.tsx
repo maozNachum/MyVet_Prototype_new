@@ -1,251 +1,170 @@
-import { useState } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell,
-} from "recharts";
-import {
-  Clock, Users, Timer, AlertTriangle, TrendingUp, ArrowUp, ArrowDown,
-} from "lucide-react";
-import { ReportSearchBar } from "./ReportSearchBar";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarClock, HeartPulse, Search, Stethoscope, Users } from "lucide-react";
+import { DateRangeKey, fetchReportDataset, getFilteredDataset } from "../../data/reportMetrics";
+import { HorizontalBarChart, MiniColumnChart } from "./ReportVisuals";
 
-// ─── Mock Data ───────────────────────────────────────────────────────
-const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+interface StaffUtilizationProps {
+  dateRange: DateRangeKey;
+}
 
-// Heatmap data: [day][hour] = intensity 0-10
-const HEATMAP_RAW: number[][] = [
-  [3, 7, 9, 8, 4, 2, 6, 8, 9, 7, 3], // Sunday
-  [2, 5, 7, 9, 6, 3, 5, 7, 8, 6, 2], // Monday
-  [4, 8, 10, 9, 5, 2, 7, 9, 10, 8, 4], // Tuesday
-  [3, 6, 8, 7, 4, 3, 5, 6, 7, 5, 2], // Wednesday
-  [5, 9, 10, 10, 7, 4, 8, 10, 9, 6, 3], // Thursday
-];
-
-interface VetMetrics {
+interface VetActivity {
   name: string;
-  avgWaitTime: number; // minutes
-  scheduledDuration: number; // avg minutes
-  actualDuration: number; // avg minutes
-  totalAppointments: number;
-  overrunRate: number; // percentage
-  patientSatisfaction: number; // 1-5
+  appointments: number;
+  visits: number;
+  total: number;
+  appointmentTypes: Record<string, number>;
 }
 
-const VET_METRICS: VetMetrics[] = [
-  { name: 'ד"ר שרה לוי', avgWaitTime: 8, scheduledDuration: 20, actualDuration: 24, totalAppointments: 42, overrunRate: 35, patientSatisfaction: 4.7 },
-  { name: 'ד"ר יוסי כהן', avgWaitTime: 14, scheduledDuration: 20, actualDuration: 28, totalAppointments: 38, overrunRate: 55, patientSatisfaction: 4.5 },
-  { name: 'ד"ר דוד מזרחי', avgWaitTime: 6, scheduledDuration: 30, actualDuration: 32, totalAppointments: 28, overrunRate: 22, patientSatisfaction: 4.8 },
-];
+export function StaffUtilization({ dateRange }: StaffUtilizationProps) {
+  const [rows, setRows] = useState<VetActivity[]>([]);
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-const WAIT_TIME_HOURLY = HOURS.map((h, i) => ({
-  hour: h,
-  waitTime: [5, 8, 14, 18, 12, 6, 9, 15, 19, 11, 4][i],
-}));
+  useEffect(() => {
+    let mounted = true;
 
-// ─── Helpers ─────────────────────────────────────────────────────────
-function getHeatColor(intensity: number): string {
-  if (intensity <= 2) return "bg-emerald-100 text-emerald-700";
-  if (intensity <= 4) return "bg-emerald-200 text-emerald-800";
-  if (intensity <= 6) return "bg-amber-200 text-amber-800";
-  if (intensity <= 8) return "bg-orange-300 text-orange-900";
-  return "bg-red-400 text-white";
-}
+    async function load() {
+      setIsLoading(true);
+      const { dataset } = await fetchReportDataset();
+      const filtered = getFilteredDataset(dataset, dateRange);
+      const activity = new Map<string, VetActivity>();
 
-// ─── Component ──────────────────────────────────────────────────────
-export function StaffUtilization() {
-  const [selectedVet, setSelectedVet] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+      function getRow(name: string) {
+        const key = name || "לא משויך";
+        const existing = activity.get(key);
+        if (existing) return existing;
+        const next = { name: key, appointments: 0, visits: 0, total: 0, appointmentTypes: {} };
+        activity.set(key, next);
+        return next;
+      }
 
-  const filteredVets = VET_METRICS.filter((v) => {
-    if (!searchTerm) return true;
-    const q = searchTerm.toLowerCase();
-    return v.name.toLowerCase().includes(q);
-  });
+      filtered.appointments.forEach((appointment) => {
+        const row = getRow(appointment.vet_name || "לא משויך");
+        row.appointments += 1;
+        row.total += 1;
+        const type = appointment.appointment_type || "לא מוגדר";
+        row.appointmentTypes[type] = (row.appointmentTypes[type] || 0) + 1;
+      });
+
+      filtered.medicalVisits.forEach((visit) => {
+        const row = getRow(visit.vet_name || "לא משויך");
+        row.visits += 1;
+        row.total += 1;
+      });
+
+      if (mounted) {
+        setRows([...activity.values()].sort((a, b) => b.total - a.total));
+        setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => { mounted = false; };
+  }, [dateRange]);
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((r) => !q || r.name.toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const totalAppointments = rows.reduce((sum, row) => sum + row.appointments, 0);
+  const totalVisits = rows.reduce((sum, row) => sum + row.visits, 0);
+  const maxTotal = Math.max(...rows.map((r) => r.total), 1);
+
+  const doctorLoadChart = useMemo(() => rows.slice(0, 7).map((row) => ({
+    label: row.name,
+    value: row.total,
+    hint: `${row.appointments} תורים · ${row.visits} ביקורים`,
+  })), [rows]);
+
+  const appointmentTypeChart = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((row) => {
+      Object.entries(row.appointmentTypes).forEach(([type, count]) => {
+        map.set(type, (map.get(type) || 0) + count);
+      });
+    });
+    return [...map.entries()]
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [rows]);
+
+  if (isLoading) return <div className="bg-white rounded-2xl p-8 text-center text-gray-500 font-medium">טוען דוח צוות...</div>;
 
   return (
     <div className="space-y-6">
-      {/* KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { icon: Clock, label: "זמן המתנה ממוצע", value: "9 דק׳", trend: "down" as const, trendLabel: "-2 דק׳", color: "bg-blue-50 text-blue-600" },
-          { icon: Timer, label: "חריגת זמן תור", value: "37%", trend: "up" as const, trendLabel: "+5%", color: "bg-amber-50 text-amber-600" },
-          { icon: Users, label: "תפוסת צוות", value: "82%", trend: "up" as const, trendLabel: "+4%", color: "bg-purple-50 text-purple-600" },
-          { icon: TrendingUp, label: "שביעות רצון", value: "4.67", trend: "up" as const, trendLabel: "+0.1", color: "bg-emerald-50 text-emerald-600" },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-              <div className={`flex items-center gap-1 text-[13px] px-2 py-0.5 rounded-full ${
-                kpi.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-              }`} style={{ fontWeight: 500 }}>
-                {kpi.trend === "up" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                {kpi.trendLabel}
-              </div>
-            </div>
-            <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
-            <p className="text-gray-900 text-[24px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── Heatmap ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מפת חום — עומס לפי יום ושעה</h3>
-            <p className="text-gray-500 font-medium text-[12px] mt-0.5">עוצמת הצבע = מספר תורים מקבילים</p>
-          </div>
-          <div className="p-5 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="py-2 px-1 text-right text-gray-500 text-[13px]" style={{ fontWeight: 600 }}>יום / שעה</th>
-                  {HOURS.map((h) => (
-                    <th key={h} className="py-2 px-1 text-center text-gray-500 font-medium text-[10px]" style={{ fontWeight: 500 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {DAYS.map((day, di) => (
-                  <tr key={day}>
-                    <td className="py-1 px-1 text-right text-gray-600 text-[12px]" style={{ fontWeight: 500 }}>{day}</td>
-                    {HEATMAP_RAW[di].map((val, hi) => (
-                      <td key={`${di}-${hi}`} className="py-1 px-0.5">
-                        <div className={`w-full h-9 rounded-lg flex items-center justify-center text-[13px] ${getHeatColor(val)}`} style={{ fontWeight: 600 }}>
-                          {val}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex items-center gap-2 mt-4 text-[10px] text-gray-500 font-medium">
-              <span>נמוך</span>
-              <div className="flex gap-0.5">
-                {["bg-emerald-100", "bg-emerald-200", "bg-amber-200", "bg-orange-300", "bg-red-400"].map((c) => (
-                  <div key={c} className={`w-6 h-3 rounded ${c}`} />
-                ))}
-              </div>
-              <span>גבוה</span>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <Users className="w-6 h-6 text-blue-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">רופאים פעילים</p>
+          <p className="text-2xl font-bold text-gray-900">{rows.length}</p>
         </div>
-
-        {/* ── Wait Time by Hour ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>זמן המתנה ממוצע לפי שעה</h3>
-            <p className="text-gray-500 font-medium text-[12px] mt-0.5">בדקות · כולל שהייה בקבלה ובחדר המתנה</p>
-          </div>
-          <div className="p-5">
-            <div dir="ltr">
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={WAIT_TIME_HOURLY}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 13 }} formatter={(v: number) => [`${v} דק׳`, "המתנה"]} />
-                <Bar dataKey="waitTime" radius={[6, 6, 0, 0]}>
-                  {WAIT_TIME_HOURLY.map((d, i) => (
-                    <Cell key={`cell-wait-${i}`} fill={d.waitTime > 15 ? "#ef4444" : d.waitTime > 10 ? "#f59e0b" : "#10b981"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            </div>
-          </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <CalendarClock className="w-6 h-6 text-indigo-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">תורים בטווח</p>
+          <p className="text-2xl font-bold text-gray-900">{totalAppointments}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <HeartPulse className="w-6 h-6 text-rose-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">ביקורים רפואיים</p>
+          <p className="text-2xl font-bold text-gray-900">{totalVisits}</p>
         </div>
       </div>
 
-      {/* ── Vet Breakdown ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <HorizontalBarChart
+          title="עומס לפי רופא/ה"
+          subtitle="תורים וביקורים רפואיים בטווח הנבחר"
+          data={doctorLoadChart}
+        />
+        <MiniColumnChart
+          title="סוגי תורים נפוצים"
+          subtitle="התפלגות לפי appointment_type"
+          data={appointmentTypeChart}
+          emptyText="אין סוגי תורים להצגה"
+        />
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>ניתוח ביצועים לפי רופא/ה</h3>
-          <p className="text-gray-500 font-medium text-[12px] mt-0.5">זמן מתוכנן מול בפועל · חריגות · שביעות רצון</p>
+        <div className="p-5 border-b border-gray-100 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900 text-[17px]">עומס ופעילות צוות</h3>
+            <p className="text-gray-500 text-[12px] font-medium">מבוסס על appointments ו־medical_visits</p>
+          </div>
+          <div className="relative w-full lg:w-80">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש רופא/ה..." className="w-full pr-10 pl-3 py-2.5 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          </div>
         </div>
-        <div className="p-5 space-y-3">
-          <ReportSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="חיפוש לפי שם רופא/ה..." />
-          {filteredVets.map((vet) => {
-            const isSelected = selectedVet === vet.name;
-            const durationDiff = vet.actualDuration - vet.scheduledDuration;
-            const isOverrun = durationDiff > 0;
-            return (
-              <div
-                key={vet.name}
-                onClick={() => setSelectedVet(isSelected ? null : vet.name)}
-                className={`rounded-xl border p-5 transition-all cursor-pointer ${
-                  isSelected ? "border-[#1e40af] bg-blue-50/30 shadow-sm" : "border-gray-100 hover:border-gray-200"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl flex items-center justify-center">
-                      <Users className="w-5 h-5 text-[#1e40af]" />
-                    </div>
-                    <div>
-                      <p className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{vet.name}</p>
-                      <p className="text-gray-500 font-medium text-[12px]">{vet.totalAppointments} תורים החודש</p>
-                    </div>
+
+        <div className="p-5 space-y-4">
+          {filteredRows.length === 0 ? (
+            <div className="py-10 text-center text-gray-500 font-medium">אין פעילות צוות בטווח הנבחר</div>
+          ) : filteredRows.map((row) => (
+            <div key={row.name} className="rounded-2xl border border-gray-100 p-5 hover:border-blue-200 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <Stethoscope className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="flex items-center gap-4 text-[13px]">
-                    <div className="text-center">
-                      <p className="text-gray-500 font-medium text-[10px]">שביעות רצון</p>
-                      <p className="text-gray-900" style={{ fontWeight: 700 }}>{vet.patientSatisfaction}/5</p>
-                    </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{row.name}</p>
+                    <p className="text-gray-500 text-[12px] font-medium">{row.appointments} תורים · {row.visits} ביקורים</p>
                   </div>
                 </div>
-
-                {/* Metric bars */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Wait time */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[13px]">המתנה ממוצעת</span>
-                      <span className={`text-[13px] ${vet.avgWaitTime > 12 ? "text-red-500" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>{vet.avgWaitTime} דק׳</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${vet.avgWaitTime > 12 ? "bg-red-400" : "bg-emerald-400"}`}
-                        style={{ width: `${Math.min((vet.avgWaitTime / 25) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Scheduled vs Actual */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[13px]">מתוכנן → בפועל</span>
-                      <span className={`text-[13px] flex items-center gap-1 ${isOverrun ? "text-amber-600" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>
-                        {vet.scheduledDuration}→{vet.actualDuration} דק׳
-                        {isOverrun && <AlertTriangle className="w-3 h-3" />}
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden relative">
-                      <div className="h-full rounded-full bg-blue-200" style={{ width: `${(vet.scheduledDuration / 40) * 100}%` }} />
-                      <div className={`absolute top-0 h-full rounded-full ${isOverrun ? "bg-amber-400" : "bg-emerald-400"}`} style={{ width: `${(vet.actualDuration / 40) * 100}%`, opacity: 0.6 }} />
-                    </div>
-                  </div>
-
-                  {/* Overrun Rate */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gray-500 text-[13px]">שיעור חריגה</span>
-                      <span className={`text-[13px] ${vet.overrunRate > 40 ? "text-red-500" : "text-emerald-600"}`} style={{ fontWeight: 600 }}>{vet.overrunRate}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${vet.overrunRate > 40 ? "bg-red-400" : vet.overrunRate > 25 ? "bg-amber-400" : "bg-emerald-400"}`}
-                        style={{ width: `${vet.overrunRate}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-[12px] font-bold">{row.total} פעולות</span>
               </div>
-            );
-          })}
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.max((row.total / maxTotal) * 100, 4)}%` }} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(row.appointmentTypes).slice(0, 5).map(([type, count]) => (
+                  <span key={type} className="bg-gray-50 text-gray-600 border border-gray-100 px-2.5 py-1 rounded-full text-[12px] font-medium">{type}: {count}</span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

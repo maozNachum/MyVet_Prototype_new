@@ -1,233 +1,136 @@
-import { useState } from "react";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
-} from "recharts";
-import {
-  Radar, AlertTriangle, MapPin, Megaphone,
-  Check, ArrowUp, ArrowDown, Shield, Bug, Zap,
-} from "lucide-react";
-import { ReportSearchBar } from "./ReportSearchBar";
+import { useEffect, useMemo, useState } from "react";
+import { Activity, FlaskConical, HeartPulse, Search, Stethoscope } from "lucide-react";
+import { DateRangeKey, fetchReportDataset, formatDate, getFilteredDataset } from "../../data/reportMetrics";
+import { HorizontalBarChart, MiniColumnChart } from "./ReportVisuals";
 
-// ─── Mock Data ───────────────────────────────────────────────────────
-interface DiseaseAlert {
-  id: number;
-  name: string;
-  nameEn: string;
-  species: "dog" | "cat" | "both";
-  casesThisMonth: number;
-  casesLastMonth: number;
-  trend: "rising" | "falling" | "stable";
-  severity: "high" | "medium" | "low";
-  affectedAreas: string[];
-  description: string;
+interface EpiRadarProps {
+  dateRange: DateRangeKey;
 }
 
-const DISEASE_ALERTS: DiseaseAlert[] = [
-  {
-    id: 1, name: "שעלת מלונות", nameEn: "Kennel Cough", species: "dog",
-    casesThisMonth: 18, casesLastMonth: 7, trend: "rising", severity: "high",
-    affectedAreas: ["תל אביב צפון", "רמת אביב", "הרצליה"],
-    description: "עלייה חדה של 157% במקרי שעלת מלונות. ריכוז באזור הפארקים בצפון ת\"א. מומלץ להציע חיסון Bordetella ללקוחות באזור.",
-  },
-  {
-    id: 2, name: "פרבו-וירוס", nameEn: "Parvovirus", species: "dog",
-    casesThisMonth: 5, casesLastMonth: 2, trend: "rising", severity: "high",
-    affectedAreas: ["דרום תל אביב", "יפו", "בת ים"],
-    description: "5 מקרים מאושרים החודש, רובם בגורים לא מחוסנים. אזהרה קריטית ללקוחות עם גורים צעירים.",
-  },
-  {
-    id: 3, name: "FIV (איידס חתולים)", nameEn: "FIV", species: "cat",
-    casesThisMonth: 3, casesLastMonth: 4, trend: "falling", severity: "medium",
-    affectedAreas: ["רמת גן", "גבעתיים"],
-    description: "ירידה קלה במקרים. עדיין מומלץ לעודד בדיקת FIV/FeLV לחתולים חדשים.",
-  },
-  {
-    id: 4, name: "לייסמניה", nameEn: "Leishmaniasis", species: "dog",
-    casesThisMonth: 8, casesLastMonth: 6, trend: "rising", severity: "medium",
-    affectedAreas: ["הרצליה", "כפר שמריהו", "רעננה"],
-    description: "עלייה עונתית צפויה עם כניסת האביב. מומלץ להזכיר ללקוחות חידוש רצועת Scalibor.",
-  },
-  {
-    id: 5, name: "דלקת עיניים ויראלית", nameEn: "Feline Herpesvirus", species: "cat",
-    casesThisMonth: 4, casesLastMonth: 5, trend: "stable", severity: "low",
-    affectedAreas: ["תל אביב מרכז"],
-    description: "מספר יציב, ללא מגמת עלייה. מומלץ לעדכן חיסון FVRCP.",
-  },
-];
-
-// Trend line data (last 6 months)
-const TREND_DATA = [
-  { month: "אוקטובר", שעלת: 3, פרבו: 1, לייסמניה: 2, FIV: 5 },
-  { month: "נובמבר", שעלת: 4, פרבו: 1, לייסמניה: 3, FIV: 4 },
-  { month: "דצמבר", שעלת: 5, פרבו: 2, לייסמניה: 4, FIV: 4 },
-  { month: "ינואר", שעלת: 7, פרבו: 2, לייסמניה: 5, FIV: 4 },
-  { month: "פברואר", שעלת: 10, פרבו: 3, לייסמניה: 6, FIV: 3 },
-  { month: "מרץ", שעלת: 18, פרבו: 5, לייסמניה: 8, FIV: 3 },
-];
-
-const SEVERITY_STYLE = {
-  high: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", badge: "סיכון גבוה", dotColor: "bg-red-500" },
-  medium: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", badge: "סיכון בינוני", dotColor: "bg-amber-500" },
-  low: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", badge: "סיכון נמוך", dotColor: "bg-emerald-500" },
-};
-
-// ─── Component ──────────────────────────────────────────────────────
-export function EpiRadar() {
-  const [campaignSent, setCampaignSent] = useState<Set<number>>(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredDiseases = DISEASE_ALERTS.filter((d) => {
-    if (!searchTerm) return true;
-    const q = searchTerm.toLowerCase();
-    return (
-      d.name.toLowerCase().includes(q) ||
-      d.nameEn.toLowerCase().includes(q) ||
-      d.species.includes(q) ||
-      d.affectedAreas.some((a) => a.toLowerCase().includes(q)) ||
-      d.description.toLowerCase().includes(q)
-    );
+function countByText(values: (string | null | undefined)[]) {
+  const map = new Map<string, number>();
+  values.forEach((value) => {
+    const text = (value || "").trim();
+    if (!text) return;
+    const key = text.length > 45 ? `${text.slice(0, 45)}…` : text;
+    map.set(key, (map.get(key) || 0) + 1);
   });
+  return [...map.entries()].sort((a, b) => b[1] - a[1]);
+}
 
-  const totalCases = DISEASE_ALERTS.reduce((s, d) => s + d.casesThisMonth, 0);
-  const highAlerts = DISEASE_ALERTS.filter((d) => d.severity === "high").length;
+export function EpiRadar({ dateRange }: EpiRadarProps) {
+  const [diagnoses, setDiagnoses] = useState<[string, number][]>([]);
+  const [reasons, setReasons] = useState<[string, number][]>([]);
+  const [treatments, setTreatments] = useState<[string, number][]>([]);
+  const [labs, setLabs] = useState<{ id: number; name: string; status: string; ordered: string; urgent: boolean }[]>([]);
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      setIsLoading(true);
+      const { dataset } = await fetchReportDataset();
+      const filtered = getFilteredDataset(dataset, dateRange);
+
+      if (mounted) {
+        setDiagnoses(countByText(filtered.medicalVisits.map((v) => v.diagnosis)).slice(0, 10));
+        setReasons(countByText(filtered.medicalVisits.map((v) => v.reason)).slice(0, 10));
+        setTreatments(countByText(filtered.medicalVisits.map((v) => v.treatment)).slice(0, 10));
+        setLabs(filtered.labOrders.map((lab) => ({
+          id: lab.lab_order_id,
+          name: lab.test_name || "בדיקת מעבדה",
+          status: lab.status || "לא ידוע",
+          ordered: formatDate(lab.ordered_date),
+          urgent: Boolean(lab.is_urgent),
+        })));
+        setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => { mounted = false; };
+  }, [dateRange]);
+
+  const filteredLabs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return labs.filter((lab) => !q || [lab.name, lab.status].join(" ").toLowerCase().includes(q));
+  }, [labs, query]);
+
+  const diagnosisChart = useMemo(() => diagnoses.map(([label, value]) => ({ label, value })), [diagnoses]);
+  const reasonChart = useMemo(() => reasons.map(([label, value]) => ({ label, value })), [reasons]);
+  const pendingLabs = labs.filter((l) => ["pending", "ordered", "in_progress"].includes(l.status)).length;
+  const urgentLabs = labs.filter((l) => l.urgent).length;
+
+  if (isLoading) return <div className="bg-white rounded-2xl p-8 text-center text-gray-500 font-medium">טוען דוח פעילות רפואית...</div>;
 
   return (
     <div className="space-y-6">
-      {/* KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { icon: Bug, label: "מקרים החודש", value: String(totalCases), color: "bg-rose-50 text-rose-600" },
-          { icon: AlertTriangle, label: "התראות גבוהות", value: String(highAlerts), color: "bg-red-50 text-red-600" },
-          { icon: Radar, label: "מחלות פעילות", value: String(DISEASE_ALERTS.length), color: "bg-purple-50 text-purple-600" },
-          { icon: Shield, label: "אזורים מושפעים", value: String(new Set(DISEASE_ALERTS.flatMap((d) => d.affectedAreas)).size), color: "bg-blue-50 text-blue-600" },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${kpi.color}`}>
-              <kpi.icon className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-gray-500 font-medium text-[12px]">{kpi.label}</p>
-              <p className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>{kpi.value}</p>
-            </div>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <Stethoscope className="w-6 h-6 text-blue-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">אבחנות שונות</p>
+          <p className="text-2xl font-bold text-gray-900">{diagnoses.length}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <HeartPulse className="w-6 h-6 text-rose-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">טיפולים מתועדים</p>
+          <p className="text-2xl font-bold text-gray-900">{treatments.length}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <FlaskConical className="w-6 h-6 text-cyan-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">בדיקות ממתינות</p>
+          <p className="text-2xl font-bold text-gray-900">{pendingLabs}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <Activity className="w-6 h-6 text-red-600 mb-3" />
+          <p className="text-gray-500 text-[12px] font-medium">בדיקות דחופות</p>
+          <p className="text-2xl font-bold text-gray-900">{urgentLabs}</p>
+        </div>
       </div>
 
-      {/* Trend Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <HorizontalBarChart
+          title="אבחנות נפוצות"
+          subtitle="מתוך ביקורים רפואיים בטווח הנבחר"
+          data={diagnosisChart}
+          emptyText="אין אבחנות בטווח הנבחר"
+        />
+        <MiniColumnChart
+          title="סיבות הגעה נפוצות"
+          subtitle="התפלגות ביקורים לפי reason"
+          data={reasonChart}
+          emptyText="אין סיבות הגעה בטווח הנבחר"
+        />
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מגמות מחלות — 6 חודשים אחרונים</h3>
-          <p className="text-gray-500 font-medium text-[12px] mt-0.5">אבחנות מאומתות ברדיוס המרפאה</p>
-        </div>
-        <div className="p-6">
-          <div dir="ltr">
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={TREND_DATA}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={{ borderRadius: 12, fontSize: 13 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              {/* No explicit key props — recharts manages them internally to avoid duplicate key warnings */}
-              <Area type="monotone" dataKey="שעלת" stroke="#ef4444" fill="#fee2e2" strokeWidth={2} />
-              <Area type="monotone" dataKey="פרבו" stroke="#f59e0b" fill="#fef3c7" strokeWidth={2} />
-              <Area type="monotone" dataKey="לייסמניה" stroke="#8b5cf6" fill="#ede9fe" strokeWidth={2} />
-              <Area type="monotone" dataKey="FIV" stroke="#3b82f6" fill="#dbeafe" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="p-5 border-b border-gray-100 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900 text-[17px]">מעקב בדיקות מעבדה</h3>
+            <p className="text-gray-500 text-[12px] font-medium">מבוסס על lab_orders</p>
+          </div>
+          <div className="relative w-full lg:w-80">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש בדיקה..." className="w-full pr-10 pl-3 py-2.5 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
           </div>
         </div>
-      </div>
-
-      {/* Disease Cards */}
-      <div className="space-y-3">
-        <ReportSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="חיפוש לפי מחלה, אזור, מין חיה..." />
-        {filteredDiseases.map((disease) => {
-          const style = SEVERITY_STYLE[disease.severity];
-          const trendPercent = disease.casesLastMonth > 0
-            ? Math.round(((disease.casesThisMonth - disease.casesLastMonth) / disease.casesLastMonth) * 100)
-            : 100;
-          const isCampaignSent = campaignSent.has(disease.id);
-
-          return (
-            <div key={disease.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${style.border}`}>
-              <div className="px-5 py-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
-                      <Zap className={`w-5 h-5 ${style.text}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>{disease.name}</span>
-                        <span className="text-gray-500 font-medium text-[13px]">({disease.nameEn})</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${style.bg} ${style.border} ${style.text}`} style={{ fontWeight: 600 }}>
-                          {style.badge}
-                        </span>
-                        <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
-                          {disease.species === "dog" ? "כלבים" : disease.species === "cat" ? "חתולים" : "כלבים + חתולים"}
-                        </span>
-                      </div>
-                      <p className="text-gray-500 font-medium text-[12px]">{disease.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 shrink-0 mr-4">
-                    <div className="text-center">
-                      <p className="text-gray-500 font-medium text-[10px]">מקרים</p>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{disease.casesThisMonth}</span>
-                        {disease.trend === "rising" && (
-                          <span className="text-red-500 text-[13px] flex items-center"><ArrowUp className="w-3 h-3" />+{trendPercent}%</span>
-                        )}
-                        {disease.trend === "falling" && (
-                          <span className="text-emerald-600 text-[13px] flex items-center"><ArrowDown className="w-3 h-3" />{trendPercent}%</span>
-                        )}
-                        {disease.trend === "stable" && (
-                          <span className="text-gray-500 font-medium text-[13px]">יציב</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Affected Areas */}
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-3.5 h-3.5 text-gray-500 font-medium shrink-0" />
-                  <div className="flex flex-wrap gap-1.5">
-                    {disease.affectedAreas.map((area) => (
-                      <span key={area} className="bg-gray-100 text-gray-600 text-[13px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
-                        {area}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Campaign Action */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
-                    <div className={`w-2 h-2 rounded-full ${style.dotColor}`} />
-                    <span>חודש קודם: {disease.casesLastMonth} מקרים</span>
-                  </div>
-                  {isCampaignSent ? (
-                    <span className="flex items-center gap-1.5 text-emerald-600 text-[12px] bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-200" style={{ fontWeight: 500 }}>
-                      <Check className="w-3.5 h-3.5" /> קמפיין נשלח ללקוחות באזור
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setCampaignSent((p) => new Set(p).add(disease.id))}
-                      className="flex items-center gap-1.5 bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[12px] px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm"
-                      style={{ fontWeight: 500 }}
-                    >
-                      <Megaphone className="w-3.5 h-3.5" /> הפק קמפיין שיווקי ללקוחות באזור
-                    </button>
-                  )}
-                </div>
+        <div className="divide-y divide-gray-100 max-h-[420px] overflow-auto">
+          {filteredLabs.length === 0 ? (
+            <div className="py-10 text-center text-gray-500 font-medium">אין בדיקות מעבדה בטווח הנבחר</div>
+          ) : filteredLabs.map((lab) => (
+            <div key={lab.id} className="p-4 hover:bg-gray-50/60 transition-colors flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-gray-900 text-[14px]">{lab.name}</p>
+                <p className="text-gray-500 text-[12px] font-medium">הוזמן: {lab.ordered}</p>
               </div>
+              <span className={`px-2.5 py-1 rounded-full border text-[11px] font-bold ${lab.urgent ? "bg-red-50 text-red-700 border-red-200" : "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                {lab.urgent ? "דחוף" : lab.status}
+              </span>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );
