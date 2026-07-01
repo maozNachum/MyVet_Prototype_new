@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { toast } from "sonner"; // ייבוא מערכת ההתראות
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
+import { supabase } from "../../services/supabaseClient";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface LabOrder {
@@ -30,158 +31,182 @@ const categoryLabels: Record<LabOrder["category"], string> = {
 
 export { categoryLabels };
 
-// ─── Initial Data ────────────────────────────────────────────────────
-const initialLabOrders: LabOrder[] = [
-  {
-    id: 1,
-    patientId: 1,
-    petName: "רקס",
-    testName: "ספירת דם מלאה (CBC)",
-    category: "blood",
-    status: "completed",
-    orderedDate: "10/03/2026",
-    orderedBy: "וטרינר",
-    results: "כל הערכים בטווח הנורמלי. WBC תקין, RBC תקין, טסיות תקינות.",
-    resultValue: "WBC: 8.5, RBC: 6.2, PLT: 280",
-    normalRange: "WBC: 5.5-16.9, RBC: 5.5-8.5, PLT: 175-500",
-    resultStatus: "normal",
-    completedDate: "12/03/2026",
-  },
-  {
-    id: 2,
-    patientId: 1,
-    petName: "רקס",
-    testName: "פאנל ביוכימי",
-    category: "blood",
-    status: "completed",
-    orderedDate: "10/03/2026",
-    orderedBy: "וטרינר",
-    results: "ALT מעט גבוה. יתר הערכים תקינים. מומלץ מעקב.",
-    resultValue: "ALT: 125, BUN: 18, Creatinine: 1.1",
-    normalRange: "ALT: 10-120, BUN: 7-27, Creatinine: 0.5-1.8",
-    resultStatus: "abnormal",
-    completedDate: "12/03/2026",
-    notes: "ALT מעט מעל הנורמה — לחזור על הבדיקה בעוד חודש",
-  },
-  {
-    id: 3,
-    patientId: 1,
-    petName: "רקס",
-    testName: "צילום חזה",
-    category: "imaging",
-    status: "in-progress",
-    orderedDate: "15/03/2026",
-    orderedBy: "וטרינר",
-    urgent: true,
-  },
-  {
-    id: 4,
-    patientId: 2,
-    petName: "לונה",
-    testName: "בדיקת שתן כללית",
-    category: "urine",
-    status: "completed",
-    orderedDate: "08/03/2026",
-    orderedBy: "וטרינר",
-    results: "ממצאים תקינים. pH 6.5, ללא חלבון, ללא גלוקוז.",
-    resultValue: "pH: 6.5, Protein: Neg, Glucose: Neg, SG: 1.035",
-    normalRange: "pH: 5.5-7.0, SG: 1.015-1.045",
-    resultStatus: "normal",
-    completedDate: "09/03/2026",
-  },
-  {
-    id: 5,
-    patientId: 2,
-    petName: "לונה",
-    testName: "ספירת דם מלאה (CBC)",
-    category: "blood",
-    status: "ordered",
-    orderedDate: "17/03/2026",
-    orderedBy: "אחות",
-  },
-  {
-    id: 6,
-    patientId: 3,
-    petName: "ניקו",
-    testName: "בדיקת שריטת עור",
-    category: "biopsy",
-    status: "completed",
-    orderedDate: "01/03/2026",
-    orderedBy: "וטרינר",
-    results: "נמצאו קרציות Demodex. מומלץ טיפול אנטי-פרזיטרי.",
-    resultStatus: "abnormal",
-    completedDate: "05/03/2026",
-  },
-  {
-    id: 7,
-    patientId: 4,
-    petName: "מקס",
-    testName: "פאנל קרישה",
-    category: "blood",
-    status: "completed",
-    orderedDate: "05/03/2026",
-    orderedBy: "וטרינר",
-    results: "ערכי קרישה תקינים. PT ו-PTT בטווח.",
-    resultValue: "PT: 12.5s, PTT: 65s",
-    normalRange: "PT: 11-17s, PTT: 60-93s",
-    resultStatus: "normal",
-    completedDate: "06/03/2026",
-  },
-  {
-    id: 8,
-    patientId: 5,
-    petName: "מיאו",
-    testName: "אולטרסאונד בטני",
-    category: "imaging",
-    status: "ordered",
-    orderedDate: "16/03/2026",
-    orderedBy: "וטרינר",
-    urgent: false,
-    notes: "חשד לאבנים בשלפוחית",
-  },
-];
-
 // ─── Context ─────────────────────────────────────────────────────────
 interface LabStoreContextType {
   labOrders: LabOrder[];
-  isLoading: boolean; // חדש
-  error: string | null; // חדש
-  addLabOrder: (order: Omit<LabOrder, "id">) => Promise<void>; // שונה ל-Promise
-  updateLabOrder: (id: number, updates: Partial<LabOrder>) => Promise<void>; // שונה ל-Promise
+  isLoading: boolean;
+  error: string | null;
+  loadLabOrders: () => Promise<void>;
+  addLabOrder: (order: Omit<LabOrder, "id">) => Promise<LabOrder | null>;
+  updateLabOrder: (id: number, updates: Partial<LabOrder>) => Promise<LabOrder | null>;
+  deleteLabOrder: (id: number) => Promise<void>;
   getLabOrdersForPatient: (patientId: number) => LabOrder[];
 }
 
 const LabStoreContext = createContext<LabStoreContextType | null>(null);
 
-// פונקציית עזר לסימולציית רשת (תשתיות פרונטאנד אמינות)
-const simulateNetwork = async (shouldFail = false) => {
-  await new Promise((resolve) => setTimeout(resolve, 1200)); 
-  if (shouldFail && Math.random() > 0.8) { 
-    throw new Error("שגיאת תקשורת");
+function formatDateForUi(value?: string | null) {
+  if (!value) return "לא ידוע";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function parseDateToIso(value?: string | null) {
+  if (!value) return new Date().toISOString();
+
+  // Supports DD/MM/YYYY from the existing UI.
+  const parts = value.split("/");
+  if (parts.length === 3) {
+    const [day, month, year] = parts.map((p) => Number(p));
+    if (day && month && year) {
+      const d = new Date(year, month - 1, day, new Date().getHours(), new Date().getMinutes());
+      return d.toISOString();
+    }
   }
-};
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
+function normalizeCategory(value?: string | null): LabOrder["category"] {
+  if (value === "blood" || value === "urine" || value === "imaging" || value === "biopsy" || value === "other") {
+    return value;
+  }
+  return "other";
+}
+
+function normalizeStatus(value?: string | null): LabOrder["status"] {
+  if (value === "ordered" || value === "in-progress" || value === "completed") {
+    return value;
+  }
+  return "ordered";
+}
+
+function normalizeResultStatus(value?: string | null): LabOrder["resultStatus"] | undefined {
+  if (value === "normal" || value === "abnormal" || value === "critical") {
+    return value;
+  }
+  return undefined;
+}
+
+function mapLabOrderRow(row: any): LabOrder {
+  return {
+    id: Number(row.lab_order_id),
+    patientId: Number(row.pet_id),
+    petName: row.patients?.pet_name || row.pet_name || "",
+    testName: row.test_name || "בדיקת מעבדה",
+    category: normalizeCategory(row.category),
+    status: normalizeStatus(row.status),
+    orderedDate: formatDateForUi(row.ordered_date),
+    // ordered_by is uuid in the DB. Until staff authentication is connected to staff.staff_id,
+    // we keep it null in DB and show a readable fallback in the UI.
+    orderedBy: row.staff?.name || "צוות המרפאה",
+    results: row.results || undefined,
+    normalRange: row.normal_range || undefined,
+    resultValue: row.result_value || undefined,
+    resultStatus: normalizeResultStatus(row.result_status),
+    completedDate: row.completed_date ? formatDateForUi(row.completed_date) : undefined,
+    notes: row.notes || undefined,
+    urgent: Boolean(row.is_urgent),
+  };
+}
+
+function buildInsertPayload(order: Omit<LabOrder, "id">) {
+  return {
+    pet_id: order.patientId,
+    test_name: order.testName,
+    category: order.category,
+    status: order.status,
+    ordered_date: parseDateToIso(order.orderedDate),
+    // The database column is uuid. Until login is connected to staff.staff_id, keep it null.
+    ordered_by: null,
+    results: order.results || null,
+    normal_range: order.normalRange || null,
+    result_value: order.resultValue || null,
+    result_status: order.resultStatus || null,
+    completed_date: order.completedDate ? parseDateToIso(order.completedDate) : null,
+    notes: order.notes || null,
+    is_urgent: Boolean(order.urgent),
+  };
+}
+
+function buildUpdatePayload(updates: Partial<LabOrder>) {
+  const patch: Record<string, any> = {};
+
+  if (updates.patientId !== undefined) patch.pet_id = updates.patientId;
+  if (updates.testName !== undefined) patch.test_name = updates.testName;
+  if (updates.category !== undefined) patch.category = updates.category;
+  if (updates.status !== undefined) patch.status = updates.status;
+  if (updates.orderedDate !== undefined) patch.ordered_date = parseDateToIso(updates.orderedDate);
+  if (updates.results !== undefined) patch.results = updates.results || null;
+  if (updates.normalRange !== undefined) patch.normal_range = updates.normalRange || null;
+  if (updates.resultValue !== undefined) patch.result_value = updates.resultValue || null;
+  if (updates.resultStatus !== undefined) patch.result_status = updates.resultStatus || null;
+  if (updates.completedDate !== undefined) patch.completed_date = updates.completedDate ? parseDateToIso(updates.completedDate) : null;
+  if (updates.notes !== undefined) patch.notes = updates.notes || null;
+  if (updates.urgent !== undefined) patch.is_urgent = Boolean(updates.urgent);
+
+  return patch;
+}
 
 export function LabStoreProvider({ children }: { children: ReactNode }) {
-  const [labOrders, setLabOrders] = useState<LabOrder[]>([...initialLabOrders]);
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loadLabOrders = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: loadError } = await supabase
+        .from("lab_orders")
+        .select("*")
+        .order("ordered_date", { ascending: false });
+
+      if (loadError) throw loadError;
+
+      setLabOrders((data || []).map(mapLabOrderRow));
+    } catch (err: any) {
+      console.error("Failed loading lab orders from Supabase", err);
+      setError(err?.message || "שגיאה בטעינת בדיקות מעבדה");
+      toast.error("לא הצלחנו לטעון בדיקות מעבדה");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLabOrders();
+  }, [loadLabOrders]);
 
   const addLabOrder = useCallback(async (order: Omit<LabOrder, "id">) => {
     setIsLoading(true);
     setError(null);
+
     try {
-      await simulateNetwork();
-      setLabOrders((prev) => {
-        const newId = Math.max(...prev.map((o) => o.id), 0) + 1;
-        return [{ ...order, id: newId }, ...prev];
-      });
-      toast.success("בדיקת המעבדה נשלחה בהצלחה");
-    } catch (err) {
-      console.error("Failed to add lab order:", err);
-      const errorMessage = "אירעה שגיאה בשליחת בדיקת המעבדה.";
-      setError(errorMessage);
-      toast.error(errorMessage);
-      throw err;
+      const { data, error: insertError } = await supabase
+        .from("lab_orders")
+        .insert(buildInsertPayload(order))
+        .select("*")
+        .single();
+
+      if (insertError) throw insertError;
+
+      const mapped = { ...mapLabOrderRow(data), petName: order.petName };
+      setLabOrders((prev) => [mapped, ...prev.filter((o) => o.id !== mapped.id)]);
+      toast.success("בדיקת המעבדה נשלחה ונשמרה במסד הנתונים");
+      return mapped;
+    } catch (err: any) {
+      console.error("Failed to add lab order", err);
+      setError(err?.message || "אירעה שגיאה בשליחת בדיקת המעבדה");
+      toast.error("לא הצלחנו לשמור את בדיקת המעבדה");
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -190,29 +215,60 @@ export function LabStoreProvider({ children }: { children: ReactNode }) {
   const updateLabOrder = useCallback(async (id: number, updates: Partial<LabOrder>) => {
     setIsLoading(true);
     setError(null);
+
     try {
-      await simulateNetwork();
-      setLabOrders((prev) =>
-        prev.map((o) => (o.id === id ? { ...o, ...updates } : o))
-      );
-      toast.success("תוצאות הבדיקה עודכנו בהצלחה");
-    } catch (err) {
-      console.error("Failed to update lab order:", err);
-      const errorMessage = "אירעה שגיאה בעדכון בדיקת המעבדה.";
-      setError(errorMessage);
-      toast.error(errorMessage);
-      throw err;
+      const { data, error: updateError } = await supabase
+        .from("lab_orders")
+        .update(buildUpdatePayload(updates))
+        .eq("lab_order_id", id)
+        .select("*")
+        .single();
+
+      if (updateError) throw updateError;
+
+      const mapped = mapLabOrderRow(data);
+      setLabOrders((prev) => prev.map((o) => (o.id === id ? { ...mapped, petName: o.petName } : o)));
+      toast.success("תוצאות הבדיקה עודכנו במסד הנתונים");
+      return mapped;
+    } catch (err: any) {
+      console.error("Failed to update lab order", err);
+      setError(err?.message || "אירעה שגיאה בעדכון בדיקת המעבדה");
+      toast.error("לא הצלחנו לעדכן את בדיקת המעבדה");
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const getLabOrdersForPatient = useCallback((patientId: number) => 
-    labOrders.filter((o) => o.patientId === patientId), 
-  [labOrders]);
+  const deleteLabOrder = useCallback(async (id: number) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("lab_orders")
+        .delete()
+        .eq("lab_order_id", id);
+
+      if (deleteError) throw deleteError;
+
+      setLabOrders((prev) => prev.filter((o) => o.id !== id));
+      toast.success("בדיקת המעבדה נמחקה");
+    } catch (err: any) {
+      console.error("Failed to delete lab order", err);
+      setError(err?.message || "שגיאה במחיקת בדיקת מעבדה");
+      toast.error("לא הצלחנו למחוק את בדיקת המעבדה");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getLabOrdersForPatient = useCallback((patientId: number) => {
+    return labOrders.filter((o) => Number(o.patientId) === Number(patientId));
+  }, [labOrders]);
 
   return (
-    <LabStoreContext.Provider value={{ labOrders, isLoading, error, addLabOrder, updateLabOrder, getLabOrdersForPatient }}>
+    <LabStoreContext.Provider value={{ labOrders, isLoading, error, loadLabOrders, addLabOrder, updateLabOrder, deleteLabOrder, getLabOrdersForPatient }}>
       {children}
     </LabStoreContext.Provider>
   );

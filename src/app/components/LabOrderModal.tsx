@@ -61,6 +61,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
   const [customCategory, setCustomCategory] = useState<LabOrder["category"]>("blood");
   const [showCustom, setShowCustom] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
@@ -99,32 +100,57 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
     setShowCustom(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (pendingTests.length === 0) {
       setError("יש לבחור לפחות בדיקה אחת");
       return;
     }
-    const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
-    for (const test of pendingTests) {
-      addLabOrder({
-        patientId,
-        petName,
-        testName: test.testName,
-        category: test.category,
-        status: "ordered",
-        orderedDate: dateStr,
-        orderedBy: currentUser,
-        urgent: test.urgent,
-        notes: test.notes || undefined,
-      });
+
+    if (!patientId) {
+      setError("לא נמצא מזהה מטופל להזמנת בדיקות");
+      return;
     }
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      setPendingTests([]);
-      onClose();
-    }, 1800);
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const now = new Date();
+      const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+
+      const savedOrders = await Promise.all(
+        pendingTests.map((test) =>
+          addLabOrder({
+            patientId,
+            petName,
+            testName: test.testName,
+            category: test.category,
+            status: "ordered",
+            orderedDate: dateStr,
+            orderedBy: currentUser,
+            urgent: test.urgent,
+            notes: test.notes || undefined,
+          })
+        )
+      );
+
+      if (savedOrders.some((order) => !order)) {
+        setError("חלק מהבדיקות לא נשמרו. בדקו הרשאות או חיבור למסד הנתונים.");
+        return;
+      }
+
+      setIsSaved(true);
+      setTimeout(() => {
+        setIsSaved(false);
+        setPendingTests([]);
+        onClose();
+      }, 1800);
+    } catch (err) {
+      console.error("Failed saving lab orders", err);
+      setError("אירעה שגיאה בשמירת בדיקות המעבדה");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const inputCls =
@@ -406,11 +432,16 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
           <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-gray-50/30">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2"
+              disabled={pendingTests.length === 0 || isSaving}
+              className={`flex-1 py-3 rounded-xl transition-colors text-[14px] shadow-sm flex items-center justify-center gap-2 ${
+                pendingTests.length > 0 && !isSaving
+                  ? "bg-teal-600 hover:bg-teal-700 text-white cursor-pointer"
+                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+              }`}
               style={{ fontWeight: 600 }}
             >
               <TestTube className="w-4 h-4" />
-              שלח הזמנה ({pendingTests.length} בדיקות)
+              {isSaving ? "שומר הזמנה..." : `שלח הזמנה (${pendingTests.length} בדיקות)`}
             </button>
             <button
               onClick={onClose}

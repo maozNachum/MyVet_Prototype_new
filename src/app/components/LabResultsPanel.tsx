@@ -60,7 +60,7 @@ const emptyUpdateForm: UpdateFormState = {
 };
 
 export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
-  const { getLabOrdersForPatient, updateLabOrder } = useLabStore();
+  const { getLabOrdersForPatient, updateLabOrder, isLoading, error } = useLabStore();
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -98,20 +98,20 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
     setUpdateForm(emptyUpdateForm);
   };
 
-  const advanceStatus = (order: LabOrder) => {
+  const advanceStatus = async (order: LabOrder) => {
     if (order.status === "ordered") {
-      updateLabOrder(order.id, { status: "in-progress" });
+      await updateLabOrder(order.id, { status: "in-progress" });
     } else if (order.status === "in-progress") {
       startEditing(order);
     }
   };
 
-  const saveResults = (orderId: number) => {
+  const saveResults = async (orderId: number) => {
     const now = new Date();
     const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(
       now.getMonth() + 1
     ).padStart(2, "0")}/${now.getFullYear()}`;
-    updateLabOrder(orderId, {
+    const updated = await updateLabOrder(orderId, {
       status: "completed",
       results: updateForm.results,
       resultValue: updateForm.resultValue || undefined,
@@ -120,6 +120,9 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
       completedDate: dateStr,
       notes: updateForm.notes || undefined,
     });
+
+    if (!updated) return;
+
     setEditingId(null);
     setUpdateForm(emptyUpdateForm);
     setSavedId(orderId);
@@ -192,7 +195,17 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
 
         {/* Orders List */}
         <div className="p-6">
-          {filteredOrders.length > 0 ? (
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 text-[13px] font-medium">
+              {error}
+            </div>
+          )}
+          {isLoading && allOrders.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 font-medium">
+              <Loader2 className="w-8 h-8 mx-auto mb-2 text-teal-500 animate-spin" />
+              <p className="text-[14px]">טוען בדיקות מעבדה מהענן...</p>
+            </div>
+          ) : filteredOrders.length > 0 ? (
             <div className="space-y-3">
               {filteredOrders.map((order) => {
                 // ── Use LAB_CATEGORIES from central config ──
