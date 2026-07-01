@@ -787,17 +787,30 @@ function splitAgentText(text: string) {
     .filter(Boolean);
 }
 
-function renderInlineMarkdown(text: string) {
+function renderInlineMarkdown(
+  text: string,
+  variant: "user" | "agent" | "system" = "agent",
+) {
+  const strongClass =
+    variant === "user"
+      ? "font-black text-white"
+      : variant === "system"
+        ? "font-black text-amber-950"
+        : "font-black text-slate-950";
+
   const segments = text.split(/(\*\*[^*]+\*\*)/g);
+
   return segments.map((segment, index) => {
     if (segment.startsWith("**") && segment.endsWith("**")) {
       return (
-        <strong key={index} className="font-black text-slate-900">
+        <strong key={index} className={strongClass}>
           {segment.slice(2, -2)}
         </strong>
       );
     }
-    return <span key={index}>{segment}</span>;
+
+    // במקרה שהמודל החזיר סימון Markdown לא סגור, לא מציגים כוכביות שבורות למשתמש.
+    return <span key={index}>{segment.replace(/\*\*/g, "")}</span>;
   });
 }
 
@@ -1015,12 +1028,21 @@ export function AIInsightsPanel({
 
       if (error) throw error;
 
+      const answerText = typeof data?.answer === "string" && data.answer.trim()
+        ? data.answer.trim()
+        : "לא התקבלה תשובה מהסוכן.";
+      const finalAnswer = data?.truncated
+        ? `${answerText}
+
+הערה: התשובה נחתכה בגלל מגבלת אורך. אפשר לכתוב "תמשיך מאיפה שעצרת".`
+        : answerText;
+
       setChatMessages((prev) => [
         ...prev,
         {
           id: `agent-${Date.now()}`,
           role: "agent",
-          text: data?.answer || "לא התקבלה תשובה מהסוכן.",
+          text: finalAnswer,
           createdAt: new Date().toLocaleTimeString("he-IL", {
             hour: "2-digit",
             minute: "2-digit",
@@ -1104,23 +1126,24 @@ export function AIInsightsPanel({
     </div>
   );
 
-  const renderChatText = (text: string) => {
+  const renderChatText = (text: string, variant: "user" | "agent" | "system" = "agent") => {
+    const isUserMessage = variant === "user";
     const paragraphs = splitAgentText(text);
     if (paragraphs.length === 0) return null;
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 break-words overflow-visible">
         {paragraphs.map((part, index) => {
           const normalized = normalizeAgentParagraph(part);
           const isBulletList = normalized.includes("\n• ") || normalized.startsWith("• ");
           if (isBulletList) {
             const lines = normalized.split("\n").filter(Boolean);
             return (
-              <ul key={index} className="space-y-1.5 text-[13px] leading-6">
+              <ul key={index} className={`space-y-1.5 text-[13px] leading-6 break-words ${isUserMessage ? "text-white" : "text-slate-700"}`}>
                 {lines.map((line, lineIndex) => (
                   <li key={lineIndex} className="flex gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />
-                    <span>{renderInlineMarkdown(line.replace(/^•\s*/, ""))}</span>
+                    <span className={`mt-2 h-1.5 w-1.5 rounded-full shrink-0 ${isUserMessage ? "bg-white/80" : "bg-blue-400"}`} />
+                    <span className="min-w-0 break-words">{renderInlineMarkdown(line.replace(/^•\s*/, ""), variant)}</span>
                   </li>
                 ))}
               </ul>
@@ -1131,9 +1154,9 @@ export function AIInsightsPanel({
           return (
             <p
               key={index}
-              className={`${isHeading ? "text-[13px] font-black text-slate-900 mt-3" : "text-[13px] leading-6 text-slate-700 font-medium"}`}
+              className={`break-words whitespace-pre-wrap ${isHeading ? `text-[13px] font-black mt-3 ${isUserMessage ? "text-white" : "text-slate-900"}` : `text-[13px] leading-6 font-medium ${isUserMessage ? "text-white" : "text-slate-700"}`}`}
             >
-              {renderInlineMarkdown(normalized)}
+              {renderInlineMarkdown(normalized, variant)}
             </p>
           );
         })}
@@ -1389,7 +1412,7 @@ export function AIInsightsPanel({
                   {chatMessages.map((message) => (
                     <div
                       key={message.id}
-                      className={`max-w-[92%] rounded-3xl border px-4 py-3 shadow-sm ${
+                      className={`max-w-[94%] min-w-0 rounded-3xl border px-4 py-3 shadow-sm break-words overflow-visible ${
                         message.role === "user"
                           ? "mr-auto bg-[#1e40af] text-white border-[#1e40af] rounded-bl-lg"
                           : message.role === "system"
@@ -1403,8 +1426,8 @@ export function AIInsightsPanel({
                         </span>
                         <span className="text-[10px] opacity-60">{message.createdAt}</span>
                       </div>
-                      <div className={`${message.role === "user" ? "text-white" : "text-slate-700"}`}>
-                        {renderChatText(message.text)}
+                      <div className={`${message.role === "user" ? "text-white [&_*]:text-white" : message.role === "system" ? "text-amber-900" : "text-slate-700"} break-words overflow-visible`}>
+                        {renderChatText(message.text, message.role)}
                       </div>
                     </div>
                   ))}
