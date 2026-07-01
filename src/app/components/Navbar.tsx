@@ -1,4 +1,4 @@
-import { LogOut, Search, Cat, Dog, X, Phone, Stethoscope, Scissors } from "lucide-react";
+import { LogOut, Search, Cat, Dog, X, Phone, Stethoscope, Scissors, MessageCircle } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useState, useRef, useEffect } from "react";
 import { patients } from "../data/patients";
@@ -125,6 +125,15 @@ export function Navbar() {
               }`}
             >
               מלאי
+            </Link>
+            <Link
+              to="/digital-care"
+              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                isActive("/digital-care") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              דיגיטל
             </Link>
             {canAccessReportsPage() && (
               <Link

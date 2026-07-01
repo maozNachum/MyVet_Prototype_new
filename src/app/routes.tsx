@@ -9,6 +9,7 @@ import { Clients } from "./pages/Clients";
 import { Inventory } from "./pages/Inventory";
 import { ClientPortal } from "./pages/ClientPortal";
 import { Reports } from "./pages/Reports";
+import { DigitalCare } from "./pages/DigitalCare";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: "patients", Component: Patients },
       { path: "inventory", Component: Inventory },
       { path: "reports", Component: Reports },
+      { path: "digital-care", Component: DigitalCare },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

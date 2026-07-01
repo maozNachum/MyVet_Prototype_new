@@ -6,9 +6,9 @@ import {
   CalendarPlus, Clock, MapPin, Trash2, CalendarClock, Bell, X,
   Download, Upload, File, Image, Paperclip, Eye,
   Receipt, CheckCircle2, CreditCard, AlertCircle,
+  MessageCircle, Send, Video, ExternalLink, ShieldCheck, PlusCircle, Loader2,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ChatWidget } from "../components/ChatWidget";
 import { Footer } from "../components/Footer";
 import { OwnerBookAppointment } from "../components/OwnerBookAppointment";
 import { SuccessMessage } from "../components/shared/SuccessMessage";
@@ -65,6 +65,54 @@ interface UploadedFile {
   fileUrl?: string | null;
   previewUrl?: string;
 }
+
+interface DigitalConversation {
+  id: number;
+  ownerId: string;
+  petId: number | null;
+  petName: string;
+  subject: string;
+  status: "open" | "waiting_owner" | "waiting_staff" | "closed";
+  priority: "low" | "normal" | "high" | "urgent";
+  lastMessageAt: string;
+  createdAt: string;
+  unreadForOwner: number;
+}
+
+interface DigitalMessage {
+  id: number;
+  conversationId: number;
+  senderType: "owner" | "staff" | "system";
+  senderName: string;
+  text: string;
+  messageType: "text" | "file" | "image" | "video_link" | "system";
+  createdAt: string;
+}
+
+interface ChatAttachmentSummary {
+  id: number;
+  messageId: number | null;
+  conversationId: number;
+  fileName: string;
+  filePath: string;
+  mimeType: string | null;
+  fileSize: number | null;
+  uploadedAt: string;
+}
+
+const DIGITAL_STATUS_LABELS: Record<DigitalConversation["status"], string> = {
+  open: "פתוחה",
+  waiting_owner: "ממתין לתגובה שלכם",
+  waiting_staff: "ממתין לצוות",
+  closed: "נסגרה",
+};
+
+const DIGITAL_PRIORITY_LABELS: Record<DigitalConversation["priority"], string> = {
+  low: "נמוכה",
+  normal: "רגילה",
+  high: "גבוהה",
+  urgent: "דחופה",
+};
 
 const FILE_CATEGORIES = [
   { key: "vaccination", label: "תעודת חיסון" },
@@ -177,6 +225,18 @@ function formatPortalTime(value?: string | null) {
   return date.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
 }
 
+function extractFirstUrl(text?: string | null) {
+  return text?.match(/https?:\/\/\S+/)?.[0]?.replace(/[)\]}>.,;]+$/, "") || null;
+}
+
+function findLatestMeetUrl(messages: DigitalMessage[]) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const url = extractFirstUrl(messages[i].text);
+    if (url && /^https:\/\/meet\.google\.com\//i.test(url)) return url;
+  }
+  return null;
+}
+
 // ─── Visit Summaries per pet ──────────────────────────────────────────
 interface VisitSummary {
   id: number;
@@ -245,6 +305,7 @@ export function ClientPortal() {
     appointments: true, // שיניתי לברירת מחדל פתוח שיהיה קל לראות את התורים מה-Store
     pets: false,
     documents: false,
+    digital: true,
   });
   const toggleSection = (key: string) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -269,6 +330,24 @@ export function ClientPortal() {
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
+  // Digital clinic / owner communication state
+  const [digitalConversations, setDigitalConversations] = useState<DigitalConversation[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+  const [digitalMessages, setDigitalMessages] = useState<DigitalMessage[]>([]);
+  const [digitalAttachments, setDigitalAttachments] = useState<ChatAttachmentSummary[]>([]);
+  const [digitalLoading, setDigitalLoading] = useState(false);
+  const [digitalError, setDigitalError] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+  const [newConversationSubject, setNewConversationSubject] = useState("");
+  const [newConversationText, setNewConversationText] = useState("");
+  const [selectedDigitalPetId, setSelectedDigitalPetId] = useState<number | "">("");
+  const [creatingConversation, setCreatingConversation] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [uploadingChatFile, setUploadingChatFile] = useState(false);
+  const [startingVideo, setStartingVideo] = useState(false);
+  const chatFileInputRef = useRef<HTMLInputElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
   const refreshPortalData = useCallback(async (ownerIdOverride?: string | null) => {
     setIsPortalLoading(true);
     setPortalError(null);
@@ -284,6 +363,10 @@ export function ClientPortal() {
         setVisitSummariesByPet({});
         setPaymentsByPet({});
         setUploadedFiles([]);
+        setDigitalConversations([]);
+        setDigitalMessages([]);
+        setDigitalAttachments([]);
+        setSelectedConversationId(null);
         setPortalError("לא נבחר בעלים. היכנסו עם ‎?owner_id=תעודת_זהות של בעלים שקיים במסד.");
         return;
       }
@@ -304,6 +387,10 @@ export function ClientPortal() {
         setVisitSummariesByPet({});
         setPaymentsByPet({});
         setUploadedFiles([]);
+        setDigitalConversations([]);
+        setDigitalMessages([]);
+        setDigitalAttachments([]);
+        setSelectedConversationId(null);
         setPortalError(`לא נמצא בעלים עם owner_id=${requestedOwnerId}. בדקו שהמספר קיים בטבלת owners.`);
         return;
       }
@@ -598,6 +685,10 @@ export function ClientPortal() {
       setVisitSummariesByPet({});
       setPaymentsByPet({});
       setUploadedFiles([]);
+      setDigitalConversations([]);
+      setDigitalMessages([]);
+      setDigitalAttachments([]);
+      setSelectedConversationId(null);
       setPortalError("שגיאה בטעינת האזור האישי מ-Supabase. בדקו Console / הרשאות RLS / שמות עמודות.");
     } finally {
       setIsPortalLoading(false);
@@ -607,6 +698,415 @@ export function ClientPortal() {
   useEffect(() => {
     refreshPortalData(ownerIdFromUrl);
   }, [ownerIdFromUrl, refreshPortalData]);
+
+  const selectedDigitalConversation = digitalConversations.find((conv) => conv.id === selectedConversationId) || null;
+
+  const loadDigitalConversations = useCallback(async (ownerId: string) => {
+    if (!ownerId) return;
+
+    try {
+      setDigitalLoading(true);
+      setDigitalError(null);
+
+      const { data: conversationRows, error: conversationError } = await supabase
+        .from("conversations")
+        .select("conversation_id, owner_id, pet_id, subject, status, priority, last_message_at, created_at, updated_at")
+        .eq("owner_id", ownerId)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+
+      if (conversationError) throw conversationError;
+
+      const ids = (conversationRows || []).map((row: any) => Number(row.conversation_id));
+      let unreadByConversation = new Map<number, number>();
+
+      if (ids.length > 0) {
+        const { data: messageRows, error: messageError } = await supabase
+          .from("messages")
+          .select("conversation_id, is_read_by_owner, sender_type")
+          .in("conversation_id", ids)
+          .eq("is_read_by_owner", false);
+
+        if (messageError) throw messageError;
+
+        (messageRows || []).forEach((row: any) => {
+          if (row.sender_type === "owner") return;
+          const conversationId = Number(row.conversation_id);
+          unreadByConversation.set(conversationId, (unreadByConversation.get(conversationId) || 0) + 1);
+        });
+      }
+
+      const petNameById = new Map(pets.map((pet) => [pet.id, pet.name]));
+      const mapped: DigitalConversation[] = (conversationRows || []).map((row: any) => {
+        const petId = row.pet_id !== null && row.pet_id !== undefined ? Number(row.pet_id) : null;
+        return {
+          id: Number(row.conversation_id),
+          ownerId: row.owner_id,
+          petId,
+          petName: petId ? petNameById.get(petId) || "חיה לא מזוהה" : "כללי",
+          subject: row.subject || "פנייה כללית",
+          status: (row.status || "open") as DigitalConversation["status"],
+          priority: (row.priority || "normal") as DigitalConversation["priority"],
+          lastMessageAt: row.last_message_at || row.updated_at || row.created_at,
+          createdAt: row.created_at,
+          unreadForOwner: unreadByConversation.get(Number(row.conversation_id)) || 0,
+        };
+      });
+
+      setDigitalConversations(mapped);
+      setSelectedConversationId((current) => {
+        if (current && mapped.some((conv) => conv.id === current)) return current;
+        return mapped[0]?.id || null;
+      });
+    } catch (error) {
+      console.error("Failed to load digital conversations", error);
+      setDigitalError("לא הצלחנו לטעון את השיחות הדיגיטליות. בדקו הרשאות לטבלאות conversations/messages.");
+    } finally {
+      setDigitalLoading(false);
+    }
+  }, [pets]);
+
+  const loadDigitalMessages = useCallback(async (conversationId: number | null) => {
+    if (!conversationId) {
+      setDigitalMessages([]);
+      setDigitalAttachments([]);
+      return;
+    }
+
+    try {
+      setDigitalError(null);
+
+      const { data: rows, error } = await supabase
+        .from("messages")
+        .select("message_id, conversation_id, sender_type, sender_name, message_text, message_type, created_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      const messages: DigitalMessage[] = (rows || []).map((row: any) => ({
+        id: Number(row.message_id),
+        conversationId: Number(row.conversation_id),
+        senderType: (row.sender_type || "system") as DigitalMessage["senderType"],
+        senderName: row.sender_name || (row.sender_type === "owner" ? ownerDisplayName : "צוות המרפאה"),
+        text: row.message_text || "",
+        messageType: (row.message_type || "text") as DigitalMessage["messageType"],
+        createdAt: row.created_at,
+      }));
+
+      setDigitalMessages(messages);
+
+      const { data: attachmentRows, error: attachmentError } = await supabase
+        .from("message_attachments")
+        .select("attachment_id, message_id, conversation_id, file_name, file_path, mime_type, file_size, uploaded_at")
+        .eq("conversation_id", conversationId)
+        .order("uploaded_at", { ascending: true });
+
+      if (attachmentError) throw attachmentError;
+
+      setDigitalAttachments((attachmentRows || []).map((row: any) => ({
+        id: Number(row.attachment_id),
+        messageId: row.message_id !== null && row.message_id !== undefined ? Number(row.message_id) : null,
+        conversationId: Number(row.conversation_id),
+        fileName: row.file_name || "קובץ",
+        filePath: row.file_path,
+        mimeType: row.mime_type || null,
+        fileSize: row.file_size !== null && row.file_size !== undefined ? Number(row.file_size) : null,
+        uploadedAt: row.uploaded_at,
+      })));
+
+      await supabase
+        .from("messages")
+        .update({ is_read_by_owner: true })
+        .eq("conversation_id", conversationId)
+        .neq("sender_type", "owner");
+    } catch (error) {
+      console.error("Failed to load digital messages", error);
+      setDigitalError("לא הצלחנו לטעון את הודעות השיחה.");
+    }
+  }, [ownerDisplayName]);
+
+  useEffect(() => {
+    if (ownerProfile?.owner_id) {
+      void loadDigitalConversations(ownerProfile.owner_id);
+    }
+  }, [ownerProfile?.owner_id, pets, loadDigitalConversations]);
+
+  useEffect(() => {
+    void loadDigitalMessages(selectedConversationId);
+  }, [selectedConversationId, loadDigitalMessages]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [digitalMessages.length, selectedConversationId]);
+
+  const refreshDigitalModule = async () => {
+    if (!ownerProfile?.owner_id) return;
+    await loadDigitalConversations(ownerProfile.owner_id);
+    await loadDigitalMessages(selectedConversationId);
+  };
+
+  const handleCreateConversation = async () => {
+    if (!ownerProfile?.owner_id) return;
+    if (!newConversationSubject.trim()) {
+      alert("כתבו נושא קצר לפנייה.");
+      return;
+    }
+
+    try {
+      setCreatingConversation(true);
+      const now = new Date().toISOString();
+      const petId = selectedDigitalPetId === "" ? null : Number(selectedDigitalPetId);
+
+      const { data: conversation, error } = await supabase
+        .from("conversations")
+        .insert({
+          owner_id: ownerProfile.owner_id,
+          pet_id: petId,
+          subject: newConversationSubject.trim(),
+          status: "waiting_staff",
+          priority: "normal",
+          last_message_at: now,
+          updated_at: now,
+        })
+        .select("conversation_id")
+        .single();
+
+      if (error) throw error;
+
+      const conversationId = Number(conversation.conversation_id);
+      const openingText = newConversationText.trim() || `שלום, אשמח להתייעץ לגבי: ${newConversationSubject.trim()}`;
+
+      const { error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: conversationId,
+          sender_type: "owner",
+          sender_owner_id: ownerProfile.owner_id,
+          sender_name: ownerDisplayName,
+          message_text: openingText,
+          message_type: "text",
+          is_read_by_owner: true,
+          is_read_by_staff: false,
+        });
+
+      if (messageError) throw messageError;
+
+      setNewConversationSubject("");
+      setNewConversationText("");
+      setSelectedDigitalPetId("");
+      setSelectedConversationId(conversationId);
+      await loadDigitalConversations(ownerProfile.owner_id);
+      await loadDigitalMessages(conversationId);
+    } catch (error) {
+      console.error("Failed to create conversation", error);
+      alert("לא הצלחנו לפתוח פנייה חדשה. בדקו הרשאות conversations/messages.");
+    } finally {
+      setCreatingConversation(false);
+    }
+  };
+
+  const handleSendOwnerMessage = async () => {
+    if (!ownerProfile?.owner_id || !selectedConversationId || !messageInput.trim()) return;
+
+    try {
+      setSendingMessage(true);
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversationId,
+          sender_type: "owner",
+          sender_owner_id: ownerProfile.owner_id,
+          sender_name: ownerDisplayName,
+          message_text: messageInput.trim(),
+          message_type: "text",
+          is_read_by_owner: true,
+          is_read_by_staff: false,
+        });
+
+      if (error) throw error;
+
+      await supabase
+        .from("conversations")
+        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .eq("conversation_id", selectedConversationId);
+
+      setMessageInput("");
+      await loadDigitalMessages(selectedConversationId);
+      if (ownerProfile?.owner_id) await loadDigitalConversations(ownerProfile.owner_id);
+    } catch (error) {
+      console.error("Failed to send message", error);
+      alert("לא הצלחנו לשלוח את ההודעה.");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const buildSafeChatAttachmentPath = (conversationId: number, file: File) => {
+    const safeName = sanitizeStorageFileName(file.name);
+    const unique = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return `${ownerProfile?.owner_id || "owner"}/${conversationId}/${Date.now()}-${unique}-${safeName}`;
+  };
+
+  const handleChatFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !ownerProfile?.owner_id || !selectedConversationId) return;
+
+    try {
+      setUploadingChatFile(true);
+      const now = new Date().toISOString();
+      const filePath = buildSafeChatAttachmentPath(selectedConversationId, file);
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-attachments")
+        .upload(filePath, file, { contentType: getStorageContentType(file), upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const isImage = file.type.startsWith("image/");
+      const { data: messageData, error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversationId,
+          sender_type: "owner",
+          sender_owner_id: ownerProfile.owner_id,
+          sender_name: ownerDisplayName,
+          message_text: `צורף קובץ: ${file.name}`,
+          message_type: isImage ? "image" : "file",
+          is_read_by_owner: true,
+          is_read_by_staff: false,
+        })
+        .select("message_id")
+        .single();
+
+      if (messageError) throw messageError;
+
+      const { error: attachmentError } = await supabase
+        .from("message_attachments")
+        .insert({
+          message_id: Number(messageData.message_id),
+          conversation_id: selectedConversationId,
+          owner_id: ownerProfile.owner_id,
+          pet_id: selectedDigitalConversation?.petId || null,
+          file_name: file.name,
+          file_path: filePath,
+          mime_type: file.type || "application/octet-stream",
+          file_size: file.size,
+          uploaded_by_type: "owner",
+        });
+
+      if (attachmentError) throw attachmentError;
+
+      await supabase
+        .from("conversations")
+        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .eq("conversation_id", selectedConversationId);
+
+      await loadDigitalMessages(selectedConversationId);
+      await loadDigitalConversations(ownerProfile.owner_id);
+    } catch (error) {
+      console.error("Failed to upload chat attachment", error);
+      alert("לא הצלחנו להעלות את הקובץ לשיחה. בדקו הרשאות Storage עבור chat-attachments.");
+    } finally {
+      setUploadingChatFile(false);
+    }
+  };
+
+  const openChatAttachment = async (attachment: ChatAttachmentSummary) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUrl(attachment.filePath, 60 * 10);
+
+      if (error) throw error;
+      if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    } catch (error) {
+      console.error("Failed to open chat attachment", error);
+      alert("לא הצלחנו לפתוח את הקובץ.");
+    }
+  };
+
+  const handleStartVideoSession = async () => {
+    if (!ownerProfile?.owner_id || !selectedConversationId) return;
+
+    const existingMeetUrl = findLatestMeetUrl(digitalMessages);
+    if (existingMeetUrl) {
+      window.open(existingMeetUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    try {
+      setStartingVideo(true);
+      const now = new Date().toISOString();
+
+      const { data: existingSessions, error: existingError } = await supabase
+        .from("video_sessions")
+        .select("session_id, meeting_url, status")
+        .eq("conversation_id", selectedConversationId)
+        .not("status", "in", '(completed,cancelled)')
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (existingError) throw existingError;
+
+      const existingSession = existingSessions?.[0];
+      if (existingSession?.meeting_url) {
+        window.open(existingSession.meeting_url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (!existingSession) {
+        const { error: sessionError } = await supabase
+          .from("video_sessions")
+          .insert({
+            conversation_id: selectedConversationId,
+            owner_id: ownerProfile.owner_id,
+            pet_id: selectedDigitalConversation?.petId || null,
+            meeting_url: null,
+            status: "scheduled",
+            scheduled_at: now,
+            notes: "בקשת שיחת Google Meet מפורטל הלקוח",
+          });
+
+        if (sessionError) throw sessionError;
+      }
+
+      const { error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversationId,
+          sender_type: "system",
+          sender_name: "מערכת MyVet",
+          message_text: "בעל החיה ביקש שיחת וידאו. צוות המרפאה ייצור קישור Google Meet וישלח אותו כאן.",
+          message_type: "system",
+          is_read_by_owner: true,
+          is_read_by_staff: false,
+        });
+
+      if (messageError) throw messageError;
+
+      await supabase
+        .from("conversations")
+        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .eq("conversation_id", selectedConversationId);
+
+      await loadDigitalMessages(selectedConversationId);
+      await loadDigitalConversations(ownerProfile.owner_id);
+      alert("הבקשה לשיחת וידאו נשלחה לצוות המרפאה. כשהצוות ייצור קישור Google Meet, הוא יופיע כאן בשיחה.");
+    } catch (error) {
+      console.error("Failed to request video session", error);
+      alert("לא הצלחנו לשלוח בקשה לשיחת וידאו.");
+    } finally {
+      setStartingVideo(false);
+    }
+  };
 
   // 2. עדכון להזזת תור מול Supabase
   const handleReschedule = async () => {
@@ -938,6 +1438,15 @@ export function ClientPortal() {
               <span className="hidden sm:inline">קביעת תור</span>
             </button>
 
+            <button
+              onClick={() => setOpenSections((prev) => ({ ...prev, digital: true }))}
+              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#1e40af] px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-blue-200 font-medium shadow-sm"
+              title="מרפאה דיגיטלית"
+            >
+              <MessageCircle className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">דיגיטל</span>
+            </button>
+
             <div className="hidden lg:block w-px h-6 bg-gray-200"></div>
 
             <div className="flex items-center gap-3">
@@ -1036,7 +1545,297 @@ export function ClientPortal() {
             )}
           </div>
 
-          {/* ═══ 2. Future Appointments ═══ */}
+          {/* ═══ 2. Digital Clinic ═══ */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <button
+              onClick={() => toggleSection("digital")}
+              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-50 rounded-xl p-2.5 relative">
+                  <MessageCircle className="w-5 h-5 text-[#1e40af]" />
+                  {digitalConversations.some((conv) => conv.unreadForOwner > 0) && (
+                    <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                      {digitalConversations.reduce((sum, conv) => sum + conv.unreadForOwner, 0)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מרפאה דיגיטלית</h2>
+                  <p className="text-gray-500 font-medium text-[12px]">
+                    {digitalConversations.length} שיחות · צ׳אט, קבצים ושיחת וידאו
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenSections((prev) => ({ ...prev, digital: true }));
+                    setNewConversationSubject("התייעצות חדשה");
+                  }}
+                  className="flex items-center gap-1.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
+                  style={{ fontWeight: 600 }}
+                >
+                  <PlusCircle className="w-3.5 h-3.5" /> פנייה חדשה
+                </span>
+                <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.digital ? "rotate-180" : ""}`} />
+              </div>
+            </button>
+
+            {openSections.digital && (
+              <div className="border-t border-gray-100 bg-gradient-to-b from-blue-50/40 to-white p-4">
+                {digitalError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-[13px] font-medium">
+                    {digitalError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
+                  {/* Owner conversation sidebar */}
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-4">
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                          <h3 className="text-gray-900 text-[15px]" style={{ fontWeight: 800 }}>פתיחת פנייה לצוות</h3>
+                          <p className="text-gray-500 text-[12px] mt-1 leading-5">בחרו חיה, כתבו נושא קצר וצוות המרפאה יענה לכם כאן.</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-[#1e40af] text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <select
+                          value={selectedDigitalPetId}
+                          onChange={(e) => setSelectedDigitalPetId(e.target.value ? Number(e.target.value) : "")}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-700 focus:outline-none focus:border-[#1e40af] bg-white"
+                        >
+                          <option value="">פנייה כללית</option>
+                          {pets.map((pet) => (
+                            <option key={pet.id} value={pet.id}>{pet.name}</option>
+                          ))}
+                        </select>
+
+                        <input
+                          value={newConversationSubject}
+                          onChange={(e) => setNewConversationSubject(e.target.value)}
+                          placeholder="נושא הפנייה לדוגמה: התייעצות לגבי אלרגיה"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] focus:outline-none focus:border-[#1e40af]"
+                        />
+
+                        <textarea
+                          value={newConversationText}
+                          onChange={(e) => setNewConversationText(e.target.value)}
+                          placeholder="כתבו לצוות מה קרה, ממתי זה התחיל ומה תרצו לבדוק..."
+                          rows={3}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] focus:outline-none focus:border-[#1e40af] resize-none"
+                        />
+
+                        <button
+                          onClick={handleCreateConversation}
+                          disabled={creatingConversation || !ownerProfile || !newConversationSubject.trim()}
+                          className={`w-full rounded-xl py-3 text-[13px] flex items-center justify-center gap-2 transition-colors shadow-sm ${creatingConversation || !newConversationSubject.trim() ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer"}`}
+                          style={{ fontWeight: 800 }}
+                        >
+                          {creatingConversation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                          פתיחת פנייה
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <span className="text-gray-900 text-[14px]" style={{ fontWeight: 800 }}>השיחות שלי</span>
+                        <button onClick={() => ownerProfile?.owner_id && void loadDigitalConversations(ownerProfile.owner_id)} className="text-[#1e40af] text-[12px] hover:underline font-semibold">
+                          רענון
+                        </button>
+                      </div>
+
+                      <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-100">
+                        {digitalLoading && digitalConversations.length === 0 ? (
+                          <div className="p-5 text-center text-gray-500 text-[13px] font-medium">טוען שיחות...</div>
+                        ) : digitalConversations.length === 0 ? (
+                          <div className="p-5 text-center text-gray-500 text-[13px] font-medium leading-6">
+                            עדיין אין פניות דיגיטליות. פתחו פנייה חדשה כדי להתחיל צ׳אט עם הצוות.
+                          </div>
+                        ) : (
+                          digitalConversations.map((conv) => (
+                            <button
+                              key={conv.id}
+                              onClick={() => setSelectedConversationId(conv.id)}
+                              className={`w-full text-right p-4 transition-colors cursor-pointer ${selectedConversationId === conv.id ? "bg-blue-50" : "hover:bg-gray-50"}`}
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="min-w-0">
+                                  <p className="text-gray-900 text-[13px] truncate" style={{ fontWeight: 800 }}>{conv.subject}</p>
+                                  <p className="text-gray-500 text-[12px] mt-1">{conv.petName} · {formatPortalDate(conv.lastMessageAt)}</p>
+                                </div>
+                                {conv.unreadForOwner > 0 && (
+                                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] flex items-center justify-center font-bold">
+                                    {conv.unreadForOwner}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full font-semibold">{DIGITAL_STATUS_LABELS[conv.status]}</span>
+                                <span className="bg-blue-50 text-[#1e40af] text-[11px] px-2 py-0.5 rounded-full font-semibold">{DIGITAL_PRIORITY_LABELS[conv.priority]}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat area */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[560px] flex flex-col">
+                    {selectedDigitalConversation ? (
+                      <>
+                        <div className="px-5 py-4 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                              <MessageCircle className="w-5 h-5 text-[#1e40af]" />
+                            </div>
+                            <div>
+                              <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 800 }}>{selectedDigitalConversation.subject}</h3>
+                              <p className="text-gray-500 text-[12px] mt-0.5">
+                                {selectedDigitalConversation.petName} · {DIGITAL_STATUS_LABELS[selectedDigitalConversation.status]}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => chatFileInputRef.current?.click()}
+                              disabled={uploadingChatFile}
+                              className="flex items-center gap-1.5 border border-gray-200 hover:border-blue-200 hover:bg-blue-50 text-gray-600 hover:text-[#1e40af] rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60"
+                              style={{ fontWeight: 700 }}
+                            >
+                              <Paperclip className="w-4 h-4" /> {uploadingChatFile ? "מעלה..." : "צירוף קובץ"}
+                            </button>
+                            <button
+                              onClick={handleStartVideoSession}
+                              disabled={startingVideo}
+                              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60"
+                              style={{ fontWeight: 700 }}
+                            >
+                              {startingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />} {findLatestMeetUrl(digitalMessages) ? "הצטרף ל-Google Meet" : "בקש שיחת וידאו"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 bg-[#f8fafc] p-4 overflow-y-auto max-h-[430px] space-y-3">
+                          {digitalMessages.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-center text-gray-500 text-[13px] font-medium">
+                              אין עדיין הודעות בשיחה הזאת.
+                            </div>
+                          ) : (
+                            digitalMessages.map((message) => {
+                              const isOwner = message.senderType === "owner";
+                              const messageAttachments = digitalAttachments.filter((att) => att.messageId === message.id);
+                              const videoUrl = message.messageType === "video_link" ? extractFirstUrl(message.text) : null;
+
+                              return (
+                                <div key={message.id} className={`flex ${isOwner ? "justify-end" : "justify-start"}`}>
+                                  <div className={`max-w-[78%] rounded-2xl px-4 py-3 shadow-sm border ${isOwner ? "bg-[#1e40af] text-white border-[#1e40af] rounded-br-md" : "bg-white text-gray-700 border-gray-100 rounded-bl-md"}`}>
+                                    <div className="flex items-center justify-between gap-4 mb-1.5">
+                                      <span className={`text-[11px] ${isOwner ? "text-blue-100" : "text-gray-400"}`} style={{ fontWeight: 700 }}>
+                                        {isOwner ? "אתם" : message.senderName}
+                                      </span>
+                                      <span className={`text-[10px] ${isOwner ? "text-blue-100" : "text-gray-400"}`}>
+                                        {formatPortalTime(message.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="text-[13px] leading-6 whitespace-pre-wrap">{message.text}</p>
+                                    {videoUrl && (
+                                      <button
+                                        onClick={() => window.open(videoUrl, "_blank")}
+                                        className="mt-3 bg-white/15 hover:bg-white/25 text-inherit border border-white/20 rounded-xl px-3 py-2 text-[12px] flex items-center gap-2 transition-colors"
+                                        style={{ fontWeight: 700 }}
+                                      >
+                                        <ExternalLink className="w-4 h-4" /> הצטרפות ל-Google Meet
+                                      </button>
+                                    )}
+                                    {messageAttachments.length > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        {messageAttachments.map((attachment) => (
+                                          <button
+                                            key={attachment.id}
+                                            onClick={() => void openChatAttachment(attachment)}
+                                            className={`w-full rounded-xl px-3 py-2 text-[12px] flex items-center justify-between gap-3 transition-colors ${isOwner ? "bg-white/10 hover:bg-white/20 text-white" : "bg-gray-50 hover:bg-gray-100 text-gray-700"}`}
+                                          >
+                                            <span className="flex items-center gap-2 min-w-0">
+                                              <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                                              <span className="truncate">{attachment.fileName}</span>
+                                            </span>
+                                            <span className="opacity-70 shrink-0">{attachment.fileSize ? formatFileSize(attachment.fileSize) : "קובץ"}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                          <div ref={chatEndRef} />
+                        </div>
+
+                        <div className="border-t border-gray-100 p-4 bg-white">
+                          <input
+                            ref={chatFileInputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={handleChatFileSelected}
+                            accept="image/*,.pdf,.doc,.docx,.txt"
+                          />
+                          <div className="flex items-end gap-3">
+                            <textarea
+                              value={messageInput}
+                              onChange={(e) => setMessageInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  void handleSendOwnerMessage();
+                                }
+                              }}
+                              placeholder="כתבו הודעה לצוות המרפאה..."
+                              rows={2}
+                              className="flex-1 border border-gray-200 rounded-2xl px-4 py-3 text-[13px] focus:outline-none focus:border-[#1e40af] resize-none"
+                            />
+                            <button
+                              onClick={handleSendOwnerMessage}
+                              disabled={!messageInput.trim() || sendingMessage}
+                              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0 ${!messageInput.trim() || sendingMessage ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer shadow-sm"}`}
+                              title="שליחת הודעה"
+                            >
+                              {sendingMessage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                            </button>
+                          </div>
+                          <p className="text-gray-400 text-[11px] mt-2 font-medium">
+                            ניתן לצרף תמונות, PDF ומסמכים. במקרה חירום רפואי יש לפנות טלפונית למרפאה.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-full min-h-[520px] flex flex-col items-center justify-center text-center p-8">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4 border border-blue-100">
+                          <MessageCircle className="w-8 h-8 text-[#1e40af]" />
+                        </div>
+                        <h3 className="text-gray-900 text-[18px] mb-2" style={{ fontWeight: 800 }}>עדיין אין שיחה פעילה</h3>
+                        <p className="text-gray-500 text-[13px] leading-6 max-w-md">
+                          פתחו פנייה חדשה כדי לשוחח עם צוות המרפאה, לשלוח תמונות או מסמכים, ולבקש שיחת וידאו.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ═══ 3. Future Appointments ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
               onClick={() => toggleSection("appointments")}
@@ -1745,7 +2544,6 @@ export function ClientPortal() {
       )}
 
       <Footer />
-      <ChatWidget mode="owner" />
     </div>
   );
 }
