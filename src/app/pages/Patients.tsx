@@ -33,6 +33,7 @@ export type Patient = {
     breedCode: string;
     customBreed: string;
     gender: string;
+    neuteredStatus: "unknown" | "yes" | "no" | string;
     age: string | number;
     birthDate: string;
     microchip: string;
@@ -71,6 +72,7 @@ const patientSchema = z.object({
   gender: z.enum(["זכר", "נקבה", "לא ידוע"], {
     message: "חובה לבחור מין",
   }),
+  neuteredStatus: z.enum(["unknown", "yes", "no"]).default("unknown"),
   birthDate: z.string().min(1, "חובה לבחור תאריך לידה"),
   weight: z
     .string()
@@ -88,6 +90,7 @@ const editPetSchema = patientSchema.pick({
   breed: true,
   customBreed: true,
   gender: true,
+  neuteredStatus: true,
   birthDate: true,
   weight: true,
   allergies: true,
@@ -97,6 +100,28 @@ type EditPetFormValues = z.infer<typeof editPetSchema>;
 
 const allowedSpecies = ["dog", "cat", "bird", "rabbit", "hamster", "other"] as const;
 const allowedGenders = ["זכר", "נקבה", "לא ידוע"] as const;
+
+const neuteredOptions = [
+  { value: "unknown", label: "לא ידוע" },
+  { value: "yes", label: "כן" },
+  { value: "no", label: "לא" },
+] as const;
+
+function getNeuteredQuestion(gender?: string | null) {
+  if (gender === "זכר") return "מסורס?";
+  if (gender === "נקבה") return "מעוקרת?";
+  return "מסורס/מעוקרת?";
+}
+
+function getNeuteredLabel(status?: string | null, gender?: string | null) {
+  if (status === "yes") return gender === "נקבה" ? "מעוקרת" : gender === "זכר" ? "מסורס" : "כן";
+  if (status === "no") return "לא";
+  return "לא ידוע";
+}
+
+function normalizeNeuteredStatus(value?: string | null): "unknown" | "yes" | "no" {
+  return value === "yes" || value === "no" || value === "unknown" ? value : "unknown";
+}
 
 function normalizeSpeciesForForm(species?: string | null): PatientFormValues["species"] {
   return allowedSpecies.includes(species as PatientFormValues["species"])
@@ -228,6 +253,7 @@ export function Patients() {
             microchip,
             allergies,
             weight,
+            neutered_status,
             owner_id,
             owner:owners (
               owner_id,
@@ -244,7 +270,7 @@ export function Patients() {
 
         if (data) {
           // מיפוי הנתונים למבנה שהממשק שלך צריך
-          const mappedData: Patient[] = data.map((row: any) => { id: Number(row.pet_id)
+          const mappedData: Patient[] = data.map((row: any) => {
             const owner = Array.isArray(row.owner) ? row.owner[0] : row.owner;
             const ownerFullName = `${owner?.owner_first_name || ""} ${owner?.owner_last_name || ""}`.trim();
 
@@ -354,6 +380,7 @@ export function Patients() {
       breed: selectedPatient.pet.breedCode || "",
       customBreed: selectedPatient.pet.customBreed || "",
       gender: normalizeGenderForForm(selectedPatient.pet.gender),
+      neuteredStatus: normalizeNeuteredStatus(selectedPatient.pet.neuteredStatus),
       birthDate: selectedPatient.pet.birthDate || "",
       weight: selectedPatient.pet.weightValue || "",
       microchipNumber: selectedPatient.pet.microchipNumber || "",
@@ -419,6 +446,7 @@ export function Patients() {
             gender: data.gender,
             birth_date: data.birthDate,
             weight: Number(data.weight),
+            neutered_status: data.neuteredStatus || "unknown",
             microchip: data.microchipNumber || null,
             allergies: data.allergies || null
           }
@@ -457,6 +485,7 @@ export function Patients() {
         gender: data.gender,
         birth_date: data.birthDate,
         weight: Number(data.weight),
+        neutered_status: data.neuteredStatus || "unknown",
         microchip: data.microchipNumber || null,
         allergies: data.allergies || null,
       };
@@ -480,6 +509,7 @@ export function Patients() {
           breedCode: normalizeBreedForForm(breedToSave),
           customBreed: getCustomBreedValue(breedToSave),
           gender: data.gender,
+          neuteredStatus: data.neuteredStatus || "unknown",
           age: calculateAgeFromBirthDate(data.birthDate),
           birthDate: data.birthDate,
           microchip: data.microchipNumber || "אין שבב",
@@ -559,7 +589,7 @@ export function Patients() {
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h2 className="text-gray-900 text-[24px] font-bold">{pet.name}</h2>
                 <span className="text-gray-500 text-[15px]">
-                  {pet.species}, {pet.gender}, בן {pet.age}
+                  {pet.species}, {pet.gender}, בן {pet.age} · {getNeuteredLabel(pet.neuteredStatus, pet.gender)}
                 </span>
               </div>
 
@@ -813,6 +843,19 @@ export function Patients() {
                   </div>
 
                   <div>
+                    <label htmlFor="editNeuteredStatus" className="block text-gray-700 text-[14px] mb-2 font-medium">{getNeuteredQuestion(watchEditPet("gender"))}</label>
+                    <select
+                      id="editNeuteredStatus"
+                      {...registerEditPet("neuteredStatus")}
+                      className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-colors text-[15px] bg-white border-gray-300 focus:ring-blue-500/20 focus:border-blue-500"
+                    >
+                      {neuteredOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
                     <label htmlFor="editBirthDate" className="block text-gray-700 text-[14px] mb-2 font-medium">תאריך לידה</label>
                     <input
                       type="date"
@@ -891,7 +934,7 @@ export function Patients() {
           petName={pet.name}
           petSpecies={pet.speciesType}
           ownerName={owner.name}
-          patientId={Number(selectedPatient.id)}
+          patientId={selectedPatient.id}
         />
 
         {isAnesthesiaOpen && (
@@ -912,9 +955,24 @@ export function Patients() {
           <Users className="w-6 h-6 text-[#1e40af]" />
         </div>
         <div>
-          <h1 className="text-gray-900 text-[22px] font-bold">בעלי חיים</h1>
-          <p className="text-gray-500 text-[14px]">ניהול בעלי חיים וצפייה בתיקים</p>
+          <h1 className="text-gray-900 text-[22px] font-bold">מטופלים</h1>
+          <p className="text-gray-500 text-[14px]">ניהול מטופלים, רישום חדשים וצפייה בתיקים</p>
         </div>
+      </div>
+
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-8 w-fit">
+        <button
+          onClick={() => setActiveTab("list")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all cursor-pointer text-[14px] ${activeTab === "list" ? "bg-white text-[#1e40af] shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700 font-normal"}`}
+        >
+          <Eye className="w-4 h-4" /> צפייה במטופלים
+        </button>
+        <button
+          onClick={() => setActiveTab("register")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all cursor-pointer text-[14px] ${activeTab === "register" ? "bg-white text-[#1e40af] shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700 font-normal"}`}
+        >
+          <UserPlus className="w-4 h-4" /> רישום מטופל חדש
+        </button>
       </div>
 
       {activeTab === "list" ? (
@@ -957,7 +1015,7 @@ export function Patients() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="text-gray-900 text-[16px] truncate font-semibold">{patient.pet.name}</h3>
-                          <span className="text-gray-500 font-medium text-[13px] shrink-0">{patient.pet.species}, {patient.pet.gender}</span>
+                          <span className="text-gray-500 font-medium text-[13px] shrink-0">{patient.pet.species}, {patient.pet.gender} · {getNeuteredLabel(patient.pet.neuteredStatus, patient.pet.gender)}</span>
                         </div>
                         <p className="text-gray-500 text-[13px]">{patient.pet.breed} · בן {patient.pet.age}</p>
                       </div>
@@ -1111,6 +1169,19 @@ export function Patients() {
                   {errors.gender && <p className="text-red-500 text-[12px] mt-1.5 font-medium">{errors.gender.message}</p>}
                 </div>
                 
+                <div>
+                  <label htmlFor="neuteredStatus" className="block text-gray-700 text-[14px] mb-2 font-medium">מסורס/מעוקרת?</label>
+                  <select
+                    id="neuteredStatus"
+                    {...register("neuteredStatus")}
+                    className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-colors text-[15px] bg-white border-gray-300 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    {neuteredOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label htmlFor="birthDate" className="block text-gray-700 text-[14px] mb-2 font-medium">תאריך לידה</label>
                   <div className="relative">

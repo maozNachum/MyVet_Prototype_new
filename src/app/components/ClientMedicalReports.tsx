@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   FileText,
   Stethoscope,
   Pill,
   FlaskConical,
   Paperclip,
-  Calendar,
-  User,
-  ChevronLeft,
   Download,
   Eye,
   Loader2,
   AlertCircle,
+  ClipboardList,
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
 
@@ -31,6 +32,39 @@ interface VisitRow {
   treatment: string | null;
   notes: string | null;
   attachments: string | null;
+  visit_type?: string | null;
+  urgency_level?: "normal" | "serious" | "critical" | null;
+  chief_complaint?: string | null;
+  final_diagnosis?: string | null;
+  follow_up_required?: boolean | null;
+  follow_up_notes?: string | null;
+}
+
+interface PhysicalExamRow {
+  physical_exam_id: number;
+  visit_id: number | null;
+  pet_id: number;
+  exam_date: string | null;
+  findings: string | null;
+}
+
+interface MedicalProblemRow {
+  problem_id: number;
+  visit_id: number | null;
+  pet_id: number;
+  problem_text: string | null;
+  severity: "normal" | "serious" | "critical" | null;
+  status: "active" | "improved" | "resolved" | null;
+  notes: string | null;
+}
+
+interface DifferentialDiagnosisRow {
+  diagnosis_id: number;
+  visit_id: number | null;
+  pet_id: number;
+  diagnosis_text: string | null;
+  likelihood: "low" | "possible" | "likely" | null;
+  notes: string | null;
 }
 
 interface PrescriptionRow {
@@ -52,6 +86,7 @@ interface LabOrderRow {
   category: string | null;
   status: string | null;
   ordered_date: string | null;
+  test_date?: string | null;
   results: string | null;
   normal_range: string | null;
   result_value: string | null;
@@ -78,7 +113,7 @@ interface DocumentRow {
 type TabKey = "visits" | "prescriptions" | "labs" | "documents";
 
 const TABS: { key: TabKey; label: string; icon: any }[] = [
-  { key: "visits", label: "סיכומי ביקור", icon: Stethoscope },
+  { key: "visits", label: "ביקורים", icon: Stethoscope },
   { key: "prescriptions", label: "מרשמים", icon: Pill },
   { key: "labs", label: "בדיקות מעבדה", icon: FlaskConical },
   { key: "documents", label: "מסמכים", icon: Paperclip },
@@ -88,31 +123,34 @@ function formatDate(value?: string | null) {
   if (!value) return "לא צוין";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("he-IL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return date.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function statusLabel(status?: string | null) {
   switch (status) {
-    case "completed":
-      return "הושלם";
-    case "ordered":
-      return "הוזמן";
-    case "in-progress":
-      return "בתהליך";
-    case "cancelled":
-      return "בוטל";
-    case "normal":
-      return "תקין";
-    case "abnormal":
-      return "חריג";
-    case "critical":
-      return "קריטי";
-    default:
-      return status || "לא צוין";
+    case "completed": return "הושלם";
+    case "ordered": return "הוזמן";
+    case "in-progress": return "בתהליך";
+    case "cancelled": return "בוטל";
+    case "normal": return "תקין";
+    case "abnormal": return "חריג";
+    case "critical": return "קריטי";
+    case "active": return "פעיל";
+    case "improved": return "השתפר";
+    case "resolved": return "נפתר";
+    case "serious": return "חמור";
+    case "low": return "נמוכה";
+    case "possible": return "אפשרית";
+    case "likely": return "סבירה";
+    default: return status || "לא צוין";
+  }
+}
+
+function urgencyClass(value?: string | null) {
+  switch (value) {
+    case "critical": return "bg-red-50 text-red-700 border-red-200";
+    case "serious": return "bg-amber-50 text-amber-700 border-amber-200";
+    default: return "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
 }
 
@@ -136,6 +174,9 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
   const [activeTab, setActiveTab] = useState<TabKey>("visits");
   const [expandedVisitId, setExpandedVisitId] = useState<number | null>(null);
   const [visits, setVisits] = useState<VisitRow[]>([]);
+  const [physicalExams, setPhysicalExams] = useState<PhysicalExamRow[]>([]);
+  const [medicalProblems, setMedicalProblems] = useState<MedicalProblemRow[]>([]);
+  const [differentials, setDifferentials] = useState<DifferentialDiagnosisRow[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [labOrders, setLabOrders] = useState<LabOrderRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
@@ -148,35 +189,28 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       setError(null);
 
       try {
-        const [visitsRes, prescriptionsRes, labsRes, documentsRes] = await Promise.all([
-          supabase
-            .from("medical_visits")
-            .select("*")
-            .eq("pet_id", petId)
-            .order("visit_date", { ascending: false }),
-          supabase
-            .from("prescriptions")
-            .select("*")
-            .eq("pet_id", petId)
-            .order("start_date", { ascending: false }),
-          supabase
-            .from("lab_orders")
-            .select("*")
-            .eq("pet_id", petId)
-            .order("ordered_date", { ascending: false }),
-          supabase
-            .from("documents")
-            .select("*")
-            .eq("pet_id", petId)
-            .order("uploaded_at", { ascending: false }),
+        const [visitsRes, examsRes, problemsRes, diffRes, prescriptionsRes, labsRes, documentsRes] = await Promise.all([
+          supabase.from("medical_visits").select("*").eq("pet_id", petId).order("visit_date", { ascending: false }),
+          supabase.from("physical_exams").select("*").eq("pet_id", petId).order("exam_date", { ascending: false }),
+          supabase.from("medical_problems").select("*").eq("pet_id", petId).order("created_at", { ascending: true }),
+          supabase.from("differential_diagnoses").select("*").eq("pet_id", petId).order("created_at", { ascending: true }),
+          supabase.from("prescriptions").select("*").eq("pet_id", petId).order("start_date", { ascending: false }),
+          supabase.from("lab_orders").select("*").eq("pet_id", petId).order("ordered_date", { ascending: false }),
+          supabase.from("documents").select("*").eq("pet_id", petId).order("uploaded_at", { ascending: false }),
         ]);
 
         if (visitsRes.error) throw visitsRes.error;
+        if (examsRes.error) throw examsRes.error;
+        if (problemsRes.error) throw problemsRes.error;
+        if (diffRes.error) throw diffRes.error;
         if (prescriptionsRes.error) throw prescriptionsRes.error;
         if (labsRes.error) throw labsRes.error;
         if (documentsRes.error) throw documentsRes.error;
 
         setVisits((visitsRes.data || []) as VisitRow[]);
+        setPhysicalExams((examsRes.data || []) as PhysicalExamRow[]);
+        setMedicalProblems((problemsRes.data || []) as MedicalProblemRow[]);
+        setDifferentials((diffRes.data || []) as DifferentialDiagnosisRow[]);
         setPrescriptions((prescriptionsRes.data || []) as PrescriptionRow[]);
         setLabOrders((labsRes.data || []) as LabOrderRow[]);
         setDocuments((documentsRes.data || []) as DocumentRow[]);
@@ -204,9 +238,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       return;
     }
 
-    const { data, error: signedError } = await supabase.storage
-      .from("documents")
-      .createSignedUrl(doc.file_path, 60 * 5);
+    const { data, error: signedError } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 60 * 5);
 
     if (signedError || !data?.signedUrl) {
       alert("לא הצלחנו לפתוח את המסמך");
@@ -238,10 +270,10 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden" dir="rtl">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div>
-          <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 700 }}>תיק רפואי דיגיטלי — {petName}</h4>
-          <p className="text-gray-500 font-medium text-[12px]">נתונים אמיתיים ממסד הנתונים</p>
+          <h4 className="text-gray-900 text-[15px] font-bold">תיק רפואי דיגיטלי — {petName}</h4>
+          <p className="text-gray-500 font-medium text-[12px]">ביקורים, בעיות, בדיקה גופנית, אבחנות, מרשמים ומסמכים</p>
         </div>
-        <button className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-emerald-200" style={{ fontWeight: 500 }}>
+        <button className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-emerald-200 font-medium">
           <Download className="w-3.5 h-3.5" /> ייצוא
         </button>
       </div>
@@ -255,66 +287,121 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-t-xl text-[13px] border-b-2 transition-colors cursor-pointer ${
-                active
-                  ? "text-[#1e40af] border-[#1e40af] bg-blue-50/60"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-              style={{ fontWeight: active ? 700 : 500 }}
+              className={`flex items-center gap-2 px-3 py-2 rounded-t-xl text-[13px] border-b-2 transition-colors cursor-pointer ${active ? "text-[#1e40af] border-[#1e40af] bg-blue-50/60" : "text-gray-500 border-transparent hover:text-gray-800 hover:bg-gray-50"}`}
             >
               <Icon className="w-4 h-4" />
-              {tab.label}
-              <span className="bg-white border border-gray-200 rounded-full px-2 py-0.5 text-[11px]">{count}</span>
+              <span className="font-semibold">{tab.label}</span>
+              <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[11px]">{count}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="p-4">
+      <div className="p-5">
         {activeTab === "visits" && (
-          <div className="space-y-3">
-            {visits.length === 0 ? <EmptyState text="אין סיכומי ביקור שמורים במסד" /> : visits.map((visit) => {
+          <div className="space-y-4">
+            {visits.length === 0 ? <EmptyState text="אין עדיין סיכומי ביקור" /> : visits.map((visit) => {
+              const visitProblems = medicalProblems.filter((p) => p.visit_id === visit.visit_id);
+              const visitExams = physicalExams.filter((e) => e.visit_id === visit.visit_id);
+              const visitDifferentials = differentials.filter((d) => d.visit_id === visit.visit_id);
+              const visitPrescriptions = prescriptions.filter((p) => p.visit_id === visit.visit_id);
               const expanded = expandedVisitId === visit.visit_id;
+
               return (
-                <div key={visit.visit_id} className="rounded-xl border border-gray-100 overflow-hidden">
-                  <button
-                    onClick={() => setExpandedVisitId(expanded ? null : visit.visit_id)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3 text-right">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                        <Stethoscope className="w-5 h-5 text-blue-600" />
-                      </div>
+                <article key={visit.visit_id} className="border border-gray-100 rounded-2xl overflow-hidden hover:border-blue-100 transition-colors">
+                  <button onClick={() => setExpandedVisitId(expanded ? null : visit.visit_id)} className="w-full p-4 text-right bg-white hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-gray-900 text-[14px]" style={{ fontWeight: 700 }}>{visit.reason || "ביקור רפואי"}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-gray-500 mt-0.5">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(visit.visit_date)}</span>
-                          <span className="flex items-center gap-1"><User className="w-3 h-3" />{visit.vet_name || "לא צוין"}</span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-bold text-gray-900 text-[15px]">{visit.chief_complaint || visit.reason || "ביקור רפואי"}</span>
+                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${urgencyClass(visit.urgency_level)}`}>{statusLabel(visit.urgency_level || "normal")}</span>
+                          {visit.follow_up_required && <span className="px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-bold">נדרש מעקב</span>}
                         </div>
+                        <p className="text-gray-500 text-[12px]">{formatDate(visit.visit_date)} · {visit.vet_name || "צוות המרפאה"}</p>
                       </div>
+                      <span className="text-blue-600 text-[12px] font-semibold">{expanded ? "סגור" : "פתח"}</span>
                     </div>
-                    <ChevronLeft className={`w-4 h-4 text-gray-500 transition-transform ${expanded ? "rotate-90" : ""}`} />
                   </button>
 
                   {expanded && (
-                    <div className="border-t border-gray-100 px-4 py-4 space-y-3 text-[13px]">
-                      <div>
-                        <p className="text-gray-500 mb-1" style={{ fontWeight: 700 }}>אבחנה</p>
-                        <p className="text-gray-800 bg-blue-50/50 rounded-lg px-3 py-2 border border-blue-100">{visit.diagnosis || "לא צוין"}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 mb-1" style={{ fontWeight: 700 }}>טיפול שבוצע / תוכנית טיפול</p>
-                        <p className="text-gray-800 bg-emerald-50/50 rounded-lg px-3 py-2 border border-emerald-100">{visit.treatment || "לא צוין"}</p>
-                      </div>
+                    <div className="border-t border-gray-100 p-5 bg-gray-50/40 space-y-4">
+                      <Section icon={ClipboardList} title="סיבת ביקור">
+                        <p>{visit.chief_complaint || visit.reason || "לא צוין"}</p>
+                      </Section>
+
+                      {visitProblems.length > 0 && (
+                        <Section icon={AlertTriangle} title="בעיות רפואיות">
+                          <div className="space-y-2">
+                            {visitProblems.map((problem) => (
+                              <div key={problem.problem_id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <span className="font-bold text-gray-900">{problem.problem_text}</span>
+                                  <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${urgencyClass(problem.severity)}`}>{statusLabel(problem.severity)}</span>
+                                  <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-bold">{statusLabel(problem.status)}</span>
+                                </div>
+                                {problem.notes && <p className="text-gray-600 whitespace-pre-wrap">{problem.notes}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </Section>
+                      )}
+
+                      {visitExams.length > 0 && (
+                        <Section icon={Activity} title="בדיקה גופנית">
+                          {visitExams.map((exam) => (
+                            <div key={exam.physical_exam_id} className="bg-white rounded-xl border border-gray-100 p-3 mb-2 last:mb-0">
+                              <p className="text-gray-500 text-[12px] mb-1">תאריך בדיקה: {formatDate(exam.exam_date)}</p>
+                              <p className="whitespace-pre-wrap leading-7">{exam.findings}</p>
+                            </div>
+                          ))}
+                        </Section>
+                      )}
+
+                      <Section icon={Stethoscope} title="טיפול">
+                        <p className="whitespace-pre-wrap">{visit.treatment || "לא צוין"}</p>
+                      </Section>
+
+                      {visitDifferentials.length > 0 && (
+                        <Section icon={FileText} title="אבחנות מבדלות">
+                          <div className="space-y-2">
+                            {visitDifferentials.map((diagnosis) => (
+                              <div key={diagnosis.diagnosis_id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-bold text-gray-900">{diagnosis.diagnosis_text}</span>
+                                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{statusLabel(diagnosis.likelihood)}</span>
+                                </div>
+                                {diagnosis.notes && <p className="text-gray-600 whitespace-pre-wrap">{diagnosis.notes}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </Section>
+                      )}
+
+                      <Section icon={CheckCircle2} title="אבחנה סופית">
+                        <p className="whitespace-pre-wrap">{visit.final_diagnosis || visit.diagnosis || "לא צוין"}</p>
+                      </Section>
+
+                      {visitPrescriptions.length > 0 && (
+                        <Section icon={Pill} title="מרשמים מהביקור">
+                          <div className="space-y-2">
+                            {visitPrescriptions.map((prescription) => (
+                              <div key={prescription.prescription_id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                <p className="font-bold text-gray-900">{prescription.medication}</p>
+                                <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ")}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </Section>
+                      )}
+
                       {visit.notes && (
-                        <div>
-                          <p className="text-gray-500 mb-1" style={{ fontWeight: 700 }}>הערות והנחיות</p>
-                          <p className="text-gray-800 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">{visit.notes}</p>
-                        </div>
+                        <Section icon={MessageIcon} title="סיכום והערות">
+                          <p className="whitespace-pre-wrap leading-7">{visit.notes}</p>
+                        </Section>
                       )}
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
@@ -322,16 +409,14 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
 
         {activeTab === "prescriptions" && (
           <div className="space-y-3">
-            {prescriptions.length === 0 ? <EmptyState text="אין מרשמים שמורים במסד" /> : prescriptions.map((prescription) => (
-              <div key={prescription.prescription_id} className="rounded-xl border border-amber-100 bg-amber-50/40 p-4 flex items-start gap-3">
-                <Pill className="w-5 h-5 text-amber-600 mt-0.5" />
+            {prescriptions.length === 0 ? <EmptyState text="אין מרשמים" /> : prescriptions.map((prescription) => (
+              <div key={prescription.prescription_id} className="border border-gray-100 rounded-2xl p-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-gray-900 text-[14px]" style={{ fontWeight: 700 }}>{prescription.medication || "תרופה"}</p>
-                  <p className="text-gray-600 text-[13px] mt-1">
-                    מינון: {prescription.dosage || "לא צוין"} · תדירות: {prescription.frequency || "לא צוין"} · משך: {prescription.duration || "לא צוין"}
-                  </p>
-                  <p className="text-gray-500 text-[12px] mt-1">תאריך התחלה: {formatDate(prescription.start_date)}</p>
+                  <h5 className="font-bold text-gray-900 text-[15px]">{prescription.medication || "תרופה"}</h5>
+                  <p className="text-gray-500 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ")}</p>
+                  <p className="text-gray-400 text-[12px] mt-1">תאריך התחלה: {formatDate(prescription.start_date)}</p>
                 </div>
+                <button className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] font-semibold">הצג מרשם</button>
               </div>
             ))}
           </div>
@@ -339,22 +424,22 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
 
         {activeTab === "labs" && (
           <div className="space-y-3">
-            {labOrders.length === 0 ? <EmptyState text="אין בדיקות מעבדה שמורות במסד" /> : labOrders.map((lab) => (
-              <div key={lab.lab_order_id} className="rounded-xl border border-teal-100 bg-teal-50/30 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FlaskConical className="w-5 h-5 text-teal-600" />
-                    <p className="text-gray-900 text-[14px]" style={{ fontWeight: 700 }}>{lab.test_name || "בדיקה"}</p>
+            {labOrders.length === 0 ? <EmptyState text="אין בדיקות מעבדה" /> : labOrders.map((lab) => (
+              <div key={lab.lab_order_id} className="border border-gray-100 rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h5 className="font-bold text-gray-900 text-[15px]">{lab.test_name || "בדיקת מעבדה"}</h5>
+                    <p className="text-gray-500 text-[13px] mt-1">הוזמן: {formatDate(lab.ordered_date)} · תאריך בדיקה: {formatDate(lab.test_date)}</p>
                   </div>
-                  <span className="text-[12px] px-2 py-1 rounded-full bg-white border border-teal-100 text-teal-700" style={{ fontWeight: 600 }}>{statusLabel(lab.status)}</span>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${lab.result_status === "critical" || lab.is_urgent ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>{lab.is_urgent ? "דחוף" : statusLabel(lab.status)}</span>
                 </div>
-                <p className="text-gray-500 text-[12px] mb-2">הוזמן: {formatDate(lab.ordered_date)} · קטגוריה: {lab.category || "לא צוין"}</p>
-                {(lab.results || lab.result_value) && (
-                  <p className="text-gray-800 text-[13px] bg-white rounded-lg border border-teal-100 px-3 py-2">
-                    תוצאה: {lab.results || lab.result_value} {lab.normal_range ? `· טווח תקין: ${lab.normal_range}` : ""} {lab.result_status ? `· סטטוס: ${statusLabel(lab.result_status)}` : ""}
-                  </p>
+                {(lab.result_value || lab.results || lab.notes) && (
+                  <div className="mt-3 bg-gray-50 rounded-xl p-3 text-[13px] text-gray-700 whitespace-pre-wrap">
+                    {lab.result_value && <p><b>תוצאה:</b> {lab.result_value}</p>}
+                    {lab.results && <p>{lab.results}</p>}
+                    {lab.notes && <p><b>הערות:</b> {lab.notes}</p>}
+                  </div>
                 )}
-                {lab.notes && <p className="text-gray-600 text-[13px] mt-2">{lab.notes}</p>}
               </div>
             ))}
           </div>
@@ -362,19 +447,14 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
 
         {activeTab === "documents" && (
           <div className="space-y-3">
-            {documents.length === 0 ? <EmptyState text="אין מסמכים שמורים במסד" /> : documents.map((doc) => (
-              <div key={doc.document_id} className="rounded-xl border border-violet-100 bg-violet-50/30 p-4 flex items-center gap-3">
-                <Paperclip className="w-5 h-5 text-violet-600" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 700 }}>{doc.file_name}</p>
-                  <p className="text-gray-500 text-[12px]">{doc.category} · {formatDate(doc.uploaded_at)} {fileSize(doc.file_size) ? `· ${fileSize(doc.file_size)}` : ""}</p>
+            {documents.length === 0 ? <EmptyState text="אין מסמכים" /> : documents.map((doc) => (
+              <div key={doc.document_id} className="border border-gray-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h5 className="font-bold text-gray-900 text-[14px] truncate">{doc.file_name}</h5>
+                  <p className="text-gray-500 text-[12px] mt-1">{formatDate(doc.uploaded_at)} {fileSize(doc.file_size) && `· ${fileSize(doc.file_size)}`}</p>
                 </div>
-                <button
-                  onClick={() => openDocument(doc)}
-                  className="flex items-center gap-1.5 text-[#1e40af] hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] border border-blue-100 cursor-pointer"
-                  style={{ fontWeight: 600 }}
-                >
-                  <Eye className="w-3.5 h-3.5" /> פתח
+                <button onClick={() => openDocument(doc)} className="flex items-center gap-1.5 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] font-semibold">
+                  <Eye className="w-4 h-4" /> פתח
                 </button>
               </div>
             ))}
@@ -383,4 +463,19 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       </div>
     </div>
   );
+}
+
+function Section({ icon: Icon, title, children }: { icon: any; title: string; children: ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <h5 className="flex items-center gap-2 text-gray-900 font-bold text-[14px] mb-2">
+        <Icon className="w-4 h-4 text-[#1e40af]" /> {title}
+      </h5>
+      <div className="text-gray-700 text-[13px] leading-6">{children}</div>
+    </div>
+  );
+}
+
+function MessageIcon(props: any) {
+  return <FileText {...props} />;
 }

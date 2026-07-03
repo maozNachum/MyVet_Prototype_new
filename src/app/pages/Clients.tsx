@@ -46,6 +46,7 @@ type PatientRow = {
   microchip: string | null;
   allergies: string | null;
   weight: number | string | null;
+  neutered_status?: "unknown" | "yes" | "no" | string | null;
   owner_id: string | null;
   created_at?: string | null;
 };
@@ -82,6 +83,7 @@ type PetCreateForm = {
   microchip: string;
   allergies: string;
   weight: string;
+  neutered_status: "unknown" | "yes" | "no";
 };
 
 const INITIAL_OWNER_CREATE_FORM: OwnerCreateForm = {
@@ -103,6 +105,7 @@ const INITIAL_PET_CREATE_FORM: PetCreateForm = {
   microchip: "",
   allergies: "",
   weight: "",
+  neutered_status: "unknown",
 };
 
 const SPECIES_OPTIONS = [
@@ -129,6 +132,25 @@ const GENDER_OPTIONS = [
   { value: "נקבה", label: "נקבה" },
   { value: "לא ידוע", label: "לא ידוע" },
 ];
+
+const NEUTERED_OPTIONS = [
+  { value: "unknown", label: "לא ידוע" },
+  { value: "yes", label: "כן" },
+  { value: "no", label: "לא" },
+];
+
+function getNeuteredQuestion(gender?: string | null) {
+  if (gender === "זכר") return "מסורס?";
+  if (gender === "נקבה") return "מעוקרת?";
+  return "מסורס/מעוקרת?";
+}
+
+function getNeuteredLabel(status?: string | null, gender?: string | null) {
+  if (status === "yes") return gender === "נקבה" ? "מעוקרת" : gender === "זכר" ? "מסורס" : "כן";
+  if (status === "no") return "לא";
+  return "לא ידוע";
+}
+
 
 function normalize(value: unknown) {
   return String(value ?? "").trim();
@@ -247,7 +269,7 @@ export function Clients() {
           .order("created_at", { ascending: false }),
         supabase
           .from("patients")
-          .select("pet_id, pet_name, species, breed, gender, birth_date, microchip, allergies, weight, owner_id, created_at")
+          .select("pet_id, pet_name, species, breed, gender, birth_date, microchip, allergies, weight, neutered_status, owner_id, created_at")
           .order("pet_name", { ascending: true }),
       ]);
 
@@ -408,6 +430,7 @@ export function Clients() {
             microchip: petForm.microchip.trim() || null,
             allergies: petForm.allergies.trim() || null,
             weight,
+            neutered_status: petForm.neutered_status,
           },
         ]);
 
@@ -610,6 +633,10 @@ export function Clients() {
                       <span className="font-medium text-gray-700">{pet.weight ? `${pet.weight} ק״ג` : "לא נשקל"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
+                      <span>{getNeuteredQuestion(pet.gender)}</span>
+                      <span className="font-medium text-gray-700">{getNeuteredLabel(pet.neutered_status, pet.gender)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
                       <span>שבב:</span>
                       <span className="font-medium text-gray-700 truncate">{pet.microchip || "אין שבב"}</span>
                     </div>
@@ -709,6 +736,19 @@ export function Clients() {
                   >
                     <option value="">בחר מין</option>
                     {GENDER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">{getNeuteredQuestion(petForm.gender)}</label>
+                  <select
+                    value={petForm.neutered_status}
+                    onChange={(e) => setPetForm((prev) => ({ ...prev, neutered_status: e.target.value as "unknown" | "yes" | "no" }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                  >
+                    {NEUTERED_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
@@ -913,13 +953,13 @@ export function Clients() {
             onClick={openCreateClientModal}
             className="flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold w-fit shadow-sm"
           >
-            <Plus className="w-4 h-4" /> הוספת לקוח חדש
+            <Plus className="w-4 h-4" /> הוספת לקוח
           </button>
           <button
             onClick={() => navigate("/patients")}
             className="flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#1e40af] border border-blue-200 px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold w-fit"
           >
-            <Search className="w-4 h-4" />רשימת בעלי החיים במערכת
+            <Search className="w-4 h-4" /> חיפוש מטופל / כל החיות
           </button>
         </div>
       </div>

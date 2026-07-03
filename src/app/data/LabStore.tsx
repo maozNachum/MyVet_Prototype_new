@@ -11,6 +11,7 @@ export interface LabOrder {
   category: "blood" | "urine" | "imaging" | "biopsy" | "other";
   status: "ordered" | "in-progress" | "completed";
   orderedDate: string;
+  testDate?: string;
   orderedBy: string;
   results?: string;
   normalRange?: string;
@@ -103,6 +104,7 @@ function mapLabOrderRow(row: any): LabOrder {
     category: normalizeCategory(row.category),
     status: normalizeStatus(row.status),
     orderedDate: formatDateForUi(row.ordered_date),
+    testDate: row.test_date || undefined,
     // ordered_by is uuid in the DB. Until staff authentication is connected to staff.staff_id,
     // we keep it null in DB and show a readable fallback in the UI.
     orderedBy: row.staff?.name || "צוות המרפאה",
@@ -123,6 +125,7 @@ function buildInsertPayload(order: Omit<LabOrder, "id">) {
     category: order.category,
     status: order.status,
     ordered_date: parseDateToIso(order.orderedDate),
+    test_date: order.testDate || null,
     // The database column is uuid. Until login is connected to staff.staff_id, keep it null.
     ordered_by: null,
     results: order.results || null,
@@ -143,6 +146,7 @@ function buildUpdatePayload(updates: Partial<LabOrder>) {
   if (updates.category !== undefined) patch.category = updates.category;
   if (updates.status !== undefined) patch.status = updates.status;
   if (updates.orderedDate !== undefined) patch.ordered_date = parseDateToIso(updates.orderedDate);
+  if (updates.testDate !== undefined) patch.test_date = updates.testDate || null;
   if (updates.results !== undefined) patch.results = updates.results || null;
   if (updates.normalRange !== undefined) patch.normal_range = updates.normalRange || null;
   if (updates.resultValue !== undefined) patch.result_value = updates.resultValue || null;

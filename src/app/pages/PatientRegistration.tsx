@@ -12,6 +12,7 @@ const initialValues = {
   species: "",
   breed: "",
   birthDate: "",
+  neuteredStatus: "unknown",
   allergies: "",
 };
 
@@ -282,6 +283,27 @@ export function PatientRegistration() {
                   />
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                 </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="neuteredStatus"
+                  className="block text-gray-700 text-[14px] mb-2"
+                  style={{ fontWeight: 500 }}
+                >
+                  מסורס / מעוקרת
+                </label>
+                <select
+                  id="neuteredStatus"
+                  name="neuteredStatus"
+                  value={formData.neuteredStatus}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-[15px] bg-white"
+                >
+                  <option value="unknown">לא ידוע</option>
+                  <option value="yes">כן</option>
+                  <option value="no">לא</option>
+                </select>
               </div>
 
               {/* Allergies */}

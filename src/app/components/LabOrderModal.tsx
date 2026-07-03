@@ -24,6 +24,7 @@ interface PendingTest {
   testName: string;
   category: LabOrder["category"];
   urgent: boolean;
+  testDate: string;
   notes: string;
 }
 
@@ -51,6 +52,10 @@ const commonTests: { name: string; category: LabOrder["category"] }[] = [
   { name: "ציטולוגיה", category: "biopsy" },
 ];
 
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderModalProps) {
   const { addLabOrder } = useLabStore();
   const currentUser = getStaffLabel();
@@ -75,7 +80,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
     if (pendingTests.some((t) => t.testName === testName)) return;
     setPendingTests((prev) => [
       ...prev,
-      { id: Date.now(), testName, category, urgent: false, notes: "" },
+      { id: Date.now(), testName, category, urgent: false, testDate: todayInputValue(), notes: "" },
     ]);
     setError("");
   };
@@ -91,6 +96,11 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
   const updateNotes = (id: number, notes: string) =>
     setPendingTests((prev) =>
       prev.map((t) => (t.id === id ? { ...t, notes } : t))
+    );
+
+  const updateTestDate = (id: number, testDate: string) =>
+    setPendingTests((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, testDate } : t))
     );
 
   const addCustomTest = () => {
@@ -127,6 +137,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
             category: test.category,
             status: "ordered",
             orderedDate: dateStr,
+            testDate: test.testDate,
             orderedBy: currentUser,
             urgent: test.urgent,
             notes: test.notes || undefined,
@@ -409,6 +420,15 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
+                          </div>
+                          <div className="mb-2">
+                            <label className="block text-gray-600 text-[12px] mb-1 font-medium">תאריך בדיקה</label>
+                            <input
+                              type="date"
+                              value={test.testDate}
+                              onChange={(e) => updateTestDate(test.id, e.target.value)}
+                              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg bg-white text-[12px] focus:outline-none focus:ring-1 focus:ring-teal-300 transition-all"
+                            />
                           </div>
                           <input
                             type="text"

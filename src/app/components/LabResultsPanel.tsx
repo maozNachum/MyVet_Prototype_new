@@ -271,6 +271,7 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
                         </div>
                         <div className="flex items-center gap-3 text-[12px] text-gray-500 font-medium">
                           <span>{order.orderedDate}</span>
+                          {order.testDate && <span> · בדיקה: {new Date(order.testDate).toLocaleDateString("he-IL")}</span>}
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[13px] ${status.color}`}
                             style={{ fontWeight: 500 }}
@@ -307,6 +308,10 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
                           <div>
                             <p className="text-gray-500 font-medium text-[13px] mb-0.5" style={{ fontWeight: 500 }}>תאריך הזמנה</p>
                             <p className="text-gray-700 text-[13px]">{order.orderedDate}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 font-medium text-[13px] mb-0.5" style={{ fontWeight: 500 }}>תאריך בדיקה</p>
+                            <p className="text-gray-700 text-[13px]">{order.testDate ? new Date(order.testDate).toLocaleDateString("he-IL") : "לא צוין"}</p>
                           </div>
                           <div>
                             <p className="text-gray-500 font-medium text-[13px] mb-0.5" style={{ fontWeight: 500 }}>הוזמן ע״י</p>

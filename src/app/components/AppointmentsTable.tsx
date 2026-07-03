@@ -66,7 +66,7 @@ export function AppointmentsTable() {
             <div className="bg-blue-50 rounded-lg p-2">
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
-            <h2 className="text-gray-900 text-[18px]" style={{ fontWeight: 600 }}>תקציר תורים להיום</h2>
+            <h2 className="text-gray-900 text-[18px]" style={{ fontWeight: 600 }}>תקציר תורים קרובים</h2>
           </div>
           <span className="text-gray-500 font-medium text-[14px]">
             {isLoading ? "טוען..." : `${todayAppointments.length} תורים`}
