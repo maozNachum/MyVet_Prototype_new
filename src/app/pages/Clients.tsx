@@ -950,6 +950,7 @@ export function Clients() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <ClientsAssistant clients={clients} />
           <button
             onClick={openCreateClientModal}
             className="flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold w-fit shadow-sm"
@@ -963,10 +964,6 @@ export function Clients() {
             <Search className="w-4 h-4" /> חיפוש מטופל / כל החיות
           </button>
         </div>
-      </div>
-
-      <div className="mb-8">
-        <ClientsAssistant clients={clients} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

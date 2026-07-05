@@ -331,7 +331,8 @@ export function Inventory() {
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
       {/* Page Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
         <div className="bg-blue-100 rounded-xl p-2.5">
           {(() => {
             const Icon = getCatConfig("equipment").icon;
@@ -344,9 +345,7 @@ export function Inventory() {
           </h1>
           <p className="text-gray-500 text-[14px]">ניהול תרופות, ציוד רפואי וחומרים מתכלים</p>
         </div>
-      </div>
-
-      <div className="mb-8">
+        </div>
         <InventoryAssistant items={items} />
       </div>
 

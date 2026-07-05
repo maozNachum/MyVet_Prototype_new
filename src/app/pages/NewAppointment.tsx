@@ -243,7 +243,8 @@ export function NewAppointment() {
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-10 py-6">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3">
             <div className="bg-white/15 rounded-xl p-2.5">
               <Calendar className="w-6 h-6 text-white" />
             </div>
@@ -255,6 +256,8 @@ export function NewAppointment() {
                 התור נשמר ישירות בטבלת appointments בענן
               </p>
             </div>
+            </div>
+            <ScheduleAssistant appointments={calendarAppointments} viewMode="new-appointment" activeVet={watch("vet") || prefilledVet || "all"} />
           </div>
         </div>
 
@@ -275,10 +278,6 @@ export function NewAppointment() {
               )}
             </div>
           )}
-
-          <div className="mb-8">
-            <ScheduleAssistant appointments={calendarAppointments} viewMode="new-appointment" activeVet={watch("vet") || prefilledVet || "all"} />
-          </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <div>

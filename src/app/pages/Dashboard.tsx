@@ -354,18 +354,19 @@ export function Dashboard() {
           <h1 className="text-gray-900 text-[26px] font-bold">ברוך הבא, {getStaffName()}</h1>
           <p className="text-gray-500 mt-1 text-[15px]">סקירה כללית של פעילות המרפאה היום</p>
         </div>
-        <button
-          onClick={() => {
-            setShowWalkInPicker(true);
-            loadPatients();
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all text-[14px] font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white cursor-pointer shadow-md shadow-orange-500/20"
-        >
-          <Zap className="w-4 h-4" /> טיפול ללא תור
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <DashboardAssistant />
+          <button
+            onClick={() => {
+              setShowWalkInPicker(true);
+              loadPatients();
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all text-[14px] font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white cursor-pointer shadow-md shadow-orange-500/20"
+          >
+            <Zap className="w-4 h-4" /> טיפול ללא תור
+          </button>
+        </div>
       </div>
-
-      <DashboardAssistant />
       <KpiCards />
       <AppointmentsTable />
 

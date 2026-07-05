@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronRight, ChevronLeft, Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAppointmentStore } from "../../data/AppointmentStore";
@@ -26,6 +27,7 @@ interface CalendarHeaderProps {
   onCloseSidebar: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  assistantAction?: ReactNode;
 }
 
 export function CalendarHeader({
@@ -34,6 +36,7 @@ export function CalendarHeader({
   weekDays, dailyDate,
   onNav, onToday, onCloseSidebar,
   searchQuery, onSearchChange,
+  assistantAction,
 }: CalendarHeaderProps) {
   const navigate = useNavigate();
   const store = useAppointmentStore();
@@ -105,6 +108,8 @@ export function CalendarHeader({
             title="התראות שינויי תורים"
             emptyText="אין התראות חדשות"
           />
+
+          {assistantAction}
 
           <button
             onClick={() => navigate("/appointments/new")}

@@ -2,6 +2,20 @@ import { supabase } from "../../../services/supabaseClient";
 import { sanitizeAiContext } from "./aiSanitizer";
 import type { AiAssistantRequest, AiAssistantResponse } from "./aiTypes";
 
+function friendlyEdgeError(message?: string) {
+  const text = message || "שגיאה בהפעלת העוזר החכם";
+
+  if (text.includes("non-2xx") || text.includes("FunctionsHttpError")) {
+    return "העוזר לא הצליח לקבל תשובה כרגע. נסה שוב בעוד רגע. אם זה חוזר, בדוק את Logs של ai-assistant ב-Supabase.";
+  }
+
+  if (text.includes("high demand") || text.includes("UNAVAILABLE") || text.includes("503")) {
+    return "המודל עמוס כרגע. נסה שוב בעוד כמה שניות.";
+  }
+
+  return text;
+}
+
 export async function askAiAssistant(request: AiAssistantRequest): Promise<string> {
   const safeRequest: AiAssistantRequest = {
     ...request,
@@ -15,7 +29,7 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<strin
 
   if (error) {
     console.error("AI assistant error", error);
-    throw new Error(error.message || "שגיאה בהפעלת העוזר החכם");
+    throw new Error(friendlyEdgeError(error.message));
   }
 
   if (!data?.answer) throw new Error("העוזר לא החזיר תשובה תקינה");

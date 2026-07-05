@@ -187,9 +187,14 @@ export function AppointmentSchedule() {
         onCloseSidebar={() => nav.setSidebarOpen(false)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        assistantAction={
+          <ScheduleAssistant
+            appointments={filteredAppointments}
+            viewMode={nav.viewMode}
+            activeVet={activeVet}
+          />
+        }
       />
-
-      <ScheduleAssistant appointments={filteredAppointments} viewMode={nav.viewMode} activeVet={activeVet} />
 
       {(isLoading || isStaffLoading) && (
         <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 text-[13px] font-medium">

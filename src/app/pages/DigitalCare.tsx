@@ -716,7 +716,8 @@ export function DigitalCare() {
             <h1 className="text-gray-900 text-[30px] font-bold mb-1">תקשורת עם לקוחות</h1>
             <p className="text-gray-500 text-[15px] font-medium">צ׳אט, קבצים, שיחות וידאו וקישור מהיר לתיקי החיות.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <DigitalCareAssistant conversation={selectedConversation} messages={messages} attachments={attachments} />
             <button
               onClick={() => setIsNewModalOpen(true)}
               className="flex items-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-5 py-3 rounded-2xl text-[14px] font-semibold shadow-lg shadow-blue-500/15 transition-all cursor-pointer"
@@ -731,8 +732,6 @@ export function DigitalCare() {
             </button>
           </div>
         </header>
-
-        <DigitalCareAssistant conversation={selectedConversation} messages={messages} attachments={attachments} />
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 flex items-center gap-2 text-[14px] font-medium">

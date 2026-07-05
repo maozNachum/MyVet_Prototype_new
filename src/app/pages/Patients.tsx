@@ -808,6 +808,7 @@ export function Patients() {
                 >
                   <Trash2 className="w-3.5 h-3.5" /> {isDeletingPet ? "מוחק מטופל..." : "מחיקת מטופל"}
                 </button>
+                <MedicalRecordAssistant patient={selectedPatient} visits={patientHistory} activeHospitalization={activeHospitalization} />
                 <button
                   onClick={() => {
                     const formattedHistory = patientHistory.map(v => ({
@@ -827,10 +828,6 @@ export function Patients() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="mb-8">
-          <MedicalRecordAssistant patient={selectedPatient} visits={patientHistory} activeHospitalization={activeHospitalization} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">

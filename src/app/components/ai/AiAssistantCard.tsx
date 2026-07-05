@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, ChevronLeft, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronLeft, Sparkles } from "lucide-react";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
 import type { AiAssistantMode, AiQuickAction, AiUserRole } from "./aiTypes";
 
@@ -19,7 +19,7 @@ export function AiAssistantCard({
   mode,
   title,
   subtitle,
-  compactTitle = "עוזר חכם",
+  compactTitle = "עוזר",
   quickActions,
   buildContext,
   userRole = "unknown",
@@ -31,34 +31,25 @@ export function AiAssistantCard({
 
   return (
     <>
-      <section className="bg-white rounded-2xl border border-blue-100 shadow-sm p-4 md:p-5 overflow-hidden relative">
-        <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-blue-50 to-transparent pointer-events-none" />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#1e40af] to-[#6366f1] flex items-center justify-center shrink-0 shadow-sm">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h3 className="text-gray-900 text-[16px] font-bold">{compactTitle}</h3>
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 text-[11px] font-bold">
-                  <ShieldCheck className="w-3 h-3" /> מידע מסונן
-                </span>
-              </div>
-              <p className="text-gray-500 text-[13px] leading-5 font-medium max-w-3xl">{subtitle}</p>
-              {disabledReason && <p className="text-amber-600 text-[12px] mt-1 font-semibold">{disabledReason}</p>}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => !disabled && setIsOpen(true)}
-            disabled={disabled}
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-gray-300 text-white px-4 py-2.5 text-[13px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
-          >
-            <Sparkles className="w-4 h-4" /> פתח עוזר <ChevronLeft className="w-4 h-4" />
-          </button>
-        </div>
-      </section>
+      <div className="inline-flex items-center" dir="rtl">
+        <button
+          type="button"
+          onClick={() => !disabled && setIsOpen(true)}
+          disabled={disabled}
+          title={disabledReason || subtitle}
+          className={`group inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-all ${
+            disabled
+              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+              : "cursor-pointer border-blue-100 bg-white text-[#1e40af] hover:bg-blue-50 hover:border-blue-200 hover:shadow-md"
+          }`}
+        >
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#1e40af] to-[#6366f1] text-white shadow-sm">
+            <Sparkles className="h-3.5 w-3.5" />
+          </span>
+          <span>{compactTitle}</span>
+          <ChevronLeft className="h-4 w-4 opacity-70 transition-transform group-hover:-translate-x-0.5" />
+        </button>
+      </div>
 
       <AiAssistantDrawer
         isOpen={isOpen}

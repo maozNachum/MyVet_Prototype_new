@@ -1473,14 +1473,13 @@ export function ClientPortal() {
 
       {/* ── Main ───────────────────────────────────────────────── */}
       <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
-        <div className="mb-8">
-          <h1 className="text-gray-900 text-[26px] mb-1" style={{ fontWeight: 700 }}>
-            שלום, {ownerDisplayName}<span className="inline-block mr-2">👋</span>
-          </h1>
-          <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
-        </div>
-
-        <div className="mb-6">
+        <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-gray-900 text-[26px] mb-1" style={{ fontWeight: 700 }}>
+              שלום, {ownerDisplayName}<span className="inline-block mr-2">👋</span>
+            </h1>
+            <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
+          </div>
           <ClientPortalAssistant pets={pets} appointments={appointments} notifications={portalNotifications} digitalConversations={digitalConversations} paymentsByPet={paymentsByPet} />
         </div>
 
