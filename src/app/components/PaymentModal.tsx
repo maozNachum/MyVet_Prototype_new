@@ -51,6 +51,7 @@ type PaymentStep = "method" | "credit" | "cash" | "receipt";
 interface ReceiptData {
   method: "credit" | "cash";
   total: number;
+  confirmationNumber?: string;
   amountPaid?: number;
   change?: number;
   last4?: string;
@@ -104,6 +105,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
         method: "credit",
         total,
         last4: "4582",
+        confirmationNumber: `CR-${Date.now()}`,
       });
       setStep("receipt");
     }, 2500);
@@ -116,6 +118,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
       total,
       amountPaid: paidNum,
       change,
+      confirmationNumber: `CA-${Date.now()}`,
     });
     setStep("receipt");
   };
@@ -524,7 +527,7 @@ export function PaymentModal({ isOpen, onClose, summary }: PaymentModalProps) {
               {/* Receipt details */}
               <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 border border-gray-100">
                 <div className="flex items-center justify-between pb-2 border-b border-gray-200 mb-2">
-                  <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>קבלה #{Math.floor(10000 + Math.random() * 90000)}</span>
+                  <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>קבלה #{receiptData?.confirmationNumber || "—"}</span>
                   <span className="text-gray-500 font-medium text-[12px]">{dateStr} · {timeStr}</span>
                 </div>
 

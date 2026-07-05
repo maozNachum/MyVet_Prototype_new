@@ -162,7 +162,7 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function AnesthesiaConsentModal({
-  petName = "ניקו",
+  petName = "החיה",
   ownerName = "משפחת ישראלי",
   onClose,
 }: AnesthesiaConsentModalProps) {

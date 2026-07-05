@@ -6,6 +6,7 @@ import { supabase } from "../../services/supabaseClient";
 export interface LabOrder {
   id: number;
   patientId: number;
+  visitId?: number | null;
   petName: string;
   testName: string;
   category: "blood" | "urine" | "imaging" | "biopsy" | "other";
@@ -99,6 +100,7 @@ function mapLabOrderRow(row: any): LabOrder {
   return {
     id: Number(row.lab_order_id),
     patientId: Number(row.pet_id),
+    visitId: row.visit_id ? Number(row.visit_id) : null,
     petName: row.patients?.pet_name || row.pet_name || "",
     testName: row.test_name || "בדיקת מעבדה",
     category: normalizeCategory(row.category),
@@ -121,6 +123,7 @@ function mapLabOrderRow(row: any): LabOrder {
 function buildInsertPayload(order: Omit<LabOrder, "id">) {
   return {
     pet_id: order.patientId,
+    visit_id: order.visitId || null,
     test_name: order.testName,
     category: order.category,
     status: order.status,
@@ -142,6 +145,7 @@ function buildUpdatePayload(updates: Partial<LabOrder>) {
   const patch: Record<string, any> = {};
 
   if (updates.patientId !== undefined) patch.pet_id = updates.patientId;
+  if (updates.visitId !== undefined) patch.visit_id = updates.visitId || null;
   if (updates.testName !== undefined) patch.test_name = updates.testName;
   if (updates.category !== undefined) patch.category = updates.category;
   if (updates.status !== undefined) patch.status = updates.status;

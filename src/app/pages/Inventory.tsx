@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { useSearchFilter } from "../hooks/useSearchFilter";
+import { InventoryAssistant } from "../components/ai/PageAssistants";
 import { normalizeSearchString } from "../utils/string";
 import {
   INVENTORY_CATEGORIES,
@@ -343,6 +344,10 @@ export function Inventory() {
           </h1>
           <p className="text-gray-500 text-[14px]">ניהול תרופות, ציוד רפואי וחומרים מתכלים</p>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <InventoryAssistant items={items} />
       </div>
 
       {/* Summary Cards */}

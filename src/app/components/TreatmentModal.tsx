@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   X,
   Stethoscope,
@@ -10,20 +10,25 @@ import {
   ClipboardList,
   MessageSquare,
   Save,
-  AlertTriangle,
   Dog,
   Cat,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   FileText,
   Activity,
+  Syringe,
+  Scale,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMedicalStore, type UrgencyLevel, type MedicalProblemStatus, type DifferentialLikelihood } from "../data/MedicalStore";
+import {
+  useMedicalStore,
+  type UrgencyLevel,
+  type MedicalProblemStatus,
+  type DifferentialLikelihood,
+} from "../data/MedicalStore";
 import { useLabStore } from "../data/LabStore";
 import { getStaffLabel } from "../data/staffAuth";
-import { VISIT_TYPES, CLINIC_VISIT_TYPE_KEYS } from "../data/categoryConfig";
+import { supabase } from "../../services/supabaseClient";
 
 interface TreatmentModalProps {
   isOpen: boolean;
@@ -35,7 +40,14 @@ interface TreatmentModalProps {
   onSave?: (data: any) => void;
 }
 
-type StepKey = "visit" | "clinical" | "plan" | "diagnosis" | "summary";
+type EntryType =
+  | "full_exam"
+  | "vaccination"
+  | "weight_check"
+  | "prescription_only"
+  | "lab"
+  | "follow_up"
+  | "note";
 
 type MedicalProblemDraft = {
   problemText: string;
@@ -65,14 +77,92 @@ type DifferentialDraft = {
   notes: string;
 };
 
-const visitTypes = CLINIC_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
+type ValidationErrors = Record<string, string>;
 
-const STEPS: { key: StepKey; label: string; subtitle: string; icon: any }[] = [
-  { key: "visit", label: "פרטי ביקור", subtitle: "סוג, סיבה ודחיפות", icon: ClipboardList },
-  { key: "clinical", label: "בעיות ובדיקה", subtitle: "קודם בעיות, אחר כך הסבר", icon: Stethoscope },
-  { key: "plan", label: "טיפול ומרשמים", subtitle: "מה בוצע ומה נדרש", icon: Pill },
-  { key: "diagnosis", label: "אבחנות וסיכום", subtitle: "אבחנות בסוף הביקור", icon: FileText },
-  { key: "summary", label: "אישור", subtitle: "בדיקה לפני שמירה", icon: Check },
+type EntryData = {
+  entryType: EntryType;
+  label: string;
+  visitDate: string;
+  vaccineName?: string;
+  nextDueDate?: string;
+  weight?: number;
+  chiefComplaint?: string;
+  freeText?: string;
+  treatmentText?: string;
+  notes?: string;
+  followUpRequired?: boolean;
+  followUpNotes?: string;
+  prescriptions?: PrescriptionDraft[];
+  labs?: LabDraft[];
+  problems?: MedicalProblemDraft[];
+  differentials?: DifferentialDraft[];
+  physicalExamFindings?: string;
+};
+
+const entryTypes: {
+  id: EntryType;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: any;
+  className: string;
+}[] = [
+  {
+    id: "full_exam",
+    label: "בדיקה רפואית מלאה",
+    shortLabel: "בדיקה מלאה",
+    description: "תלונה, בדיקה גופנית, טיפול, אבחנות ומרשמים",
+    icon: Stethoscope,
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  {
+    id: "vaccination",
+    label: "חיסון",
+    shortLabel: "חיסון",
+    description: "תיעוד חיסון קצר בלי תהליך מלא",
+    icon: Syringe,
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  {
+    id: "weight_check",
+    label: "שקילה",
+    shortLabel: "שקילה",
+    description: "עדכון משקל והערה קצרה",
+    icon: Scale,
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    id: "prescription_only",
+    label: "מרשם בלבד",
+    shortLabel: "מרשם",
+    description: "הפקת מרשם בלי ביקור מלא",
+    icon: Pill,
+    className: "bg-purple-50 text-purple-700 border-purple-200",
+  },
+  {
+    id: "lab",
+    label: "בדיקת מעבדה",
+    shortLabel: "מעבדה",
+    description: "הזמנת בדיקה ותיעוד בתיק הרפואי",
+    icon: TestTube,
+    className: "bg-sky-50 text-sky-700 border-sky-200",
+  },
+  {
+    id: "follow_up",
+    label: "מעקב קצר",
+    shortLabel: "מעקב",
+    description: "סטטוס קצר, הנחיות או ביקורת",
+    icon: ClipboardList,
+    className: "bg-teal-50 text-teal-700 border-teal-200",
+  },
+  {
+    id: "note",
+    label: "הערה רפואית",
+    shortLabel: "הערה",
+    description: "תיעוד חופשי קצר בתיק החיה",
+    icon: MessageSquare,
+    className: "bg-gray-50 text-gray-700 border-gray-200",
+  },
 ];
 
 const severityOptions: { value: UrgencyLevel; label: string; className: string }[] = [
@@ -105,13 +195,25 @@ function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function formatDateForVisit() {
-  const now = new Date();
-  return `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+function dateInputToUiDate(value: string) {
+  if (!value) return new Date().toLocaleDateString("he-IL");
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return new Date().toLocaleDateString("he-IL");
+  return `${day}/${month}/${year}`;
 }
 
-function nonEmpty(value: string) {
-  return value.trim().length > 0;
+function nonEmpty(value?: string | null) {
+  return (value || "").trim().length > 0;
+}
+
+function numericValue(value: string) {
+  const normalized = value.replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function getEntryTypeConfig(entryType: EntryType) {
+  return entryTypes.find((item) => item.id === entryType) || entryTypes[0];
 }
 
 function urgencyLabel(value: UrgencyLevel) {
@@ -124,6 +226,18 @@ function statusLabel(value: MedicalProblemStatus) {
 
 function likelihoodLabel(value: DifferentialLikelihood) {
   return likelihoodOptions.find((option) => option.value === value)?.label || "אפשרית";
+}
+
+function scrollToFirstError(errors: ValidationErrors) {
+  const firstField = Object.keys(errors)[0];
+  if (!firstField) return;
+
+  window.setTimeout(() => {
+    const element = document.querySelector(`[data-field="${firstField}"]`);
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const input = element?.querySelector("input, textarea, select, button") as HTMLElement | null;
+    input?.focus?.();
+  }, 50);
 }
 
 export function TreatmentModal({
@@ -146,11 +260,12 @@ export function TreatmentModal({
   const { addLabOrder } = useLabStore();
   const currentVet = getStaffLabel();
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [entryType, setEntryType] = useState<EntryType>("full_exam");
+  const [visitDate, setVisitDate] = useState(todayInputValue());
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
-  const [visitType, setVisitType] = useState("");
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [urgencyLevel, setUrgencyLevel] = useState<UrgencyLevel>("normal");
   const [freeVisitText, setFreeVisitText] = useState("");
@@ -160,6 +275,10 @@ export function TreatmentModal({
   const [finalDiagnosis, setFinalDiagnosis] = useState("");
   const [followUpRequired, setFollowUpRequired] = useState(false);
   const [followUpNotes, setFollowUpNotes] = useState("");
+
+  const [vaccineName, setVaccineName] = useState("");
+  const [nextDueDate, setNextDueDate] = useState("");
+  const [weight, setWeight] = useState("");
 
   const [problems, setProblems] = useState<MedicalProblemDraft[]>([
     { problemText: "", severity: "normal", status: "active", notes: "" },
@@ -175,13 +294,15 @@ export function TreatmentModal({
   ]);
 
   const PetIcon = petSpecies === "cat" ? Cat : Dog;
+  const entryConfig = getEntryTypeConfig(entryType);
 
   useEffect(() => {
     if (!isOpen) return;
-    setCurrentStep(0);
+    setEntryType("full_exam");
+    setVisitDate(todayInputValue());
     setIsSaved(false);
     setIsSubmitting(false);
-    setVisitType("");
+    setErrors({});
     setChiefComplaint("");
     setUrgencyLevel("normal");
     setFreeVisitText("");
@@ -191,11 +312,18 @@ export function TreatmentModal({
     setFinalDiagnosis("");
     setFollowUpRequired(false);
     setFollowUpNotes("");
+    setVaccineName("");
+    setNextDueDate("");
+    setWeight("");
     setProblems([{ problemText: "", severity: "normal", status: "active", notes: "" }]);
     setPrescriptions([{ medication: "", dosage: "", frequency: "", duration: "" }]);
     setLabs([{ testName: "", category: "blood", testDate: todayInputValue(), urgent: false, notes: "" }]);
     setDifferentials([{ diagnosisText: "", likelihood: "possible", notes: "" }]);
   }, [isOpen]);
+
+  useEffect(() => {
+    setErrors({});
+  }, [entryType]);
 
   const cleanProblems = useMemo(() => problems.filter((p) => nonEmpty(p.problemText)), [problems]);
   const cleanPrescriptions = useMemo(() => prescriptions.filter((p) => nonEmpty(p.medication)), [prescriptions]);
@@ -204,473 +332,789 @@ export function TreatmentModal({
 
   if (!isOpen) return null;
 
-  const validateStep = (step = currentStep) => {
-    const key = STEPS[step].key;
+  const setFieldValue = (setter: (value: string) => void, field: string, value: string) => {
+    setter(value);
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
 
-    if (key === "visit") {
-      if (!visitType) {
-        toast.error("יש לבחור סוג ביקור");
-        return false;
-      }
+  const getFieldClass = (field: string, base = "") =>
+    `${base} ${errors[field] ? "border-red-400 bg-red-50/40 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`;
+
+  const validate = (): ValidationErrors => {
+    const nextErrors: ValidationErrors = {};
+
+    if (!patientId) nextErrors.patient = "חסר מזהה מטופל. אי אפשר לשמור רשומה רפואית.";
+    if (!visitDate) nextErrors.visitDate = "חובה לבחור תאריך.";
+
+    if (entryType === "full_exam") {
       if (!nonEmpty(chiefComplaint) && !nonEmpty(freeVisitText)) {
-        toast.error("יש להזין סיבת ביקור או תיאור חופשי");
-        return false;
+        nextErrors.chiefComplaint = "חובה להזין סיבת ביקור או תיאור חופשי.";
+      }
+      if (cleanProblems.length === 0 && !nonEmpty(physicalExamFindings) && !nonEmpty(treatmentText)) {
+        nextErrors.fullExamContent = "בבדיקה מלאה יש להזין לפחות בעיה, בדיקה גופנית או טיפול.";
       }
     }
 
-    if (key === "clinical") {
-      if (cleanProblems.length === 0 && !nonEmpty(physicalExamFindings)) {
-        toast.error("יש להזין לפחות בעיה רפואית או בדיקה גופנית");
-        return false;
+    if (entryType === "vaccination") {
+      if (!nonEmpty(vaccineName)) nextErrors.vaccineName = "חובה להזין את שם החיסון.";
+    }
+
+    if (entryType === "weight_check") {
+      const parsedWeight = numericValue(weight);
+      if (!nonEmpty(weight)) nextErrors.weight = "חובה להזין משקל.";
+      else if (Number.isNaN(parsedWeight) || parsedWeight <= 0) nextErrors.weight = "משקל חייב להיות מספר חיובי.";
+    }
+
+    if (entryType === "prescription_only") {
+      if (cleanPrescriptions.length === 0) nextErrors.prescriptions = "חובה להזין לפחות תרופה אחת.";
+    }
+
+    if (entryType === "lab") {
+      if (cleanLabs.length === 0) nextErrors.labs = "חובה להזין לפחות בדיקת מעבדה אחת.";
+    }
+
+    if (entryType === "follow_up") {
+      if (!nonEmpty(chiefComplaint) && !nonEmpty(notes) && !nonEmpty(followUpNotes)) {
+        nextErrors.chiefComplaint = "חובה להזין סיבת מעקב, הערה או הנחיית המשך.";
       }
     }
 
-    if (key === "plan") {
-      if (!nonEmpty(treatmentText) && cleanPrescriptions.length === 0 && cleanLabs.length === 0) {
-        toast.error("יש להזין טיפול, מרשם או בדיקת מעבדה");
-        return false;
+    if (entryType === "note") {
+      if (!nonEmpty(notes) && !nonEmpty(freeVisitText)) {
+        nextErrors.notes = "חובה להזין את ההערה הרפואית.";
       }
     }
 
-    return true;
+    return nextErrors;
   };
-
-  const handleNext = () => {
-    if (!validateStep()) return;
-    setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
-  };
-
-  const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
 
   const addProblemRow = () => setProblems((prev) => [...prev, { problemText: "", severity: "normal", status: "active", notes: "" }]);
   const addPrescriptionRow = () => setPrescriptions((prev) => [...prev, { medication: "", dosage: "", frequency: "", duration: "" }]);
   const addLabRow = () => setLabs((prev) => [...prev, { testName: "", category: "blood", testDate: todayInputValue(), urgent: false, notes: "" }]);
   const addDifferentialRow = () => setDifferentials((prev) => [...prev, { diagnosisText: "", likelihood: "possible", notes: "" }]);
 
-  const saveTreatment = async () => {
-    if (!patientId) {
-      toast.error("חסר מזהה מטופל. לא ניתן לשמור טיפול");
+  const buildEntryData = (): EntryData => {
+    const base: EntryData = {
+      entryType,
+      label: entryConfig.label,
+      visitDate,
+      chiefComplaint: chiefComplaint.trim() || undefined,
+      freeText: freeVisitText.trim() || undefined,
+      treatmentText: treatmentText.trim() || undefined,
+      notes: notes.trim() || undefined,
+      followUpRequired,
+      followUpNotes: followUpNotes.trim() || undefined,
+    };
+
+    if (entryType === "vaccination") {
+      return {
+        ...base,
+        vaccineName: vaccineName.trim(),
+        nextDueDate: nextDueDate || undefined,
+      };
+    }
+
+    if (entryType === "weight_check") {
+      return {
+        ...base,
+        weight: numericValue(weight),
+      };
+    }
+
+    if (entryType === "prescription_only") {
+      return {
+        ...base,
+        prescriptions: cleanPrescriptions,
+      };
+    }
+
+    if (entryType === "lab") {
+      return {
+        ...base,
+        labs: cleanLabs,
+      };
+    }
+
+    if (entryType === "full_exam") {
+      return {
+        ...base,
+        problems: cleanProblems,
+        physicalExamFindings: physicalExamFindings.trim() || undefined,
+        differentials: cleanDifferentials,
+        prescriptions: cleanPrescriptions,
+        labs: cleanLabs,
+      };
+    }
+
+    return base;
+  };
+
+  const buildVisitPayload = () => {
+    const label = entryConfig.label;
+    const prescriptionText = cleanPrescriptions.map((p) => `${p.medication} ${p.dosage}`.trim()).join(", ");
+    const labText = cleanLabs.map((l) => l.testName).join(", ");
+    const problemsText = cleanProblems.map((p) => p.problemText).join(", ");
+    const differentialsText = cleanDifferentials.map((d) => d.diagnosisText).join(", ");
+
+    if (entryType === "vaccination") {
+      return {
+        reason: `חיסון${vaccineName ? `: ${vaccineName}` : ""}`,
+        treatment: [`בוצע חיסון: ${vaccineName}`, nextDueDate ? `תאריך חיסון הבא: ${nextDueDate}` : ""].filter(Boolean).join("\n"),
+        notes: notes.trim(),
+        diagnosis: "",
+        finalDiagnosis: "",
+        followUpRequired: Boolean(nextDueDate || followUpRequired),
+        followUpNotes: nextDueDate ? `חיסון הבא בתאריך ${nextDueDate}` : followUpNotes,
+      };
+    }
+
+    if (entryType === "weight_check") {
+      return {
+        reason: `שקילה${weight ? `: ${weight} ק״ג` : ""}`,
+        treatment: `נמדד משקל: ${weight} ק״ג`,
+        notes: notes.trim(),
+        diagnosis: "",
+        finalDiagnosis: "",
+        followUpRequired,
+        followUpNotes,
+      };
+    }
+
+    if (entryType === "prescription_only") {
+      return {
+        reason: chiefComplaint.trim() || "מרשם בלבד",
+        treatment: prescriptionText ? `מרשמים: ${prescriptionText}` : "מרשם בלבד",
+        notes: notes.trim(),
+        diagnosis: "",
+        finalDiagnosis: "",
+        followUpRequired,
+        followUpNotes,
+      };
+    }
+
+    if (entryType === "lab") {
+      return {
+        reason: chiefComplaint.trim() || "בדיקת מעבדה",
+        treatment: labText ? `נשלחו בדיקות מעבדה: ${labText}` : "נשלחה בדיקת מעבדה",
+        notes: notes.trim(),
+        diagnosis: "",
+        finalDiagnosis: "",
+        followUpRequired,
+        followUpNotes,
+      };
+    }
+
+    if (entryType === "follow_up") {
+      return {
+        reason: chiefComplaint.trim() || "מעקב קצר",
+        treatment: treatmentText.trim() || followUpNotes.trim() || "תועד מעקב קצר",
+        notes: [notes, freeVisitText].filter(nonEmpty).join("\n\n"),
+        diagnosis: finalDiagnosis.trim(),
+        finalDiagnosis: finalDiagnosis.trim(),
+        followUpRequired,
+        followUpNotes,
+      };
+    }
+
+    if (entryType === "note") {
+      return {
+        reason: chiefComplaint.trim() || "הערה רפואית",
+        treatment: "הערה רפואית בתיק",
+        notes: [freeVisitText, notes].filter(nonEmpty).join("\n\n"),
+        diagnosis: "",
+        finalDiagnosis: "",
+        followUpRequired,
+        followUpNotes,
+      };
+    }
+
+    const combinedReason = [chiefComplaint, freeVisitText].filter(nonEmpty).join(" — ") || label;
+    const combinedNotes = [
+      notes,
+      cleanProblems.length ? `בעיות רפואיות: ${problemsText}` : "",
+      nonEmpty(physicalExamFindings) ? `בדיקה גופנית: ${physicalExamFindings}` : "",
+      cleanDifferentials.length ? `אבחנות מבדלות: ${differentialsText}` : "",
+      followUpRequired ? `מעקב נדרש: ${followUpNotes || "כן"}` : "",
+    ].filter(nonEmpty).join("\n\n");
+
+    const treatmentSummary = [
+      treatmentText,
+      prescriptionText ? `מרשמים: ${prescriptionText}` : "",
+      labText ? `בדיקות מעבדה: ${labText}` : "",
+    ].filter(nonEmpty).join("\n");
+
+    return {
+      reason: combinedReason,
+      treatment: treatmentSummary || "לא צוין",
+      notes: combinedNotes,
+      diagnosis: finalDiagnosis || (cleanDifferentials[0]?.diagnosisText ?? ""),
+      finalDiagnosis: finalDiagnosis || "",
+      followUpRequired,
+      followUpNotes,
+    };
+  };
+
+  const saveEntry = async () => {
+    const validationErrors = validate();
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      toast.error("יש שדות שדורשים תיקון לפני שמירה");
+      scrollToFirstError(validationErrors);
       return;
     }
 
-    for (let i = 0; i < STEPS.length - 1; i += 1) {
-      if (!validateStep(i)) {
-        setCurrentStep(i);
-        return;
-      }
-    }
+    if (!patientId) return;
 
     setIsSubmitting(true);
 
     try {
-      const visitTypeLabel = visitTypes.find((v) => v.id === visitType)?.label || visitType || "בדיקה כללית";
-      const problemsText = cleanProblems.map((p) => p.problemText).join(", ");
-      const differentialsText = cleanDifferentials.map((d) => d.diagnosisText).join(", ");
-      const prescriptionText = cleanPrescriptions.map((p) => `${p.medication} ${p.dosage}`.trim()).join(", ");
-      const labText = cleanLabs.map((l) => l.testName).join(", ");
-
-      const combinedReason = [chiefComplaint, freeVisitText].filter(nonEmpty).join(" — ") || visitTypeLabel;
-      const combinedNotes = [
-        notes,
-        cleanProblems.length ? `בעיות רפואיות: ${problemsText}` : "",
-        nonEmpty(physicalExamFindings) ? `בדיקה גופנית: ${physicalExamFindings}` : "",
-        cleanDifferentials.length ? `אבחנות מבדלות: ${differentialsText}` : "",
-        followUpRequired ? `מעקב נדרש: ${followUpNotes || "כן"}` : "",
-      ].filter(nonEmpty).join("\n\n");
-
-      const treatmentSummary = [
-        treatmentText,
-        prescriptionText ? `מרשמים: ${prescriptionText}` : "",
-        labText ? `בדיקות מעבדה: ${labText}` : "",
-      ].filter(nonEmpty).join("\n");
+      const payload = buildVisitPayload();
 
       const savedVisit = await addVisit({
         patientId,
-        date: formatDateForVisit(),
+        date: dateInputToUiDate(visitDate),
         vetName: currentVet,
-        reason: combinedReason,
-        diagnosis: finalDiagnosis || (cleanDifferentials[0]?.diagnosisText ?? ""),
-        treatment: treatmentSummary || "לא צוין",
-        notes: combinedNotes,
+        reason: payload.reason,
+        diagnosis: payload.diagnosis,
+        treatment: payload.treatment,
+        notes: payload.notes,
         attachments: 0,
-        visitType,
+        visitType: entryType,
         urgencyLevel,
-        chiefComplaint: combinedReason,
-        finalDiagnosis: finalDiagnosis || "",
-        followUpRequired,
-        followUpNotes,
+        chiefComplaint: payload.reason,
+        finalDiagnosis: payload.finalDiagnosis,
+        followUpRequired: payload.followUpRequired,
+        followUpNotes: payload.followUpNotes,
+        entryData: buildEntryData(),
       });
 
       if (!savedVisit) return;
 
-      if (nonEmpty(physicalExamFindings)) {
+      if (entryType === "full_exam" && nonEmpty(physicalExamFindings)) {
         await addPhysicalExam({
           visitId: savedVisit.id,
           patientId,
-          examDate: new Date().toISOString(),
+          examDate: new Date(`${visitDate}T12:00:00`).toISOString(),
           findings: physicalExamFindings.trim(),
         });
       }
 
-      for (const problem of cleanProblems) {
-        await addMedicalProblem({
-          visitId: savedVisit.id,
-          patientId,
-          problemText: problem.problemText.trim(),
-          severity: problem.severity,
-          status: problem.status,
-          notes: problem.notes.trim(),
-        });
+      if (entryType === "full_exam") {
+        for (const problem of cleanProblems) {
+          await addMedicalProblem({
+            visitId: savedVisit.id,
+            patientId,
+            problemText: problem.problemText.trim(),
+            severity: problem.severity,
+            status: problem.status,
+            notes: problem.notes.trim(),
+          });
+        }
+
+        for (const diagnosis of cleanDifferentials) {
+          await addDifferentialDiagnosis({
+            visitId: savedVisit.id,
+            patientId,
+            diagnosisText: diagnosis.diagnosisText.trim(),
+            likelihood: diagnosis.likelihood,
+            notes: diagnosis.notes.trim(),
+          });
+        }
       }
 
-      for (const diagnosis of cleanDifferentials) {
-        await addDifferentialDiagnosis({
-          visitId: savedVisit.id,
-          patientId,
-          diagnosisText: diagnosis.diagnosisText.trim(),
-          likelihood: diagnosis.likelihood,
-          notes: diagnosis.notes.trim(),
-        });
+      if (entryType === "full_exam" || entryType === "prescription_only") {
+        for (const prescription of cleanPrescriptions) {
+          await addPrescription({
+            patientId,
+            visitId: savedVisit.id,
+            medication: prescription.medication.trim(),
+            dosage: prescription.dosage.trim(),
+            frequency: prescription.frequency.trim(),
+            duration: prescription.duration.trim(),
+            startDate: visitDate,
+            prescribedBy: currentVet,
+          });
+        }
       }
 
-      for (const prescription of cleanPrescriptions) {
-        await addPrescription({
-          patientId,
-          visitId: savedVisit.id,
-          medication: prescription.medication.trim(),
-          dosage: prescription.dosage.trim(),
-          frequency: prescription.frequency.trim(),
-          duration: prescription.duration.trim(),
-          startDate: new Date().toISOString().slice(0, 10),
-          prescribedBy: currentVet,
-        });
+      if (entryType === "full_exam" || entryType === "lab") {
+        for (const lab of cleanLabs) {
+          await addLabOrder({
+            patientId,
+            visitId: savedVisit.id,
+            petName,
+            testName: lab.testName.trim(),
+            category: lab.category,
+            status: "ordered",
+            orderedDate: dateInputToUiDate(visitDate),
+            testDate: lab.testDate,
+            orderedBy: currentVet,
+            notes: lab.notes.trim(),
+            urgent: lab.urgent,
+          });
+        }
       }
 
-      for (const lab of cleanLabs) {
-        await addLabOrder({
-          patientId,
-          petName,
-          testName: lab.testName.trim(),
-          category: lab.category,
-          status: "ordered",
-          orderedDate: formatDateForVisit(),
-          testDate: lab.testDate,
-          orderedBy: currentVet,
-          notes: lab.notes.trim(),
-          urgent: lab.urgent,
-        });
+      if (entryType === "weight_check") {
+        const parsedWeight = numericValue(weight);
+        const { error: updateWeightError } = await supabase
+          .from("patients")
+          .update({ weight: parsedWeight })
+          .eq("pet_id", patientId);
+
+        if (updateWeightError) throw updateWeightError;
       }
 
       await loadMedicalData();
       setIsSaved(true);
       onSave?.({
         visit: savedVisit,
+        entryType,
         problems: cleanProblems,
         physicalExamFindings,
         differentials: cleanDifferentials,
         prescriptions: cleanPrescriptions,
         labs: cleanLabs,
       });
-      toast.success("הטיפול נשמר בתיק הרפואי של החיה");
+      toast.success("הרשומה הרפואית נשמרה בתיק החיה");
     } catch (error) {
-      console.error("Failed saving treatment", error);
-      toast.error("אירעה שגיאה בשמירת הטיפול");
+      console.error("Failed saving medical entry", error);
+      toast.error("אירעה שגיאה בשמירת הרשומה הרפואית");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const renderStep = () => {
-    const stepKey = STEPS[currentStep].key;
+  const renderCommonHeader = () => (
+    <section className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-5">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-gray-900 text-[18px] font-bold">איזו רשומה רפואית רוצים להוסיף?</h3>
+          <p className="text-gray-500 text-[13px] mt-1">בחר פעולה אחת. הטופס יציג רק את השדות הרלוונטיים, בלי מעבר בין שלבים.</p>
+        </div>
+        <div data-field="visitDate" className="min-w-[180px]">
+          <label className="block text-gray-700 text-[13px] mb-1.5 font-semibold">תאריך</label>
+          <input
+            type="date"
+            value={visitDate}
+            onChange={(e) => setFieldValue(setVisitDate, "visitDate", e.target.value)}
+            className={getFieldClass("visitDate", "w-full px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 text-[14px]")}
+          />
+          <FieldError message={errors.visitDate} />
+        </div>
+      </div>
 
-    if (stepKey === "visit") {
-      return (
-        <section className="space-y-6">
-          <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4">
-            <h3 className="text-gray-900 font-bold text-[16px] mb-1">פרטי ביקור</h3>
-            <p className="text-gray-600 text-[13px]">כאן מתחילים את הביקור: סוג, סיבה, ורמת דחיפות. האבחנה תגיע רק בסוף.</p>
-          </div>
+      <div data-field="entryType" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {entryTypes.map((item) => {
+          const Icon = item.icon;
+          const active = item.id === entryType;
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 text-[14px] mb-2 font-semibold">סוג ביקור</label>
-              <select
-                value={visitType}
-                onChange={(e) => setVisitType(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-              >
-                <option value="">בחר סוג ביקור</option>
-                {visitTypes.map((type) => (
-                  <option key={type.id} value={type.id}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-[14px] mb-2 font-semibold">רמת דחיפות</label>
-              <div className="grid grid-cols-3 gap-2">
-                {severityOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setUrgencyLevel(option.value)}
-                    className={`px-3 py-3 rounded-xl border text-[13px] font-bold transition-all ${urgencyLevel === option.value ? option.className : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setEntryType(item.id)}
+              className={`text-right border rounded-2xl p-4 transition-all ${active ? `${item.className} shadow-sm ring-2 ring-blue-100` : "bg-white border-gray-200 hover:border-blue-200 hover:bg-blue-50/30"}`}
+            >
+              <div className="flex items-start gap-3">
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${active ? "bg-white/70" : "bg-gray-50 text-gray-500"}`}>
+                  <Icon className="w-5 h-5" />
+                </span>
+                <span>
+                  <span className="block text-[14px] font-bold text-gray-900">{item.label}</span>
+                  <span className="block text-[12px] text-gray-500 mt-1 leading-5">{item.description}</span>
+                </span>
               </div>
-            </div>
-          </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 
-          <div>
-            <label className="block text-gray-700 text-[14px] mb-2 font-semibold">סיבת ביקור / תלונה ראשית</label>
-            <input
-              value={chiefComplaint}
-              onChange={(e) => setChiefComplaint(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-              placeholder="לדוגמה: הקאות מאתמול, צליעה ברגל ימין, חיסון שנתי"
-            />
-          </div>
+  const renderVisitDetails = ({ requireReason = false, title = "פרטי רשומה" }: { requireReason?: boolean; title?: string }) => (
+    <Section icon={ClipboardList} title={title}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div data-field="chiefComplaint">
+          <label className="block text-gray-700 text-[14px] mb-2 font-semibold">
+            סיבה / כותרת {requireReason && <span className="text-red-500">*</span>}
+          </label>
+          <input
+            value={chiefComplaint}
+            onChange={(e) => setFieldValue(setChiefComplaint, "chiefComplaint", e.target.value)}
+            className={getFieldClass("chiefComplaint", "w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 text-[15px]")}
+            placeholder="לדוגמה: הקאות מאתמול, ביקורת לאחר טיפול, מעקב פצע"
+          />
+          <FieldError message={errors.chiefComplaint} />
+        </div>
 
-          <div>
-            <label className="block text-gray-700 text-[14px] mb-2 font-semibold">מלל חופשי לפתיחת הביקור</label>
-            <textarea
-              value={freeVisitText}
-              onChange={(e) => setFreeVisitText(e.target.value)}
-              rows={5}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
-              placeholder="כתוב כאן כל מידע שהבעלים מסר, משך הסימפטומים, שינוי בהתנהגות, תרופות שניתנו בבית וכו׳"
-            />
+        <div>
+          <label className="block text-gray-700 text-[14px] mb-2 font-semibold">רמת דחיפות</label>
+          <div className="grid grid-cols-3 gap-2">
+            {severityOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setUrgencyLevel(option.value)}
+                className={`px-3 py-3 rounded-xl border text-[13px] font-bold transition-all ${urgencyLevel === option.value ? option.className : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-        </section>
-      );
-    }
+        </div>
+      </div>
 
-    if (stepKey === "clinical") {
-      return (
-        <section className="space-y-6">
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-gray-900 font-bold text-[16px] mb-1">בעיה רפואית ≠ אבחנה</h3>
-              <p className="text-gray-600 text-[13px]">כאן רושמים תלונות וממצאים. אבחנות מבדלות ואבחנה סופית יופיעו בשלב האחרון.</p>
-            </div>
-          </div>
+      <div>
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">תיאור חופשי</label>
+        <textarea
+          value={freeVisitText}
+          onChange={(e) => setFieldValue(setFreeVisitText, "freeVisitText", e.target.value)}
+          rows={4}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="מידע שהבעלים מסר, משך הסימפטומים, שינוי בהתנהגות, תרופות שניתנו בבית וכו׳"
+        />
+      </div>
+    </Section>
+  );
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-gray-800 text-[15px] font-bold">בעיות / תלונות פעילות</label>
-              <button type="button" onClick={addProblemRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold">
-                <Plus className="w-4 h-4" /> הוסף בעיה
+  const renderProblemsAndExam = () => (
+    <Section icon={Stethoscope} title="בעיות ובדיקה גופנית">
+      {errors.fullExamContent && (
+        <div data-field="fullExamContent" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 text-[14px] font-semibold">
+          {errors.fullExamContent}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-gray-800 text-[15px] font-bold">בעיות / תלונות פעילות</label>
+          <button type="button" onClick={addProblemRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold">
+            <Plus className="w-4 h-4" /> הוסף בעיה
+          </button>
+        </div>
+
+        {problems.map((problem, index) => (
+          <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+              <input
+                value={problem.problemText}
+                onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, problemText: e.target.value } : item))}
+                className="md:col-span-5 w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[14px]"
+                placeholder="לדוגמה: הקאות / צליעה / גירוד"
+              />
+              <select
+                value={problem.severity}
+                onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, severity: e.target.value as UrgencyLevel } : item))}
+                className="md:col-span-3 w-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]"
+              >
+                {severityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <select
+                value={problem.status}
+                onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, status: e.target.value as MedicalProblemStatus } : item))}
+                className="md:col-span-3 w-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]"
+              >
+                {problemStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={() => setProblems((prev) => prev.length === 1 ? [{ problemText: "", severity: "normal", status: "active", notes: "" }] : prev.filter((_, i) => i !== index))}
+                className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"
+                aria-label="מחק בעיה"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
-
-            {problems.map((problem, index) => (
-              <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                  <div className="md:col-span-5">
-                    <input
-                      value={problem.problemText}
-                      onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, problemText: e.target.value } : item))}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[14px]"
-                      placeholder="לדוגמה: הקאות / צליעה / גירוד"
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <select
-                      value={problem.severity}
-                      onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, severity: e.target.value as UrgencyLevel } : item))}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]"
-                    >
-                      {severityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="md:col-span-3">
-                    <select
-                      value={problem.status}
-                      onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, status: e.target.value as MedicalProblemStatus } : item))}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]"
-                    >
-                      {problemStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setProblems((prev) => prev.length === 1 ? [{ problemText: "", severity: "normal", status: "active", notes: "" }] : prev.filter((_, i) => i !== index))}
-                    className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"
-                    title="מחק"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <textarea
-                  value={problem.notes}
-                  onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))}
-                  rows={2}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[14px] resize-none"
-                  placeholder="הערות לבעיה זו, אם יש"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-gray-800 text-[15px] mb-2 font-bold">בדיקה גופנית</label>
             <textarea
-              value={physicalExamFindings}
-              onChange={(e) => setPhysicalExamFindings(e.target.value)}
-              rows={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
-              placeholder="מלל חופשי בלבד — לדוגמה: מצב כללי טוב, ריריות ורודות, רגישות קלה בבטן, אין חום, הליכה תקינה..."
+              value={problem.notes}
+              onChange={(e) => setProblems((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))}
+              rows={2}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] resize-none"
+              placeholder="הערות לבעיה זו, אם יש"
             />
           </div>
-        </section>
-      );
-    }
+        ))}
+      </div>
 
-    if (stepKey === "plan") {
-      return (
-        <section className="space-y-6">
-          <div>
-            <label className="block text-gray-800 text-[15px] mb-2 font-bold">טיפול שבוצע / תוכנית טיפול</label>
-            <textarea
-              value={treatmentText}
-              onChange={(e) => setTreatmentText(e.target.value)}
-              rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
-              placeholder="לדוגמה: מתן נוזלים, ניקוי אוזניים, טיפול תרופתי, המלצה למעקב..."
-            />
-          </div>
+      <div>
+        <label className="block text-gray-800 text-[15px] mb-2 font-bold">בדיקה גופנית</label>
+        <textarea
+          value={physicalExamFindings}
+          onChange={(e) => setFieldValue(setPhysicalExamFindings, "physicalExamFindings", e.target.value)}
+          rows={7}
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="מלל חופשי — לדוגמה: מצב כללי טוב, ריריות ורודות, רגישות קלה בבטן, אין חום, הליכה תקינה..."
+        />
+      </div>
+    </Section>
+  );
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-800 text-[15px] font-bold flex items-center gap-2"><Pill className="w-4 h-4 text-blue-600" /> מרשמים</h3>
-              <button type="button" onClick={addPrescriptionRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף מרשם</button>
-            </div>
-            {prescriptions.map((prescription, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 border border-gray-200 rounded-2xl p-4 bg-white">
-                <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="תרופה" value={prescription.medication} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, medication: e.target.value } : item))} />
-                <input className="md:col-span-2 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="מינון" value={prescription.dosage} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, dosage: e.target.value } : item))} />
-                <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="תדירות" value={prescription.frequency} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, frequency: e.target.value } : item))} />
-                <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="משך טיפול" value={prescription.duration} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, duration: e.target.value } : item))} />
-                <button type="button" onClick={() => setPrescriptions((prev) => prev.length === 1 ? [{ medication: "", dosage: "", frequency: "", duration: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
-          </div>
+  const renderTreatment = () => (
+    <Section icon={Pill} title="טיפול, מרשמים ובדיקות">
+      <div>
+        <label className="block text-gray-800 text-[15px] mb-2 font-bold">טיפול שבוצע / תוכנית טיפול</label>
+        <textarea
+          value={treatmentText}
+          onChange={(e) => setFieldValue(setTreatmentText, "treatmentText", e.target.value)}
+          rows={5}
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="לדוגמה: מתן נוזלים, ניקוי אוזניים, טיפול תרופתי, המלצה למעקב..."
+        />
+      </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-800 text-[15px] font-bold flex items-center gap-2"><TestTube className="w-4 h-4 text-blue-600" /> בדיקות מעבדה</h3>
-              <button type="button" onClick={addLabRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף בדיקה</button>
-            </div>
-            {labs.map((lab, index) => (
-              <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <input className="md:col-span-4 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="שם בדיקה" value={lab.testName} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, testName: e.target.value } : item))} />
-                  <select className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]" value={lab.category} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, category: e.target.value as LabDraft["category"] } : item))}>
-                    {labCategories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                  <input type="date" className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" value={lab.testDate} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, testDate: e.target.value } : item))} />
-                  <label className="md:col-span-1 flex items-center gap-2 text-[13px] text-gray-600">
-                    <input type="checkbox" checked={lab.urgent} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, urgent: e.target.checked } : item))} /> דחוף
-                  </label>
-                  <button type="button" onClick={() => setLabs((prev) => prev.length === 1 ? [{ testName: "", category: "blood", testDate: todayInputValue(), urgent: false, notes: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-                </div>
-                <textarea className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] resize-none" rows={2} placeholder="הערות לבדיקה" value={lab.notes} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))} />
-              </div>
-            ))}
-          </div>
-        </section>
-      );
-    }
+      {renderPrescriptions()}
+      {renderLabs()}
+    </Section>
+  );
 
-    if (stepKey === "diagnosis") {
-      return (
-        <section className="space-y-6">
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
-            <h3 className="text-gray-900 font-bold text-[16px] mb-1">אבחנות מופיעות בסוף</h3>
-            <p className="text-gray-600 text-[13px]">לאחר תלונה, בדיקה וטיפול — רושמים אבחנות מבדלות ואבחנה סופית.</p>
-          </div>
+  const renderPrescriptions = () => (
+    <div data-field="prescriptions" className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-gray-800 text-[15px] font-bold flex items-center gap-2"><Pill className="w-4 h-4 text-blue-600" /> מרשמים</h3>
+        <button type="button" onClick={addPrescriptionRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף מרשם</button>
+      </div>
+      <FieldError message={errors.prescriptions} />
+      {prescriptions.map((prescription, index) => (
+        <div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 border rounded-2xl p-4 bg-white ${errors.prescriptions ? "border-red-200" : "border-gray-200"}`}>
+          <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="תרופה" value={prescription.medication} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, medication: e.target.value } : item))} />
+          <input className="md:col-span-2 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="מינון" value={prescription.dosage} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, dosage: e.target.value } : item))} />
+          <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="תדירות" value={prescription.frequency} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, frequency: e.target.value } : item))} />
+          <input className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="משך טיפול" value={prescription.duration} onChange={(e) => setPrescriptions((prev) => prev.map((item, i) => i === index ? { ...item, duration: e.target.value } : item))} />
+          <button type="button" onClick={() => setPrescriptions((prev) => prev.length === 1 ? [{ medication: "", dosage: "", frequency: "", duration: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      ))}
+    </div>
+  );
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-800 text-[15px] font-bold">אבחנות מבדלות</h3>
-              <button type="button" onClick={addDifferentialRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף אבחנה</button>
-            </div>
-            {differentials.map((diagnosis, index) => (
-              <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <input className="md:col-span-7 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="לדוגמה: אלרגיה / זיהום / גוף זר" value={diagnosis.diagnosisText} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, diagnosisText: e.target.value } : item))} />
-                  <select className="md:col-span-4 px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]" value={diagnosis.likelihood} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, likelihood: e.target.value as DifferentialLikelihood } : item))}>
-                    {likelihoodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                  <button type="button" onClick={() => setDifferentials((prev) => prev.length === 1 ? [{ diagnosisText: "", likelihood: "possible", notes: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-                </div>
-                <textarea className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] resize-none" rows={2} placeholder="הערות לאבחנה מבדלת זו" value={diagnosis.notes} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))} />
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-gray-800 text-[15px] mb-2 font-bold">אבחנה סופית</label>
-            <textarea
-              value={finalDiagnosis}
-              onChange={(e) => setFinalDiagnosis(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
-              placeholder="אם קיימת אבחנה סופית — כתוב אותה כאן. אם עדיין אין, אפשר להשאיר ריק ולהסתפק באבחנות מבדלות."
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-800 text-[15px] mb-2 font-bold">סיכום והערות</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none" placeholder="סיכום ביקור, הנחיות לבעלים, מידע חשוב להמשך" />
-          </div>
-
-          <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-            <label className="flex items-center gap-2 text-gray-800 font-bold text-[14px] mb-3">
-              <input type="checkbox" checked={followUpRequired} onChange={(e) => setFollowUpRequired(e.target.checked)} />
-              נדרש מעקב
+  const renderLabs = () => (
+    <div data-field="labs" className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-gray-800 text-[15px] font-bold flex items-center gap-2"><TestTube className="w-4 h-4 text-blue-600" /> בדיקות מעבדה</h3>
+        <button type="button" onClick={addLabRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף בדיקה</button>
+      </div>
+      <FieldError message={errors.labs} />
+      {labs.map((lab, index) => (
+        <div key={index} className={`border rounded-2xl p-4 bg-white space-y-3 ${errors.labs ? "border-red-200" : "border-gray-200"}`}>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <input className="md:col-span-4 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="שם בדיקה" value={lab.testName} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, testName: e.target.value } : item))} />
+            <select className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]" value={lab.category} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, category: e.target.value as LabDraft["category"] } : item))}>
+              {labCategories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <input type="date" className="md:col-span-3 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" value={lab.testDate} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, testDate: e.target.value } : item))} />
+            <label className="md:col-span-1 flex items-center gap-2 text-[13px] text-gray-600">
+              <input type="checkbox" checked={lab.urgent} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, urgent: e.target.checked } : item))} /> דחוף
             </label>
-            {followUpRequired && (
-              <textarea value={followUpNotes} onChange={(e) => setFollowUpNotes(e.target.value)} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-[14px] resize-none" placeholder="לדוגמה: ביקורת בעוד 7 ימים / לחזור אם יש החמרה / לשלוח תוצאות מעבדה" />
-            )}
+            <button type="button" onClick={() => setLabs((prev) => prev.length === 1 ? [{ testName: "", category: "blood", testDate: todayInputValue(), urgent: false, notes: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
           </div>
-        </section>
-      );
-    }
+          <textarea className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] resize-none" rows={2} placeholder="הערות לבדיקה" value={lab.notes} onChange={(e) => setLabs((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))} />
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderDiagnosesAndSummary = () => (
+    <Section icon={FileText} title="אבחנות וסיכום">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-gray-800 text-[15px] font-bold">אבחנות מבדלות</h3>
+          <button type="button" onClick={addDifferentialRow} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[13px] font-semibold"><Plus className="w-4 h-4" /> הוסף אבחנה</button>
+        </div>
+        {differentials.map((diagnosis, index) => (
+          <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-white space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              <input className="md:col-span-7 px-3 py-2.5 border border-gray-300 rounded-xl text-[14px]" placeholder="לדוגמה: אלרגיה / זיהום / גוף זר" value={diagnosis.diagnosisText} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, diagnosisText: e.target.value } : item))} />
+              <select className="md:col-span-4 px-3 py-2.5 border border-gray-300 rounded-xl bg-white text-[14px]" value={diagnosis.likelihood} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, likelihood: e.target.value as DifferentialLikelihood } : item))}>
+                {likelihoodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <button type="button" onClick={() => setDifferentials((prev) => prev.length === 1 ? [{ diagnosisText: "", likelihood: "possible", notes: "" }] : prev.filter((_, i) => i !== index))} className="md:col-span-1 p-2.5 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
+            </div>
+            <textarea className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] resize-none" rows={2} placeholder="הערות לאבחנה מבדלת זו" value={diagnosis.notes} onChange={(e) => setDifferentials((prev) => prev.map((item, i) => i === index ? { ...item, notes: e.target.value } : item))} />
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <label className="block text-gray-800 text-[15px] mb-2 font-bold">אבחנה סופית</label>
+        <textarea
+          value={finalDiagnosis}
+          onChange={(e) => setFieldValue(setFinalDiagnosis, "finalDiagnosis", e.target.value)}
+          rows={3}
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="אם קיימת אבחנה סופית — כתוב אותה כאן. אם עדיין אין, אפשר להשאיר ריק."
+        />
+      </div>
+
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderNotesAndFollowUp = () => (
+    <>
+      <div data-field="notes">
+        <label className="block text-gray-800 text-[15px] mb-2 font-bold">סיכום / הערות</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setFieldValue(setNotes, "notes", e.target.value)}
+          rows={4}
+          className={getFieldClass("notes", "w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 text-[15px] resize-none")}
+          placeholder="סיכום, הנחיות לבעלים, מידע חשוב להמשך"
+        />
+        <FieldError message={errors.notes} />
+      </div>
+
+      <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50">
+        <label className="flex items-center gap-2 text-gray-800 font-bold text-[14px] mb-3">
+          <input type="checkbox" checked={followUpRequired} onChange={(e) => setFollowUpRequired(e.target.checked)} />
+          נדרש מעקב
+        </label>
+        {followUpRequired && (
+          <textarea value={followUpNotes} onChange={(e) => setFollowUpNotes(e.target.value)} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-[14px] resize-none" placeholder="לדוגמה: ביקורת בעוד 7 ימים / לחזור אם יש החמרה / לשלוח תוצאות מעבדה" />
+        )}
+      </div>
+    </>
+  );
+
+  const renderVaccination = () => (
+    <Section icon={Syringe} title="חיסון">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div data-field="vaccineName">
+          <label className="block text-gray-700 text-[14px] mb-2 font-semibold">שם החיסון <span className="text-red-500">*</span></label>
+          <input
+            value={vaccineName}
+            onChange={(e) => setFieldValue(setVaccineName, "vaccineName", e.target.value)}
+            className={getFieldClass("vaccineName", "w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 text-[15px]")}
+            placeholder="לדוגמה: כלבת / משושה / מרובע"
+          />
+          <FieldError message={errors.vaccineName} />
+        </div>
+        <div>
+          <label className="block text-gray-700 text-[14px] mb-2 font-semibold">תאריך חיסון הבא</label>
+          <input
+            type="date"
+            value={nextDueDate}
+            onChange={(e) => setNextDueDate(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+          />
+        </div>
+      </div>
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderWeightCheck = () => (
+    <Section icon={Scale} title="שקילה">
+      <div data-field="weight" className="max-w-md">
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">משקל בק״ג <span className="text-red-500">*</span></label>
+        <input
+          value={weight}
+          onChange={(e) => setFieldValue(setWeight, "weight", e.target.value)}
+          className={getFieldClass("weight", "w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 text-[15px]")}
+          placeholder="לדוגמה: 12.4"
+          inputMode="decimal"
+        />
+        <FieldError message={errors.weight} />
+      </div>
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderPrescriptionOnly = () => (
+    <Section icon={Pill} title="מרשם בלבד">
+      <div>
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">סיבה / כותרת</label>
+        <input
+          value={chiefComplaint}
+          onChange={(e) => setFieldValue(setChiefComplaint, "chiefComplaint", e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+          placeholder="לדוגמה: חידוש מרשם / המשך טיפול תרופתי"
+        />
+      </div>
+      {renderPrescriptions()}
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderLabOnly = () => (
+    <Section icon={TestTube} title="בדיקת מעבדה">
+      <div>
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">סיבה / כותרת</label>
+        <input
+          value={chiefComplaint}
+          onChange={(e) => setFieldValue(setChiefComplaint, "chiefComplaint", e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+          placeholder="לדוגמה: מעקב תפקודי כבד / בדיקת דם לפני ניתוח"
+        />
+      </div>
+      {renderLabs()}
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderFollowUp = () => (
+    <Section icon={ClipboardList} title="מעקב קצר">
+      {renderVisitDetails({ requireReason: true, title: "פרטי מעקב" })}
+      <div>
+        <label className="block text-gray-800 text-[15px] mb-2 font-bold">סטטוס / טיפול המשך</label>
+        <textarea
+          value={treatmentText}
+          onChange={(e) => setFieldValue(setTreatmentText, "treatmentText", e.target.value)}
+          rows={4}
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="לדוגמה: נראה שיפור, להמשיך טיפול עוד 3 ימים, ביקורת בעוד שבוע"
+        />
+      </div>
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderNote = () => (
+    <Section icon={MessageSquare} title="הערה רפואית">
+      <div>
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">כותרת</label>
+        <input
+          value={chiefComplaint}
+          onChange={(e) => setFieldValue(setChiefComplaint, "chiefComplaint", e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+          placeholder="לדוגמה: שיחה טלפונית / הערת צוות / מידע מהבעלים"
+        />
+      </div>
+      <div>
+        <label className="block text-gray-700 text-[14px] mb-2 font-semibold">תיאור חופשי</label>
+        <textarea
+          value={freeVisitText}
+          onChange={(e) => setFieldValue(setFreeVisitText, "freeVisitText", e.target.value)}
+          rows={4}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+          placeholder="כתוב כאן את ההערה"
+        />
+      </div>
+      {renderNotesAndFollowUp()}
+    </Section>
+  );
+
+  const renderDynamicForm = () => {
+    if (entryType === "vaccination") return renderVaccination();
+    if (entryType === "weight_check") return renderWeightCheck();
+    if (entryType === "prescription_only") return renderPrescriptionOnly();
+    if (entryType === "lab") return renderLabOnly();
+    if (entryType === "follow_up") return renderFollowUp();
+    if (entryType === "note") return renderNote();
 
     return (
-      <section className="space-y-5">
-        {isSaved ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-9 h-9 text-emerald-600" />
-            </div>
-            <h3 className="text-gray-900 text-[22px] font-bold mb-2">הטיפול נשמר בהצלחה</h3>
-            <p className="text-gray-500 text-[14px]">הביקור, הבדיקה הגופנית, הבעיות והאבחנות נשמרו בתיק הרפואי.</p>
-          </div>
-        ) : (
-          <>
-            <div className="bg-white border border-gray-200 rounded-2xl p-5">
-              <h3 className="text-gray-900 font-bold text-[16px] mb-4">סיכום לפני שמירה</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[14px]">
-                <SummaryItem label="סוג ביקור" value={visitTypes.find((v) => v.id === visitType)?.label || "לא נבחר"} />
-                <SummaryItem label="דחיפות" value={urgencyLabel(urgencyLevel)} />
-                <SummaryItem label="סיבת ביקור" value={chiefComplaint || freeVisitText || "לא צוין"} />
-                <SummaryItem label="בעיות" value={cleanProblems.length ? cleanProblems.map((p) => `${p.problemText} (${urgencyLabel(p.severity)}, ${statusLabel(p.status)})`).join("; ") : "לא צוין"} />
-                <SummaryItem label="בדיקה גופנית" value={physicalExamFindings || "לא צוין"} />
-                <SummaryItem label="טיפול" value={treatmentText || "לא צוין"} />
-                <SummaryItem label="מרשמים" value={cleanPrescriptions.length ? cleanPrescriptions.map((p) => p.medication).join(", ") : "אין"} />
-                <SummaryItem label="בדיקות מעבדה" value={cleanLabs.length ? cleanLabs.map((l) => `${l.testName} (${l.testDate})`).join(", ") : "אין"} />
-                <SummaryItem label="אבחנות מבדלות" value={cleanDifferentials.length ? cleanDifferentials.map((d) => `${d.diagnosisText} (${likelihoodLabel(d.likelihood)})`).join("; ") : "לא צוין"} />
-                <SummaryItem label="אבחנה סופית" value={finalDiagnosis || "לא צוין"} />
-              </div>
-            </div>
-          </>
-        )}
-      </section>
+      <>
+        {renderVisitDetails({ requireReason: true, title: "פרטי ביקור" })}
+        {renderProblemsAndExam()}
+        {renderTreatment()}
+        {renderDiagnosesAndSummary()}
+      </>
     );
   };
 
@@ -684,7 +1128,7 @@ export function TreatmentModal({
                 <PetIcon className="w-7 h-7" />
               </div>
               <div>
-                <h2 className="text-[22px] font-bold">התחל טיפול רפואי</h2>
+                <h2 className="text-[22px] font-bold">רשומה רפואית חדשה</h2>
                 <p className="text-white/80 text-[13px] mt-1">{petName} · בעלים: {ownerName} · רופא: {currentVet}</p>
               </div>
             </div>
@@ -694,78 +1138,76 @@ export function TreatmentModal({
           </div>
         </header>
 
-        <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4 overflow-x-auto">
-          <div className="flex gap-2 min-w-max">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const active = index === currentStep;
-              const done = index < currentStep || isSaved;
-              return (
-                <button
-                  key={step.key}
-                  type="button"
-                  onClick={() => setCurrentStep(index)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right ${active ? "bg-white border-blue-200 shadow-sm" : done ? "bg-emerald-50 border-emerald-100" : "bg-white/70 border-gray-100 hover:bg-white"}`}
-                >
-                  <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${active ? "bg-blue-100 text-blue-700" : done ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-                    {done && !active ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                  </span>
-                  <span>
-                    <span className="block text-gray-900 text-[13px] font-bold">{step.label}</span>
-                    <span className="block text-gray-500 text-[11px] mt-0.5">{step.subtitle}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50/40">
-          <div className="max-w-5xl mx-auto">{renderStep()}</div>
+          <div className="max-w-5xl mx-auto space-y-5">
+            {isSaved ? (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm text-center py-14 px-6">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-9 h-9 text-emerald-600" />
+                </div>
+                <h3 className="text-gray-900 text-[22px] font-bold mb-2">הרשומה נשמרה בהצלחה</h3>
+                <p className="text-gray-500 text-[14px]">הרשומה נוספה להיסטוריה הרפואית של {petName}.</p>
+                <button type="button" onClick={onClose} className="mt-6 px-6 py-3 rounded-xl bg-[#1e40af] text-white font-bold hover:bg-[#1e3a8a]">
+                  סגור
+                </button>
+              </div>
+            ) : (
+              <>
+                {errors.patient && (
+                  <div data-field="patient" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 text-[14px] font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> {errors.patient}
+                  </div>
+                )}
+                {renderCommonHeader()}
+                {renderDynamicForm()}
+              </>
+            )}
+          </div>
         </main>
 
-        <footer className="border-t border-gray-100 px-6 py-4 bg-white flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleBack}
-            disabled={currentStep === 0 || isSubmitting || isSaved}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-[14px] font-semibold"
-          >
-            <ChevronRight className="w-4 h-4" /> חזרה
-          </button>
+        {!isSaved && (
+          <footer className="border-t border-gray-100 px-6 py-4 bg-white flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-[13px] text-gray-500">
+              <span className={`px-3 py-1.5 rounded-full border font-bold ${entryConfig.className}`}>{entryConfig.shortLabel}</span>
+              <span>שמירה אחת מוסיפה את הפעולה להיסטוריה הרפואית</span>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-semibold">
-              {isSaved ? "סגור" : "ביטול"}
-            </button>
-
-            {currentStep < STEPS.length - 1 ? (
-              <button type="button" onClick={handleNext} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1e40af] text-white hover:bg-[#1e3a8a] text-[14px] font-bold">
-                המשך <ChevronLeft className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-semibold">
+                ביטול
               </button>
-            ) : (
               <button
                 type="button"
-                onClick={saveTreatment}
-                disabled={isSubmitting || isSaved}
+                onClick={saveEntry}
+                disabled={isSubmitting}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-[14px] font-bold"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {isSubmitting ? "שומר..." : isSaved ? "נשמר" : "שמור לתיק רפואי"}
+                {isSubmitting ? "שומר..." : "שמור רשומה"}
               </button>
-            )}
-          </div>
-        </footer>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function Section({ icon: Icon, title, children }: { icon: any; title: string; children: ReactNode }) {
   return (
-    <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
-      <p className="text-gray-500 text-[12px] font-semibold mb-1">{label}</p>
-      <p className="text-gray-900 text-[14px] whitespace-pre-wrap leading-6">{value}</p>
-    </div>
+    <section className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-5">
+      <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+        <span className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center">
+          <Icon className="w-5 h-5" />
+        </span>
+        <h3 className="text-gray-900 text-[17px] font-bold">{title}</h3>
+      </div>
+      {children}
+    </section>
   );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-red-600 text-[12px] mt-1.5 font-semibold">{message}</p>;
 }

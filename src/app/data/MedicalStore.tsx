@@ -6,6 +6,7 @@ import { supabase } from "../../services/supabaseClient";
 export type UrgencyLevel = "normal" | "serious" | "critical";
 export type MedicalProblemStatus = "active" | "improved" | "resolved";
 export type DifferentialLikelihood = "low" | "possible" | "likely";
+export type MedicalVisitEntryData = Record<string, unknown>;
 
 export interface MedicalVisit {
   id: number;
@@ -25,6 +26,7 @@ export interface MedicalVisit {
   finalDiagnosis?: string;
   followUpRequired?: boolean;
   followUpNotes?: string;
+  entryData?: MedicalVisitEntryData | null;
 }
 
 export interface PhysicalExam {
@@ -161,6 +163,7 @@ function mapVisitRow(row: any): MedicalVisit {
     finalDiagnosis,
     followUpRequired: Boolean(row.follow_up_required),
     followUpNotes: row.follow_up_notes || "",
+    entryData: row.entry_data && typeof row.entry_data === "object" ? row.entry_data : null,
   };
 }
 
@@ -289,6 +292,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
           final_diagnosis: finalDiagnosis || null,
           follow_up_required: Boolean(visit.followUpRequired),
           follow_up_notes: visit.followUpNotes || null,
+          entry_data: visit.entryData ?? null,
         })
         .select("*")
         .single();
@@ -329,6 +333,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
       if (updates.finalDiagnosis !== undefined) patch.final_diagnosis = updates.finalDiagnosis || null;
       if (updates.followUpRequired !== undefined) patch.follow_up_required = Boolean(updates.followUpRequired);
       if (updates.followUpNotes !== undefined) patch.follow_up_notes = updates.followUpNotes || null;
+      if (updates.entryData !== undefined) patch.entry_data = updates.entryData ?? null;
 
       const { data, error: updateError } = await supabase
         .from("medical_visits")

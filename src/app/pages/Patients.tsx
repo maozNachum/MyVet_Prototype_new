@@ -1,19 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { supabase } from '../../services/supabaseClient'; // הייבוא שלך
 import {
   Users, UserPlus, Eye, Search, Cat, Dog, AlertTriangle,
   Calendar, AlertCircle, CalendarCheck, ChevronLeft, Stethoscope,
   ArrowRight, Phone, CreditCard, Download, Mail, Pencil, Trash2, X,
+  ClipboardList, Activity, CheckCircle2, Pill, FileText,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { TreatmentModal } from "../components/TreatmentModal";
 import { AnesthesiaConsentModal } from "../components/AnesthesiaConsentModal";
+import { PrescriptionDocumentModal } from "../components/PrescriptionDocumentModal";
+import { HospitalizationModal, type HospitalizationRecord } from "../components/HospitalizationModal";
 import { useMedicalStore } from "../data/MedicalStore";
 import { exportMedicalRecord } from "../hooks/useExportMedicalRecord";
 import { canEditMedicalRecords, canPerformTreatment } from "../data/staffAuth";
 import { LabResultsPanel } from "../components/LabResultsPanel";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import { VISIT_TYPES } from "../data/categoryConfig";
+import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -47,6 +51,7 @@ export type Patient = {
     name: string;
     phone: string;
     email?: string;
+    address?: string;
   };
   lastVisit?: string;
   nextAppointment?: string;
@@ -218,6 +223,140 @@ function calculateAgeFromBirthDate(birthDate?: string | null) {
   return age;
 }
 
+function severityLabel(value?: string | null) {
+  switch (value) {
+    case "critical": return "קריטי";
+    case "serious": return "חמור";
+    case "normal": return "רגיל";
+    default: return "רגיל";
+  }
+}
+
+function statusLabel(value?: string | null) {
+  switch (value) {
+    case "active": return "פעיל";
+    case "improved": return "השתפר";
+    case "resolved": return "נפתר";
+    case "low": return "נמוכה";
+    case "possible": return "אפשרית";
+    case "likely": return "סבירה";
+    case "critical": return "קריטי";
+    case "serious": return "חמור";
+    case "normal": return "רגיל";
+    default: return value || "לא צוין";
+  }
+}
+
+function severityClass(value?: string | null) {
+  switch (value) {
+    case "critical": return "bg-red-50 text-red-700 border-red-200";
+    case "serious": return "bg-amber-50 text-amber-700 border-amber-200";
+    default: return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  }
+}
+
+function getVisitDisplayConfig(visitType?: string | null) {
+  const customTypes: Record<string, { label: string; icon: any; color: string }> = {
+    full_exam: {
+      label: "בדיקה רפואית מלאה",
+      icon: Stethoscope,
+      color: "bg-blue-50 text-blue-600 border-blue-200",
+    },
+    vaccination: {
+      label: "חיסון",
+      icon: CheckCircle2,
+      color: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    },
+    weight_check: {
+      label: "שקילה",
+      icon: Activity,
+      color: "bg-amber-50 text-amber-600 border-amber-200",
+    },
+    prescription_only: {
+      label: "מרשם בלבד",
+      icon: Pill,
+      color: "bg-purple-50 text-purple-600 border-purple-200",
+    },
+    lab: {
+      label: "בדיקת מעבדה",
+      icon: ClipboardList,
+      color: "bg-sky-50 text-sky-600 border-sky-200",
+    },
+    follow_up: {
+      label: "מעקב קצר",
+      icon: CalendarCheck,
+      color: "bg-teal-50 text-teal-600 border-teal-200",
+    },
+    note: {
+      label: "הערה רפואית",
+      icon: FileText,
+      color: "bg-gray-50 text-gray-600 border-gray-200",
+    },
+    hospitalization: {
+      label: "אשפוז",
+      icon: Activity,
+      color: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    },
+    hospitalization_discharge: {
+      label: "שחרור מאשפוז",
+      icon: CheckCircle2,
+      color: "bg-teal-50 text-teal-600 border-teal-200",
+    },
+  };
+
+  if (visitType && customTypes[visitType]) return customTypes[visitType];
+  if (visitType && Object.prototype.hasOwnProperty.call(VISIT_TYPES, visitType)) {
+    return VISIT_TYPES[visitType as keyof typeof VISIT_TYPES];
+  }
+  return VISIT_TYPES.checkup;
+}
+
+function splitOwnerNameForDocument(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+function mapPrescriptionForDocument(prescription: any) {
+  return {
+    prescription_id: prescription.id,
+    visit_id: prescription.visitId ?? null,
+    pet_id: prescription.patientId,
+    medication: prescription.medication || null,
+    dosage: prescription.dosage || null,
+    frequency: prescription.frequency || null,
+    duration: prescription.duration || null,
+    start_date: prescription.startDate || null,
+    prescribed_by: prescription.prescribedBy || null,
+  };
+}
+
+function mapVisitForPrescriptionDocument(visit: any) {
+  if (!visit) return null;
+  return {
+    visit_id: visit.id,
+    visit_date: visit.date,
+    vet_name: visit.vetName,
+    chief_complaint: visit.chiefComplaint || visit.reason,
+    reason: visit.reason,
+    final_diagnosis: visit.finalDiagnosis || visit.diagnosis,
+    diagnosis: visit.diagnosis,
+  };
+}
+
+function MedicalDetailSection({ icon: Icon, title, children }: { icon: any; title: string; children: ReactNode }) {
+  return (
+    <section className="bg-white rounded-2xl border border-gray-100 p-4">
+      <h5 className="flex items-center gap-2 text-gray-900 font-bold text-[14px] mb-2">
+        <Icon className="w-4 h-4 text-[#1e40af]" /> {title}
+      </h5>
+      <div className="text-gray-700 text-[13px] leading-7 whitespace-pre-wrap">{children}</div>
+    </section>
+  );
+}
+
 type TabKey = "list" | "register";
 
 export function Patients() {
@@ -234,7 +373,20 @@ export function Patients() {
   const [isAnesthesiaOpen, setIsAnesthesiaOpen] = useState(false);
   const [isEditPetOpen, setIsEditPetOpen] = useState(false);
   const [isDeletingPet, setIsDeletingPet] = useState(false);
-  const { getVisitsForPatient } = useMedicalStore();
+  const [expandedVisitId, setExpandedVisitId] = useState<number | null>(null);
+  const [selectedPrescriptionForPrint, setSelectedPrescriptionForPrint] = useState<any | null>(null);
+  const [selectedPrescriptionVisit, setSelectedPrescriptionVisit] = useState<any | null>(null);
+  const [isHospitalizationOpen, setIsHospitalizationOpen] = useState(false);
+  const [activeHospitalization, setActiveHospitalization] = useState<HospitalizationRecord | null>(null);
+  const [isHospitalizationLoading, setIsHospitalizationLoading] = useState(false);
+  const {
+    loadMedicalData,
+    getVisitsForPatient,
+    getPrescriptionsForPatient,
+    getPhysicalExamsForVisit,
+    getMedicalProblemsForVisit,
+    getDifferentialDiagnosesForVisit,
+  } = useMedicalStore();
 
   // משיכת הנתונים האמיתיים מסופאבייס (Data Fetching)
   useEffect(() => {
@@ -291,6 +443,7 @@ export function Patients() {
                 breedCode,
                 customBreed: getCustomBreedValue(row.breed),
                 gender,
+                neuteredStatus: normalizeNeuteredStatus(row.neutered_status),
                 age: calculateAgeFromBirthDate(row.birth_date),
                 birthDate: row.birth_date || "",
                 microchip: microchipNumber || "אין שבב",
@@ -304,6 +457,7 @@ export function Patients() {
                 name: ownerFullName || "ללא שם",
                 phone: owner?.phone || "ללא טלפון",
                 email: owner?.email || "",
+                address: owner?.address || "",
               },
               lastVisit: "טרם נקבע",
               nextAppointment: "",
@@ -335,6 +489,38 @@ export function Patients() {
     }
   }, [searchParams, setSearchParams, patientsList]);
 
+  const loadActiveHospitalization = async (patientId: number) => {
+    setIsHospitalizationLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("hospitalizations")
+        .select("*")
+        .eq("pet_id", patientId)
+        .eq("status", "active")
+        .order("admitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      setActiveHospitalization((data as HospitalizationRecord | null) || null);
+    } catch (error) {
+      console.error("Error loading active hospitalization", error);
+      setActiveHospitalization(null);
+      toast.error("לא הצלחנו לטעון סטטוס אשפוז פעיל");
+    } finally {
+      setIsHospitalizationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedPatient) {
+      setActiveHospitalization(null);
+      return;
+    }
+
+    loadActiveHospitalization(selectedPatient.id);
+  }, [selectedPatient?.id]);
+
   // עדכון מערכת הסינון (Search Filter) שתעבוד על הרשימה החדשה
   const filtered = useSearchFilter(patientsList, searchQuery, (p) => [
     p.pet.name, p.owner.name, p.owner.phone, p.owner.email || '',
@@ -342,6 +528,7 @@ export function Patients() {
   ]);
 
   const patientHistory = selectedPatient ? getVisitsForPatient(selectedPatient.id) : [];
+  const patientPrescriptions = selectedPatient ? getPrescriptionsForPatient(selectedPatient.id) : [];
 
   // ─── React Hook Form Setup ──────────────────────────────────────────
   const {
@@ -352,7 +539,7 @@ export function Patients() {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
+    resolver: zodResolver(patientSchema) as any,
     mode: "onBlur",
   });
 
@@ -364,7 +551,7 @@ export function Patients() {
     watch: watchEditPet,
     formState: { errors: editPetErrors, isSubmitting: isUpdatingPet },
   } = useForm<EditPetFormValues>({
-    resolver: zodResolver(editPetSchema),
+    resolver: zodResolver(editPetSchema) as any,
     mode: "onBlur",
   });
 
@@ -642,12 +829,16 @@ export function Patients() {
           </div>
         </div>
 
+        <div className="mb-8">
+          <MedicalRecordAssistant patient={selectedPatient} visits={patientHistory} activeHospitalization={activeHospitalization} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
               <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-6 py-4 flex items-center gap-2.5">
                 <CalendarCheck className="w-5 h-5 text-white/90" />
-                <h3 className="text-white text-[17px] font-semibold">ביקור נוכחי</h3>
+                <h3 className="text-white text-[17px] font-semibold">תיק רפואי</h3>
               </div>
 
               <div className="p-6 flex flex-col flex-1">
@@ -659,11 +850,32 @@ export function Patients() {
 
                 <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-5 mb-6">
                   <p className="text-gray-500 text-[13px] mb-1 font-medium">סיבת הגעה</p>
-                  <p className="text-gray-900 text-[16px] font-semibold">חיסון שנתי ובדיקה כללית</p>
+                  <p className="text-gray-900 text-[16px] font-semibold">הוספת רשומה חדשה לתיק הרפואי</p>
                 </div>
 
-                <div className="text-[14px] text-gray-500 mb-6">
-                  <span className="font-medium text-gray-700">רופא מטפל:</span> ד"ר יוסי כהן
+                <div className="text-[14px] text-gray-500 mb-5">
+                  <span className="font-medium text-gray-700">פעולות:</span> בדיקה מלאה, חיסון, שקילה, מרשם, מעבדה, מעקב, הערה או אשפוז
+                </div>
+
+                <div className={`rounded-xl border p-4 mb-5 ${activeHospitalization ? "border-emerald-200 bg-emerald-50/70" : "border-gray-100 bg-gray-50"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-gray-900 text-[14px] font-bold">סטטוס אשפוז</p>
+                      {isHospitalizationLoading ? (
+                        <p className="text-gray-500 text-[13px] mt-1">בודק אשפוז פעיל...</p>
+                      ) : activeHospitalization ? (
+                        <div className="text-gray-600 text-[13px] mt-1 leading-6">
+                          <p>מאושפז/ת במחלקת {activeHospitalization.department || "לא צוין"}{activeHospitalization.cage_or_room ? ` · ${activeHospitalization.cage_or_room}` : ""}</p>
+                          <p>סיבה: {activeHospitalization.reason || "לא צוינה"}</p>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-[13px] mt-1">אין אשפוז פעיל לחיה הזו.</p>
+                      )}
+                    </div>
+                    {activeHospitalization && (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">פעיל</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-auto">
@@ -674,7 +886,15 @@ export function Patients() {
                           className="w-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
                           onClick={() => setIsTreatmentOpen(true)}
                         >
-                          התחל טיפול בתיק רפואי <ChevronLeft className="w-5 h-5" />
+                          הוסף רשומה רפואית <ChevronLeft className="w-5 h-5" />
+                        </button>
+                      )}
+                      {canPerformTreatment() && (
+                        <button
+                          className={`w-full py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold ${activeHospitalization ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}`}
+                          onClick={() => setIsHospitalizationOpen(true)}
+                        >
+                          {activeHospitalization ? "שחרר מאשפוז" : "פתח אשפוז"} <ChevronLeft className="w-5 h-5" />
                         </button>
                       )}
                       <button
@@ -701,35 +921,166 @@ export function Patients() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-gray-900 text-[17px] font-semibold">היסטוריה רפואית</h3>
+                <div>
+                  <h3 className="text-gray-900 text-[17px] font-semibold">היסטוריה רפואית</h3>
+                  <p className="text-gray-500 text-[12px] mt-1">לחיצה על ביקור פותחת את כל הפרטים: בעיות, בדיקה גופנית, טיפול, אבחנות ומרשמים</p>
+                </div>
                 <span className="text-gray-500 font-medium text-[13px]">{patientHistory.length} ביקורים</span>
               </div>
 
               <div className="p-6">
                 {patientHistory.length > 0 ? (
-                  <div className="relative">
-                    <div className="absolute right-[19px] top-4 bottom-4 w-px bg-gray-200" />
-                    <div className="space-y-0">
-                      {patientHistory.map((visit, index) => {
-                        const cfg = VISIT_TYPES[(visit as any).type as keyof typeof VISIT_TYPES] ?? VISIT_TYPES.checkup;
-                        const IconComponent = cfg.icon;
-                        return (
-                          <div key={visit.id} className="relative flex gap-5">
-                            <div className={`relative z-10 w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${cfg.color}`}>
-                              <IconComponent className="w-5 h-5" />
-                            </div>
-                            <div className={`flex-1 ${index === patientHistory.length - 1 ? "pb-0" : "pb-7"}`}>
-                              <div className="flex items-center gap-3 mb-1">
-                                <span className="text-gray-900 text-[15px] font-semibold">{visit.reason}</span>
-                                <span className="text-gray-500 font-medium text-[13px]">{visit.date}</span>
+                  <div className="space-y-4">
+                    {patientHistory.map((visit) => {
+                      const cfg = getVisitDisplayConfig((visit as any).visitType);
+                      const IconComponent = cfg.icon;
+                      const expanded = expandedVisitId === visit.id;
+                      const visitProblems = getMedicalProblemsForVisit(visit.id);
+                      const visitExams = getPhysicalExamsForVisit(visit.id);
+                      const visitDifferentials = getDifferentialDiagnosesForVisit(visit.id);
+                      const visitPrescriptions = patientPrescriptions.filter((prescription) => prescription.visitId === visit.id);
+
+                      return (
+                        <article key={visit.id} className={`rounded-2xl border transition-all overflow-hidden ${expanded ? "border-blue-200 shadow-sm" : "border-gray-100 hover:border-blue-100"}`}>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedVisitId(expanded ? null : visit.id)}
+                            className="w-full p-4 text-right bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${cfg.color}`}>
+                                <IconComponent className="w-5 h-5" />
                               </div>
-                              <p className="text-gray-500 text-[14px] mb-1">{visit.treatment || visit.diagnosis}</p>
-                              <p className="text-gray-500 font-medium text-[13px]">{visit.vetName}</p>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <span className="text-gray-900 text-[15px] font-bold">{visit.chiefComplaint || visit.reason || "ביקור רפואי"}</span>
+                                  <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${severityClass(visit.urgencyLevel)}`}>
+                                    {severityLabel(visit.urgencyLevel)}
+                                  </span>
+                                  {visitPrescriptions.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">
+                                      {visitPrescriptions.length} מרשמים
+                                    </span>
+                                  )}
+                                  {visit.followUpRequired && (
+                                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-bold">
+                                      נדרש מעקב
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-gray-500 text-[13px] font-medium">{visit.date} · {visit.vetName || "צוות המרפאה"}</p>
+                                <p className="text-gray-500 text-[13px] mt-1 line-clamp-1">{visit.treatment || visit.finalDiagnosis || visit.diagnosis || "לחץ לפתיחת פרטי הביקור"}</p>
+                              </div>
+
+                              <span className="text-blue-600 text-[12px] font-semibold shrink-0 mt-1">{expanded ? "סגור" : "פתח פרטים"}</span>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          </button>
+
+                          {expanded && (
+                            <div className="border-t border-gray-100 p-5 bg-gray-50/60 space-y-4">
+                              <MedicalDetailSection icon={ClipboardList} title="פרטי ביקור">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <p><b>תאריך:</b> {visit.date}</p>
+                                  <p><b>רופא מטפל:</b> {visit.vetName || "לא צוין"}</p>
+                                  <p><b>סוג רשומה:</b> {cfg.label}</p>
+                                  <p><b>רמת דחיפות:</b> {severityLabel(visit.urgencyLevel)}</p>
+                                </div>
+                                <p className="mt-2"><b>סיבת ביקור:</b> {visit.chiefComplaint || visit.reason || "לא צוין"}</p>
+                              </MedicalDetailSection>
+
+                              {visitProblems.length > 0 && (
+                                <MedicalDetailSection icon={AlertTriangle} title="בעיות / תלונות פעילות">
+                                  <div className="space-y-2 whitespace-normal">
+                                    {visitProblems.map((problem) => (
+                                      <div key={problem.id} className="rounded-xl border border-gray-100 bg-white p-3">
+                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                          <b className="text-gray-900">{problem.problemText}</b>
+                                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${severityClass(problem.severity)}`}>{severityLabel(problem.severity)}</span>
+                                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-bold">{statusLabel(problem.status)}</span>
+                                        </div>
+                                        {problem.notes && <p className="text-gray-600 whitespace-pre-wrap">{problem.notes}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </MedicalDetailSection>
+                              )}
+
+                              {visitExams.length > 0 && (
+                                <MedicalDetailSection icon={Activity} title="בדיקה גופנית">
+                                  <div className="space-y-2 whitespace-normal">
+                                    {visitExams.map((exam) => (
+                                      <div key={exam.id} className="rounded-xl border border-gray-100 bg-white p-3">
+                                        <p className="text-gray-400 text-[12px] mb-1">{exam.examDate}</p>
+                                        <p className="whitespace-pre-wrap leading-7">{exam.findings || "לא צוין"}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </MedicalDetailSection>
+                              )}
+
+                              <MedicalDetailSection icon={Stethoscope} title="טיפול שבוצע והנחיות">
+                                {visit.treatment || "לא צוין"}
+                              </MedicalDetailSection>
+
+                              {visitDifferentials.length > 0 && (
+                                <MedicalDetailSection icon={FileText} title="אבחנות מבדלות">
+                                  <div className="space-y-2 whitespace-normal">
+                                    {visitDifferentials.map((diagnosis) => (
+                                      <div key={diagnosis.id} className="rounded-xl border border-gray-100 bg-white p-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <b className="text-gray-900">{diagnosis.diagnosisText}</b>
+                                          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{statusLabel(diagnosis.likelihood)}</span>
+                                        </div>
+                                        {diagnosis.notes && <p className="text-gray-600 whitespace-pre-wrap">{diagnosis.notes}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </MedicalDetailSection>
+                              )}
+
+                              <MedicalDetailSection icon={CheckCircle2} title="אבחנה סופית">
+                                {visit.finalDiagnosis || visit.diagnosis || "לא צוין"}
+                              </MedicalDetailSection>
+
+                              {visitPrescriptions.length > 0 && (
+                                <MedicalDetailSection icon={Pill} title="מרשמים מהביקור">
+                                  <div className="space-y-2 whitespace-normal">
+                                    {visitPrescriptions.map((prescription) => (
+                                      <div key={prescription.id} className="rounded-xl border border-gray-100 bg-white p-3 flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="font-bold text-gray-900">{prescription.medication || "תרופה"}</p>
+                                          <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || "אין פרטי מינון"}</p>
+                                          <p className="text-gray-400 text-[12px] mt-1">תאריך התחלה: {prescription.startDate || "לא צוין"}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
+                                            setSelectedPrescriptionVisit(mapVisitForPrescriptionDocument(visit));
+                                          }}
+                                          className="shrink-0 flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-lg text-[12px] font-bold cursor-pointer"
+                                        >
+                                          <FileText className="w-4 h-4" /> הצג מרשם
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </MedicalDetailSection>
+                              )}
+
+                              {(visit.notes || visit.followUpNotes) && (
+                                <MedicalDetailSection icon={FileText} title="סיכום והערות">
+                                  {visit.notes && <p>{visit.notes}</p>}
+                                  {visit.followUpNotes && <p className="mt-2"><b>הערות מעקב:</b> {visit.followUpNotes}</p>}
+                                </MedicalDetailSection>
+                              )}
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-10 text-gray-500 font-medium">
@@ -739,6 +1090,35 @@ export function Patients() {
                 )}
               </div>
             </div>
+
+            {patientPrescriptions.some((prescription) => !prescription.visitId) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-gray-900 text-[17px] font-semibold">מרשמים כלליים</h3>
+                  <span className="text-gray-500 font-medium text-[13px]">{patientPrescriptions.filter((prescription) => !prescription.visitId).length} מרשמים</span>
+                </div>
+                <div className="p-6 space-y-3">
+                  {patientPrescriptions.filter((prescription) => !prescription.visitId).map((prescription) => (
+                    <div key={prescription.id} className="rounded-2xl border border-gray-100 p-4 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-gray-900">{prescription.medication || "תרופה"}</p>
+                        <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || "אין פרטי מינון"}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
+                          setSelectedPrescriptionVisit(null);
+                        }}
+                        className="shrink-0 flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-lg text-[12px] font-bold cursor-pointer"
+                      >
+                        <FileText className="w-4 h-4" /> הצג מרשם
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -764,7 +1144,7 @@ export function Patients() {
                 </button>
               </div>
 
-              <form onSubmit={handleEditPetSubmit(onEditPetSubmit)} className="p-6">
+              <form onSubmit={handleEditPetSubmit(onEditPetSubmit as any)} className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label htmlFor="editPetName" className="block text-gray-700 text-[14px] mb-2 font-medium">שם החיה</label>
@@ -937,6 +1317,19 @@ export function Patients() {
           patientId={selectedPatient.id}
         />
 
+        <HospitalizationModal
+          isOpen={isHospitalizationOpen}
+          onClose={() => setIsHospitalizationOpen(false)}
+          patientId={selectedPatient.id}
+          ownerId={owner.id}
+          petName={pet.name}
+          ownerName={owner.name}
+          activeHospitalization={activeHospitalization}
+          onSaved={async () => {
+            await Promise.all([loadActiveHospitalization(selectedPatient.id), loadMedicalData()]);
+          }}
+        />
+
         {isAnesthesiaOpen && (
           <AnesthesiaConsentModal
             petName={pet.name}
@@ -944,6 +1337,25 @@ export function Patients() {
             onClose={() => setIsAnesthesiaOpen(false)}
           />
         )}
+
+        <PrescriptionDocumentModal
+          isOpen={Boolean(selectedPrescriptionForPrint)}
+          onClose={() => {
+            setSelectedPrescriptionForPrint(null);
+            setSelectedPrescriptionVisit(null);
+          }}
+          prescription={selectedPrescriptionForPrint}
+          petName={pet.name}
+          owner={{
+            ownerId: owner.id,
+            firstName: splitOwnerNameForDocument(owner.name).firstName,
+            lastName: splitOwnerNameForDocument(owner.name).lastName,
+            phone: owner.phone,
+            email: owner.email,
+            address: owner.address,
+          }}
+          visit={selectedPrescriptionVisit}
+        />
       </main>
     );
   }
@@ -1063,7 +1475,7 @@ export function Patients() {
           )}
         </>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit as any)}>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               

@@ -1,6 +1,5 @@
 import { Outlet } from "react-router";
 import { Navbar } from "../components/Navbar";
-import { ChatWidget } from "../components/ChatWidget";
 import { Footer } from "../components/Footer";
 
 export function Layout() {
@@ -15,7 +14,6 @@ export function Layout() {
         <Outlet />
       </main>
       <Footer />
-      <ChatWidget mode="staff" />
     </div>
   );
 }

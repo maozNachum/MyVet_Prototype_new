@@ -1,15 +1,5 @@
-import { useState } from "react";
-import {
-  Calendar,
-  Clock,
-  X,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Dog,
-  Cat,
-  PawPrint,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Calendar, Clock, X, Check, Dog, Cat, PawPrint, Loader2, AlertCircle } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
 import { supabase } from "../../services/supabaseClient";
@@ -28,56 +18,11 @@ interface DaySlots {
   slots: TimeSlot[];
 }
 
-// ── Derived from central VISIT_TYPES config ──
-const treatmentTypes = BOOKING_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
-
 interface OwnerPortalPet {
   id: number;
   name: string;
   type: "dog" | "cat" | "other";
   breed: string;
-}
-
-
-// Generate next 7 days with mock availability
-function generateWeek(): DaySlots[] {
-  const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-  const result: DaySlots[] = [];
-  const now = new Date();
-
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(now);
-    date.setDate(now.getDate() + i);
-    const dayOfWeek = date.getDay();
-
-    // Friday short, Saturday closed
-    const isFriday = dayOfWeek === 5;
-    const isSaturday = dayOfWeek === 6;
-
-    const slots: TimeSlot[] = [];
-
-    if (!isSaturday) {
-      const hours = isFriday
-        ? ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"]
-        : ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
-
-      hours.forEach((time) => {
-        // Randomize availability - more slots available for further days
-        const available = Math.random() > (i === 0 ? 0.6 : 0.3);
-        slots.push({ time, available });
-      });
-    }
-
-    result.push({
-      date: `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
-      fullDateISO: date.toISOString().slice(0, 10),
-      dayName: days[dayOfWeek],
-      dayNumber: date.getDate(),
-      isToday: i === 0,
-      slots,
-    });
-  }
-  return result;
 }
 
 interface OwnerBookAppointmentProps {
@@ -88,6 +33,92 @@ interface OwnerBookAppointmentProps {
   ownerPhone?: string;
   ownerEmail?: string;
   onAppointmentCreated?: () => Promise<void> | void;
+}
+
+type AppointmentRow = {
+  start_time: string | null;
+  end_time: string | null;
+};
+
+const treatmentTypes = BOOKING_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
+const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+
+function pad(num: number) {
+  return String(num).padStart(2, "0");
+}
+
+function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function formatShortDate(date: Date) {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+}
+
+function buildSlotDateTime(dateISO: string, time: string) {
+  const [year, month, day] = dateISO.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  return new Date(year, month - 1, day, hour || 0, minute || 0, 0, 0);
+}
+
+function getOpeningHours(date: Date) {
+  const day = date.getDay();
+  if (day === 6) return [];
+  if (day === 5) return ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
+  return ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
+}
+
+function overlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+function createBaseWeek(): DaySlots[] {
+  const now = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
+    return {
+      date: formatShortDate(date),
+      fullDateISO: formatLocalDate(date),
+      dayName: DAY_NAMES[date.getDay()],
+      dayNumber: date.getDate(),
+      isToday: index === 0,
+      slots: getOpeningHours(date).map((time) => ({ time, available: true })),
+    };
+  });
+}
+
+async function loadRealAvailability(): Promise<DaySlots[]> {
+  const week = createBaseWeek();
+  const rangeStart = buildSlotDateTime(week[0].fullDateISO, "00:00");
+  const lastDay = week[week.length - 1];
+  const rangeEnd = buildSlotDateTime(lastDay.fullDateISO, "23:59");
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("start_time, end_time")
+    .gte("start_time", rangeStart.toISOString())
+    .lte("start_time", rangeEnd.toISOString());
+
+  if (error) throw error;
+
+  const appointments = ((data || []) as AppointmentRow[]).map((row) => {
+    const start = row.start_time ? new Date(row.start_time) : null;
+    const end = row.end_time ? new Date(row.end_time) : start ? new Date(start.getTime() + 30 * 60 * 1000) : null;
+    return { start, end };
+  });
+
+  const now = new Date();
+
+  return week.map((day) => ({
+    ...day,
+    slots: day.slots.map((slot) => {
+      const slotStart = buildSlotDateTime(day.fullDateISO, slot.time);
+      const slotEnd = buildSlotDateTime(day.fullDateISO, addMinutes(slot.time, 30));
+      const isPast = slotStart <= now;
+      const isTaken = appointments.some((appt) => appt.start && appt.end && overlap(slotStart, slotEnd, appt.start, appt.end));
+      return { ...slot, available: !isPast && !isTaken };
+    }),
+  }));
 }
 
 export function OwnerBookAppointment({
@@ -107,26 +138,86 @@ export function OwnerBookAppointment({
   const [notes, setNotes] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [week] = useState<DaySlots[]>(generateWeek);
+  const [week, setWeek] = useState<DaySlots[]>(createBaseWeek);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotError, setSlotError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   const displayPets = pets;
+  const selectedPetData = displayPets.find((p) => p.id === selectedPet);
+  const selectedTreatmentData = treatmentTypes.find((t) => t.id === selectedTreatment);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+
+    async function loadSlots() {
+      setIsLoadingSlots(true);
+      setSlotError(null);
+      try {
+        const nextWeek = await loadRealAvailability();
+        if (mounted) setWeek(nextWeek);
+      } catch (error) {
+        console.error("Failed to load appointment availability", error);
+        if (mounted) {
+          setSlotError("לא הצלחנו לטעון זמינות אמיתית מיומן התורים");
+          setWeek(createBaseWeek().map((day) => ({ ...day, slots: day.slots.map((slot) => ({ ...slot, available: false })) })));
+        }
+      } finally {
+        if (mounted) setIsLoadingSlots(false);
+      }
+    }
+
+    loadSlots();
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setStep(1);
+    setSelectedPet(null);
+    setSelectedTreatment(null);
+    setSelectedDay(0);
+    setSelectedTime(null);
+    setNotes("");
+    setValidationError(null);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
+  const goToStep2 = () => {
+    if (!selectedPet) return setValidationError("בחרו חיה לפני שממשיכים");
+    if (!selectedTreatment) return setValidationError("בחרו סיבת ביקור לפני שממשיכים");
+    setValidationError(null);
+    setStep(2);
+  };
+
+  const goToStep3 = () => {
+    if (!selectedTime) return setValidationError("בחרו שעה פנויה לפני שממשיכים");
+    setValidationError(null);
+    setStep(3);
+  };
+
   const handleSubmit = async () => {
-    if (!selectedPet || !selectedTreatment || !selectedTime) return;
+    if (!selectedPet || !selectedTreatment || !selectedTime) {
+      setValidationError("חסר מידע לקביעת התור. בדקו חיה, סיבת ביקור ושעה.");
+      return;
+    }
 
     try {
       setIsSaving(true);
-
       const selectedDate = week[selectedDay];
-      const startTime = `${selectedDate.fullDateISO}T${selectedTime}:00`;
-      const endTime = `${selectedDate.fullDateISO}T${addMinutes(selectedTime, 30)}:00`;
+      const startDate = buildSlotDateTime(selectedDate.fullDateISO, selectedTime);
+      const endDate = buildSlotDateTime(selectedDate.fullDateISO, addMinutes(selectedTime, 30));
 
       const notesToSave = [
         notes,
         ownerName ? `בעלים: ${ownerName}` : "",
         ownerPhone ? `טלפון: ${ownerPhone}` : "",
         ownerEmail ? `אימייל: ${ownerEmail}` : "",
+        "נקבע דרך פורטל לקוחות",
       ]
         .filter(Boolean)
         .join("\n");
@@ -134,8 +225,8 @@ export function OwnerBookAppointment({
       const { error } = await supabase.from("appointments").insert([
         {
           pet_id: selectedPet,
-          start_time: new Date(startTime).toISOString(),
-          end_time: new Date(endTime).toISOString(),
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
           department: "כללי",
           vet_name: "טרם שובץ",
           room: "טרם שובץ",
@@ -151,363 +242,142 @@ export function OwnerBookAppointment({
       setIsSubmitted(true);
       setTimeout(() => {
         setIsSubmitted(false);
-        setStep(1);
-        setSelectedPet(null);
-        setSelectedTreatment(null);
-        setSelectedDay(0);
-        setSelectedTime(null);
-        setNotes("");
-        onClose();
-      }, 2500);
+        handleClose();
+      }, 2200);
     } catch (error) {
       console.error("Supabase appointment insert error:", error);
-      alert("אירעה שגיאה בעת קביעת התור. בדקו הרשאות/טבלת appointments ב-Supabase.");
+      setValidationError("אירעה שגיאה בעת קביעת התור. בדקו הרשאות/טבלת appointments ב-Supabase.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const canProceedStep1 = selectedPet !== null && selectedTreatment !== null;
-  const canProceedStep2 = selectedTime !== null;
-  const selectedPetData = displayPets.find((p) => p.id === selectedPet);
-  const selectedTreatmentData = treatmentTypes.find((t) => t.id === selectedTreatment);
-
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"
-        dir="rtl"
-        style={{ fontFamily: "'Heebo', sans-serif" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 px-4" onClick={handleClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" dir="rtl" style={{ fontFamily: "'Heebo', sans-serif" }} onClick={(e) => e.stopPropagation()}>
         <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-white/80" />
             <div>
-              <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>
-                קביעת תור חדש
-              </h3>
-              <p className="text-white/60 text-[12px]">
-                {!isSubmitted && `שלב ${step} מתוך 3`}
-              </p>
+              <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>קביעת תור חדש</h3>
+              <p className="text-white/60 text-[12px]">{!isSubmitted && `שלב ${step} מתוך 3`}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <button onClick={handleClose} className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
-        {/* Progress bar */}
         {!isSubmitted && (
-          <div className="h-1 bg-gray-100 shrink-0">
-            <div
-              className="h-full bg-[#1e40af] transition-all duration-300"
-              style={{ width: `${(step / 3) * 100}%` }}
-            />
-          </div>
+          <div className="h-1 bg-gray-100 shrink-0"><div className="h-full bg-[#1e40af] transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} /></div>
         )}
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {isSubmitted ? (
-            /* Success State */
             <div className="flex flex-col items-center justify-center py-10">
-              <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-5">
-                <Check className="w-10 h-10 text-emerald-500" />
-              </div>
-              <h3 className="text-gray-900 text-[20px] mb-2" style={{ fontWeight: 700 }}>
-                התור נקבע בהצלחה!
-              </h3>
-              <p className="text-gray-500 text-[14px] text-center" style={{ lineHeight: 1.6 }}>
-                נשלחה אליכם הודעת אישור עם פרטי התור.
-                <br />
-                תקבלו תזכורת יום לפני הביקור.
-              </p>
-            </div>
-          ) : step === 1 ? (
-            /* Step 1: Pet & Treatment */
-            <div className="space-y-6">
-              {/* Select Pet */}
-              <div>
-                <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>
-                  בחרו חיה
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {displayPets.length === 0 && (
-                    <div className="col-span-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px] font-medium">
-                      לא נמצאו חיות מחוברות לבעלים במסד הנתונים.
-                    </div>
-                  )}
-                  {displayPets.map((pet) => {
-                    const PIcon = pet.type === "dog" ? Dog : pet.type === "cat" ? Cat : PawPrint;
-                    const isSelected = selectedPet === pet.id;
-                    return (
-                      <button
-                        key={pet.id}
-                        onClick={() => setSelectedPet(pet.id)}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
-                          isSelected
-                            ? "border-[#1e40af] bg-blue-50/50 shadow-sm"
-                            : "border-gray-100 hover:border-gray-200 bg-white"
-                        }`}
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            isSelected
-                              ? "bg-[#1e40af] text-white"
-                              : "bg-gray-100 text-gray-500 font-medium"
-                          }`}
-                        >
-                          <PIcon className="w-5 h-5" />
-                        </div>
-                        <div className="text-right">
-                          <p
-                            className="text-gray-900 text-[14px]"
-                            style={{ fontWeight: 600 }}
-                          >
-                            {pet.name}
-                          </p>
-                          <p className="text-gray-500 font-medium text-[13px]">{pet.breed}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Select Treatment */}
-              <div>
-                <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>
-                  סוג הטיפול
-                </h4>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {treatmentTypes.map((tt) => {
-                    const TIcon = tt.icon;
-                    const isSelected = selectedTreatment === tt.id;
-                    return (
-                      <button
-                        key={tt.id}
-                        onClick={() => setSelectedTreatment(tt.id)}
-                        className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2.5 ${
-                          isSelected
-                            ? "border-[#1e40af] bg-blue-50/50 shadow-sm"
-                            : "border-gray-100 hover:border-gray-200 bg-white"
-                        }`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border ${tt.color}`}
-                        >
-                          <TIcon className="w-4 h-4" />
-                        </div>
-                        <span
-                          className="text-gray-700 text-[13px]"
-                          style={{ fontWeight: 500 }}
-                        >
-                          {tt.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : step === 2 ? (
-            /* Step 2: Date & Time */
-            <div className="space-y-5">
-              {/* Day Selector */}
-              <div>
-                <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>
-                  בחרו יום
-                </h4>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {week.map((day, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSelectedDay(idx);
-                        setSelectedTime(null);
-                      }}
-                      disabled={day.slots.length === 0}
-                      className={`flex flex-col items-center min-w-[64px] py-3 px-2 rounded-xl border-2 transition-all cursor-pointer ${
-                        selectedDay === idx
-                          ? "border-[#1e40af] bg-blue-50/50 shadow-sm"
-                          : day.slots.length === 0
-                          ? "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
-                          : "border-gray-100 hover:border-gray-200"
-                      }`}
-                    >
-                      <span className="text-gray-500 font-medium text-[13px]" style={{ fontWeight: 500 }}>
-                        {day.dayName}
-                      </span>
-                      <span
-                        className={`text-[18px] my-0.5 ${
-                          selectedDay === idx ? "text-[#1e40af]" : "text-gray-900"
-                        }`}
-                        style={{ fontWeight: 700 }}
-                      >
-                        {day.dayNumber}
-                      </span>
-                      <span className="text-[10px] text-gray-500 font-medium">
-                        {day.isToday ? "היום" : day.date}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Time Slots */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                    שעות פנויות
-                  </h4>
-                  <span className="text-gray-500 font-medium text-[12px]">
-                    {week[selectedDay].slots.filter((s) => s.available).length} תורים פנויים
-                  </span>
-                </div>
-                {week[selectedDay].slots.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500 font-medium text-[14px]">סגור — אין תורים ביום זה</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-4 gap-2">
-                    {week[selectedDay].slots.map((slot) => (
-                      <button
-                        key={slot.time}
-                        disabled={!slot.available}
-                        onClick={() => setSelectedTime(slot.time)}
-                        className={`py-2.5 rounded-lg text-[13px] transition-all cursor-pointer border ${
-                          selectedTime === slot.time
-                            ? "bg-[#1e40af] text-white border-[#1e40af] shadow-sm"
-                            : slot.available
-                            ? "bg-white text-gray-700 border-gray-200 hover:border-[#1e40af] hover:text-[#1e40af]"
-                            : "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed line-through"
-                        }`}
-                        style={{ fontWeight: 500 }}
-                      >
-                        {slot.time}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-5"><Check className="w-10 h-10 text-emerald-500" /></div>
+              <h3 className="text-gray-900 text-[20px] mb-2" style={{ fontWeight: 700 }}>התור נקבע בהצלחה!</h3>
+              <p className="text-gray-500 text-[14px] text-center" style={{ lineHeight: 1.6 }}>התור נשמר ביומן המרפאה וממתין לשיבוץ צוות.</p>
             </div>
           ) : (
-            /* Step 3: Review & Notes */
-            <div className="space-y-5">
-              <h4 className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                סיכום התור
-              </h4>
+            <>
+              {(validationError || slotError) && (
+                <div className="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-red-600 text-[13px] font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {validationError || slotError}
+                </div>
+              )}
 
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
-                    חיה
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {selectedPetData?.type === "dog" ? (
-                      <Dog className="w-4 h-4 text-[#1e40af]" />
-                    ) : (
-                      <Cat className="w-4 h-4 text-[#1e40af]" />
-                    )}
-                    <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                      {selectedPetData?.name}
-                    </span>
+              {step === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>בחרו חיה</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {displayPets.length === 0 && <div className="col-span-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px] font-medium">לא נמצאו חיות מחוברות לבעלים במסד הנתונים.</div>}
+                      {displayPets.map((pet) => {
+                        const Icon = pet.type === "dog" ? Dog : pet.type === "cat" ? Cat : PawPrint;
+                        const selected = selectedPet === pet.id;
+                        return (
+                          <button key={pet.id} onClick={() => { setSelectedPet(pet.id); setValidationError(null); }} className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 ${selected ? "border-[#1e40af] bg-blue-50/50 shadow-sm" : "border-gray-100 hover:border-gray-200 bg-white"}`}>
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selected ? "bg-[#1e40af]" : "bg-gray-50"}`}><Icon className={`w-5 h-5 ${selected ? "text-white" : "text-gray-500"}`} /></div>
+                            <div className="text-right"><p className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{pet.name}</p><p className="text-gray-500 text-[12px]">{pet.breed}</p></div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>סיבת ביקור</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {treatmentTypes.map((type) => {
+                        const selected = selectedTreatment === type.id;
+                        const Icon = type.icon;
+                        return (
+                          <button key={type.id} onClick={() => { setSelectedTreatment(type.id); setValidationError(null); }} className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-right ${selected ? "border-[#1e40af] bg-blue-50/50 shadow-sm" : "border-gray-100 hover:border-gray-200 bg-white"}`}>
+                            <div className="flex items-center gap-2.5"><Icon className={`w-4.5 h-4.5 ${selected ? "text-[#1e40af]" : "text-gray-500"}`} /><span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{type.label}</span></div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
-                    סוג טיפול
-                  </p>
-                  <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                    {selectedTreatmentData?.label}
-                  </span>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
-                    יום
-                  </p>
-                  <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                    {week[selectedDay].dayName} {week[selectedDay].date}
-                  </span>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500 font-medium text-[13px] mb-1" style={{ fontWeight: 500 }}>
-                    שעה
-                  </p>
-                  <span className="text-gray-900 text-[15px]" style={{ fontWeight: 600 }}>
-                    {selectedTime}
-                  </span>
-                </div>
-              </div>
+              )}
 
-              {/* Notes */}
-              <div>
-                <label className="text-gray-600 text-[13px] mb-2 block" style={{ fontWeight: 500 }}>
-                  הערות (אופציונלי)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="תארו את הבעיה או הוסיפו מידע חשוב..."
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-gray-50/50 transition-all resize-none"
-                />
-              </div>
+              {step === 2 && (
+                <div>
+                  <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>בחרו מועד פנוי</h4>
+                  {isLoadingSlots ? (
+                    <div className="py-12 text-center text-gray-500"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />טוען זמינות אמיתית מהיומן...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {week.map((day, index) => (
+                          <button key={day.fullDateISO} onClick={() => { setSelectedDay(index); setSelectedTime(null); setValidationError(null); }} className={`min-w-[74px] p-3 rounded-xl border-2 transition-all cursor-pointer text-center ${selectedDay === index ? "border-[#1e40af] bg-blue-50" : "border-gray-100 bg-white hover:border-gray-200"}`}>
+                            <p className="text-[12px] text-gray-500">{day.isToday ? "היום" : day.dayName}</p>
+                            <p className="text-gray-900 text-[18px]" style={{ fontWeight: 700 }}>{day.dayNumber}</p>
+                            <p className="text-[11px] text-gray-400">{day.date}</p>
+                          </button>
+                        ))}
+                      </div>
 
-              {/* Info box */}
-              <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-4">
-                <p className="text-blue-700 text-[12px]" style={{ lineHeight: 1.7 }}>
-                  <span style={{ fontWeight: 600 }}>שימו לב:</span> תקבלו הודעת
-                  אישור לנייד עם פרטי התור. במקרה של ביטול, נא להודיע לפחות 24 שעות
-                  מראש.
-                </p>
-              </div>
-            </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {week[selectedDay]?.slots.length === 0 && <div className="col-span-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px]">המרפאה סגורה ביום זה.</div>}
+                        {week[selectedDay]?.slots.map((slot) => (
+                          <button key={slot.time} disabled={!slot.available} onClick={() => { setSelectedTime(slot.time); setValidationError(null); }} className={`py-2.5 rounded-xl border transition-all text-[13px] flex items-center justify-center gap-1.5 ${selectedTime === slot.time ? "border-[#1e40af] bg-[#1e40af] text-white" : slot.available ? "border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 cursor-pointer" : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through"}`}>
+                            <Clock className="w-3.5 h-3.5" />{slot.time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                    <h4 className="text-blue-900 text-[15px] mb-2" style={{ fontWeight: 700 }}>סיכום התור</h4>
+                    <div className="space-y-1 text-[14px] text-blue-900/80">
+                      <p>חיה: <strong>{selectedPetData?.name}</strong></p>
+                      <p>סיבה: <strong>{selectedTreatmentData?.label}</strong></p>
+                      <p>מועד: <strong>{week[selectedDay]?.date} בשעה {selectedTime}</strong></p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-[14px] mb-2" style={{ fontWeight: 600 }}>הערות לצוות המרפאה</label>
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="אפשר לתאר בקצרה את סיבת הפנייה..." className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Footer Buttons */}
         {!isSubmitted && (
-          <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-            {step > 1 && (
-              <button
-                onClick={() => setStep(step - 1)}
-                className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]"
-                style={{ fontWeight: 500 }}
-              >
-                הקודם
-              </button>
-            )}
-            {step < 3 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
-                className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-gray-200 disabled:text-gray-500 font-medium text-white py-2.5 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm"
-                style={{ fontWeight: 600 }}
-              >
-                המשך
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={isSaving}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white py-2.5 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2"
-                style={{ fontWeight: 600 }}
-              >
-                <Check className="w-4 h-4" />
-                {isSaving ? "שומר תור..." : "אישור וקביעת תור"}
-              </button>
-            )}
+          <div className="border-t border-gray-100 p-4 flex gap-3 shrink-0">
+            {step > 1 && <button onClick={() => setStep((prev) => prev - 1)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>חזרה</button>}
+            {step === 1 && <button onClick={goToStep2} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>המשך לבחירת מועד</button>}
+            {step === 2 && <button onClick={goToStep3} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>המשך לסיכום</button>}
+            {step === 3 && <button onClick={handleSubmit} disabled={isSaving} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} קבע תור</button>}
           </div>
         )}
       </div>

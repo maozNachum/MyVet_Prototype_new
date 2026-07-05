@@ -9,9 +9,10 @@ import { PillPicker } from "../shared/PillPicker";
 import { PetIcon } from "../shared/PetIcon";
 import {
   AVAILABLE_DATES, AVAILABLE_TIMES,
-  DEPARTMENTS, ROOMS, VETS,
+  DEPARTMENTS, ROOMS,
   addMinutes, type ActionMode, type DateOption,
 } from "../../data/calendar-constants";
+import { useStaffMembers, uniqueNames } from "../../data/staffDirectory";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
 
 // ─── Sub-components ─────────────────────────────────────────────────
@@ -94,6 +95,8 @@ export function AppointmentActionModal({
   openAction,
 }: Props) {
   const navigate = useNavigate();
+  const { members: vetStaff } = useStaffMembers(["vet"]);
+  const vetOptions = uniqueNames([editForm.vet, appt.vet, ...vetStaff.map((member) => member.name), "טרם שובץ"]);
   const cfg = MODE_CONFIG[mode];
   const Icon = cfg.icon;
 
@@ -156,7 +159,7 @@ export function AppointmentActionModal({
                 return (
                   <button
                     key={btn.label}
-                    onClick={() => btn.mode ? (btn.mode === "edit" ? openAction(appt, "edit") : setMode(btn.mode)) : (() => { onClose(); navigate("/patients?selected=1"); })()}
+                    onClick={() => btn.mode ? (btn.mode === "edit" ? openAction(appt, "edit") : setMode(btn.mode)) : (() => { onClose(); navigate(`/patients?selected=${appt.petId || appt.id}`); })()}
                     className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border ${btn.cls} transition-colors cursor-pointer`}
                   >
                     <BtnIcon className="w-5 h-5" />
@@ -231,7 +234,7 @@ export function AppointmentActionModal({
                   <input type="text" value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} className={INPUT_CLS} />
                 </div>
                 <SelectField label="מחלקה" value={editForm.department} options={DEPARTMENTS} onChange={(v) => setEditForm({ ...editForm, department: v })} />
-                <SelectField label="רופא/ה" value={editForm.vet} options={VETS} onChange={(v) => setEditForm({ ...editForm, vet: v })} />
+                <SelectField label="רופא/ה" value={editForm.vet} options={vetOptions} onChange={(v) => setEditForm({ ...editForm, vet: v })} />
                 <SelectField label="חדר" value={editForm.room} options={ROOMS} onChange={(v) => setEditForm({ ...editForm, room: v })} />
                 <SelectField
                   label="שעת התחלה" value={editForm.time} options={AVAILABLE_TIMES}

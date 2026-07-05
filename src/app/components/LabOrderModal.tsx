@@ -452,11 +452,11 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
           <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-gray-50/30">
             <button
               onClick={handleSubmit}
-              disabled={pendingTests.length === 0 || isSaving}
+              disabled={isSaving}
               className={`flex-1 py-3 rounded-xl transition-colors text-[14px] shadow-sm flex items-center justify-center gap-2 ${
-                pendingTests.length > 0 && !isSaving
+                !isSaving
                   ? "bg-teal-600 hover:bg-teal-700 text-white cursor-pointer"
-                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-500 cursor-wait"
               }`}
               style={{ fontWeight: 600 }}
             >

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
+import { DigitalCareAssistant } from "../components/ai/PageAssistants";
 
 const CHAT_BUCKET = "chat-attachments";
 const DEFAULT_STAFF_NAME = "צוות המרפאה";
@@ -730,6 +731,8 @@ export function DigitalCare() {
             </button>
           </div>
         </header>
+
+        <DigitalCareAssistant conversation={selectedConversation} messages={messages} attachments={attachments} />
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 flex items-center gap-2 text-[14px] font-medium">

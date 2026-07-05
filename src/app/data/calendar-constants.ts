@@ -23,7 +23,8 @@ export const CHIP_COLORS: Record<string, { bg: string; text: string; border: str
 
 export const DEPARTMENTS = ["פנימית", "כירורגיה", "שיניים", "עור", "חירום"];
 export const ROOMS = ["חדר 1", "חדר 2", "חדר 3", "חדר ניתוח", "חדר חירום"];
-export const VETS = ['ד"ר יוסי כהן', 'ד"ר שרה לוי', 'ד"ר דוד מזרחי'];
+// רשימת הרופאים אינה קשיחה יותר. המסכים מושכים רופאים מטבלת staff ב-Supabase.
+export const VETS: string[] = [];
 
 // ─── Department Display Config (for colored cards) ────────────────────
 export interface DeptConfig {
@@ -60,12 +61,9 @@ export function getDeptConfig(dept: string): DeptConfig {
   };
 }
 
-// Status derived from id for demo
-export function getApptStatus(id: number): { dotColor: string; label: string } {
-  const m = id % 3;
-  if (m === 1) return { dotColor: "bg-green-500", label: "שולם" };
-  if (m === 2) return { dotColor: "bg-blue-500",  label: "ביקור פתוח" };
-  return          { dotColor: "bg-red-500",   label: "מאחר" };
+// אין כרגע שדה סטטוס תור בטבלת appointments, לכן לא מייצרים סטטוס מזויף לפי id.
+export function getApptStatus(_id: number): { dotColor: string; label: string } {
+  return { dotColor: "bg-gray-400", label: "מתוכנן" };
 }
 
 export interface DateOption { label: string; day: number; month: number; year: number }

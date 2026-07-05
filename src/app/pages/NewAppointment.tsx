@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useAppointmentStore, type PetSpecies } from "../data/AppointmentStore";
-import { addMinutes, DEPARTMENTS, ROOMS, VETS } from "../data/calendar-constants";
+import { addMinutes, DEPARTMENTS, ROOMS } from "../data/calendar-constants";
+import { useStaffMembers, uniqueNames } from "../data/staffDirectory";
+import { ScheduleAssistant } from "../components/ai/PageAssistants";
 import { supabase } from "../../services/supabaseClient";
 import {
   ArrowRight,
@@ -71,7 +73,12 @@ function speciesLabel(species: PetSpecies) {
 
 export function NewAppointment() {
   const navigate = useNavigate();
-  const { addAppointment } = useAppointmentStore();
+  const [searchParams] = useSearchParams();
+  const prefilledDate = searchParams.get("date") || "";
+  const prefilledTime = searchParams.get("time") || "";
+  const prefilledVet = searchParams.get("vet") || "";
+  const { addAppointment, calendarAppointments } = useAppointmentStore();
+  const { members: vetStaff, isLoading: isLoadingStaff } = useStaffMembers(["vet"]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
 
@@ -86,10 +93,10 @@ export function NewAppointment() {
     mode: "onChange",
     defaultValues: {
       patient: "",
-      date: "",
-      time: "",
+      date: prefilledDate,
+      time: prefilledTime,
       reason: "",
-      vet: "",
+      vet: prefilledVet || "",
       department: "פנימית",
       room: "חדר 1",
       notes: "",
@@ -98,11 +105,25 @@ export function NewAppointment() {
     },
   });
 
+  const vetOptions = useMemo(() => uniqueNames([...vetStaff.map((member) => member.name), prefilledVet]), [vetStaff, prefilledVet]);
+
   const selectedPatientId = watch("patient");
   const selectedPatient = useMemo(
     () => patients.find((p) => String(p.petId) === selectedPatientId),
     [patients, selectedPatientId]
   );
+
+  useEffect(() => {
+    if (prefilledDate) {
+      setValue("date", prefilledDate, { shouldValidate: true, shouldDirty: true });
+    }
+    if (prefilledTime) {
+      setValue("time", prefilledTime, { shouldValidate: true, shouldDirty: true });
+    }
+    if (prefilledVet) {
+      setValue("vet", prefilledVet, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [prefilledDate, prefilledTime, prefilledVet, setValue]);
 
   useEffect(() => {
     async function loadPatients() {
@@ -238,6 +259,27 @@ export function NewAppointment() {
         </div>
 
         <div className="p-10">
+          {(prefilledDate || prefilledTime || prefilledVet) && (
+            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-[14px] text-blue-900">
+              <div className="flex items-center gap-2 font-semibold">
+                <Calendar className="h-4 w-4" />
+                נבחר מקום ביומן
+              </div>
+              <p className="mt-1 text-blue-800/80">
+                התאריך, השעה והרופא מולאו אוטומטית לפי המקום שלחצת עליו ביומן. אפשר לשנות אותם לפני שמירה.
+              </p>
+              {prefilledVet && (
+                <p className="mt-1 text-blue-900 font-semibold">
+                  יומן נבחר: {prefilledVet}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mb-8">
+            <ScheduleAssistant appointments={calendarAppointments} viewMode="new-appointment" activeVet={watch("vet") || prefilledVet || "all"} />
+          </div>
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <div>
               <h2 className="text-gray-900 text-[17px] mb-5 pb-3 border-b border-gray-200 flex items-center gap-2" style={{ fontWeight: 600 }}>
@@ -387,10 +429,13 @@ export function NewAppointment() {
                       }`}
                     >
                       <option value="">בחר רופא</option>
-                      {VETS.map((vet) => <option key={vet} value={vet}>{vet}</option>)}
+                      {vetOptions.map((vet) => <option key={vet} value={vet}>{vet}</option>)}
                     </select>
                   </div>
                   {errors.vet && <p className="text-red-500 text-sm mt-1">{errors.vet.message}</p>}
+                  {!isLoadingStaff && vetOptions.length === 0 && (
+                    <p className="text-amber-600 text-sm mt-1">לא נמצאו וטרינרים בטבלת staff. הוסף איש צוות מסוג vet כדי לקבוע תור לרופא.</p>
+                  )}
                 </div>
 
                 <div>
@@ -446,9 +491,9 @@ export function NewAppointment() {
             <div className="flex gap-3 pt-6 border-t border-gray-200">
               <button
                 type="submit"
-                disabled={isSubmitting || !isValid || isLoadingPatients}
+                disabled={isSubmitting || !isValid || vetOptions.length === 0 || isLoadingPatients}
                 className={`flex-1 py-3.5 rounded-xl transition-colors text-[15px] shadow-sm flex items-center justify-center gap-2 ${
-                  isSubmitting || !isValid || isLoadingPatients
+                  isSubmitting || !isValid || vetOptions.length === 0 || isLoadingPatients
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer"
                 }`}

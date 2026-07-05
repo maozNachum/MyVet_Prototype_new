@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { ClientsAssistant } from "../components/ai/PageAssistants";
 
 type SpeciesType = "dog" | "cat" | "other";
 
@@ -962,6 +963,10 @@ export function Clients() {
             <Search className="w-4 h-4" /> חיפוש מטופל / כל החיות
           </button>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <ClientsAssistant clients={clients} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

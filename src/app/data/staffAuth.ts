@@ -1,7 +1,9 @@
 export type StaffType = "vet" | "nurse" | "secretary";
 
 export function getStaffType(): StaffType {
-  return (localStorage.getItem("myvet_staff_type") as StaffType) || "vet";
+  const raw = localStorage.getItem("myvet_staff_type") as StaffType | null;
+  if (raw === "vet" || raw === "nurse" || raw === "secretary") return raw;
+  return "vet";
 }
 
 export function canEditMedicalRecords(): boolean {
@@ -36,20 +38,13 @@ export function canViewOperationalReports(): boolean {
 
 export function getStaffLabel(type?: StaffType): string {
   const t = type || getStaffType();
-  return t === "vet" ? "וטרינר" : t === "nurse" ? "אחות" : "מזכירה";
+  if (t === "vet") return "וטרינר";
+  if (t === "nurse") return "אחות";
+  return "מזכירה";
 }
 
-// ── הפונקציה החדשה שמחזירה את שם איש הצוות ──
 export function getStaffName(): string {
-  const t = getStaffType();
-  switch (t) {
-    case "vet": 
-      return 'ד"ר יוסי כהן';
-    case "nurse": 
-      return 'אורלי כץ';
-    case "secretary": 
-      return 'מיכל אהרוני';
-    default: 
-      return 'צוות מרפאה';
-  }
+  const explicitName = localStorage.getItem("myvet_staff_name")?.trim();
+  if (explicitName) return explicitName;
+  return getStaffLabel();
 }

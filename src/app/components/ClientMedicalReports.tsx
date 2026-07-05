@@ -15,10 +15,20 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
+import { PrescriptionDocumentModal } from "./PrescriptionDocumentModal";
 
 interface ClientMedicalReportsProps {
   petId: number;
   petName: string;
+}
+
+interface OwnerInfo {
+  ownerId?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
 }
 
 interface VisitRow {
@@ -173,6 +183,9 @@ function EmptyState({ text }: { text: string }) {
 export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("visits");
   const [expandedVisitId, setExpandedVisitId] = useState<number | null>(null);
+  const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
+  const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionRow | null>(null);
+  const [selectedPrescriptionVisit, setSelectedPrescriptionVisit] = useState<VisitRow | null>(null);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [physicalExams, setPhysicalExams] = useState<PhysicalExamRow[]>([]);
   const [medicalProblems, setMedicalProblems] = useState<MedicalProblemRow[]>([]);
@@ -214,6 +227,35 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
         setPrescriptions((prescriptionsRes.data || []) as PrescriptionRow[]);
         setLabOrders((labsRes.data || []) as LabOrderRow[]);
         setDocuments((documentsRes.data || []) as DocumentRow[]);
+
+        const { data: patientRow, error: patientError } = await supabase
+          .from("patients")
+          .select("owner_id")
+          .eq("pet_id", petId)
+          .maybeSingle();
+
+        if (patientError) throw patientError;
+
+        if (patientRow?.owner_id) {
+          const { data: ownerRow, error: ownerError } = await supabase
+            .from("owners")
+            .select("owner_id, owner_first_name, owner_last_name, phone, email, address")
+            .eq("owner_id", patientRow.owner_id)
+            .maybeSingle();
+
+          if (ownerError) throw ownerError;
+
+          setOwnerInfo(ownerRow ? {
+            ownerId: ownerRow.owner_id,
+            firstName: ownerRow.owner_first_name,
+            lastName: ownerRow.owner_last_name,
+            phone: ownerRow.phone,
+            email: ownerRow.email,
+            address: ownerRow.address,
+          } : null);
+        } else {
+          setOwnerInfo(null);
+        }
       } catch (err: any) {
         console.error("Failed loading client medical reports", err);
         setError(err?.message || "שגיאה בטעינת תיק רפואי");
@@ -246,6 +288,11 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
     }
 
     window.open(data.signedUrl, "_blank");
+  };
+
+  const openPrescriptionDocument = (prescription: PrescriptionRow) => {
+    setSelectedPrescription(prescription);
+    setSelectedPrescriptionVisit(visits.find((visit) => visit.visit_id === prescription.visit_id) || null);
   };
 
   if (isLoading) {
@@ -385,9 +432,17 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                         <Section icon={Pill} title="מרשמים מהביקור">
                           <div className="space-y-2">
                             {visitPrescriptions.map((prescription) => (
-                              <div key={prescription.prescription_id} className="bg-white rounded-xl border border-gray-100 p-3">
-                                <p className="font-bold text-gray-900">{prescription.medication}</p>
-                                <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ")}</p>
+                              <div key={prescription.prescription_id} className="bg-white rounded-xl border border-gray-100 p-3 flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-bold text-gray-900">{prescription.medication}</p>
+                                  <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ")}</p>
+                                </div>
+                                <button
+                                  onClick={() => openPrescriptionDocument(prescription)}
+                                  className="shrink-0 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] font-semibold"
+                                >
+                                  הצג מרשם
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -416,7 +471,12 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
                   <p className="text-gray-500 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ")}</p>
                   <p className="text-gray-400 text-[12px] mt-1">תאריך התחלה: {formatDate(prescription.start_date)}</p>
                 </div>
-                <button className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] font-semibold">הצג מרשם</button>
+                <button
+                  onClick={() => openPrescriptionDocument(prescription)}
+                  className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-[12px] font-semibold"
+                >
+                  הצג מרשם
+                </button>
               </div>
             ))}
           </div>
@@ -461,6 +521,18 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
           </div>
         )}
       </div>
+
+      <PrescriptionDocumentModal
+        isOpen={Boolean(selectedPrescription)}
+        onClose={() => {
+          setSelectedPrescription(null);
+          setSelectedPrescriptionVisit(null);
+        }}
+        prescription={selectedPrescription}
+        petName={petName}
+        owner={ownerInfo}
+        visit={selectedPrescriptionVisit}
+      />
     </div>
   );
 }
