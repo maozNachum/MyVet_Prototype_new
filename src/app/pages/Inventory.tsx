@@ -12,7 +12,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { useSearchFilter } from "../hooks/useSearchFilter";
@@ -30,6 +30,7 @@ type InventoryRow = {
   item_name: string | null;
   category: string | null;
   stock_quantity: number | null;
+  low_stock_threshold: number | null;
   price: number | null;
 };
 
@@ -40,6 +41,7 @@ interface InventoryItem {
   category: InventoryCategory;
   categoryLabel: string;
   quantity: number;
+  lowStockThreshold: number;
   price: number;
   lowStock: boolean;
 }
@@ -48,15 +50,26 @@ type InventoryFormValues = {
   itemName: string;
   category: InventoryCategory;
   stockQuantity: string;
+  lowStockThreshold: string;
   price: string;
 };
 
-const LOW_STOCK_THRESHOLD = 10;
+const DEFAULT_LOW_STOCK_THRESHOLD_BY_CATEGORY: Record<InventoryCategory, number> = {
+  medication: 5,
+  equipment: 2,
+  consumable: 10,
+  other: 5,
+};
+
+function defaultLowStockThreshold(category: InventoryCategory) {
+  return DEFAULT_LOW_STOCK_THRESHOLD_BY_CATEGORY[category] ?? 5;
+}
 
 const DEFAULT_FORM: InventoryFormValues = {
   itemName: "",
   category: "medication",
   stockQuantity: "0",
+  lowStockThreshold: String(defaultLowStockThreshold("medication")),
   price: "0",
 };
 
@@ -88,6 +101,7 @@ function mapInventoryRow(row: InventoryRow): InventoryItem {
   const category = normalizeCategory(row.category);
   const catConfig = getCatConfig(category);
   const quantity = Number(row.stock_quantity ?? 0);
+  const lowStockThreshold = Number(row.low_stock_threshold ?? defaultLowStockThreshold(category));
 
   return {
     id: Number(row.item_id),
@@ -96,8 +110,9 @@ function mapInventoryRow(row: InventoryRow): InventoryItem {
     category,
     categoryLabel: catConfig.label,
     quantity,
+    lowStockThreshold,
     price: Number(row.price ?? 0),
-    lowStock: quantity <= LOW_STOCK_THRESHOLD,
+    lowStock: quantity <= lowStockThreshold,
   };
 }
 
@@ -106,6 +121,7 @@ function getFormFromItem(item: InventoryItem): InventoryFormValues {
     itemName: item.name,
     category: item.category,
     stockQuantity: String(item.quantity),
+    lowStockThreshold: String(item.lowStockThreshold),
     price: String(item.price),
   };
 }
@@ -118,6 +134,11 @@ function validateForm(form: InventoryFormValues) {
     return "כמות במלאי חייבת להיות מספר 0 ומעלה";
   }
 
+  const lowStockThreshold = Number(form.lowStockThreshold);
+  if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+    return "סף מלאי נמוך חייב להיות מספר שלם 0 ומעלה";
+  }
+
   const price = Number(form.price);
   if (Number.isNaN(price) || price < 0) {
     return "מחיר חייב להיות מספר 0 ומעלה";
@@ -128,6 +149,7 @@ function validateForm(form: InventoryFormValues) {
 
 export function Inventory() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -149,7 +171,7 @@ export function Inventory() {
 
     const { data, error: inventoryError } = await supabase
       .from("inventory")
-      .select("item_id,item_name,category,stock_quantity,price")
+      .select("item_id,item_name,category,stock_quantity,low_stock_threshold,price")
       .order("item_id", { ascending: true });
 
     if (inventoryError) {
@@ -167,6 +189,21 @@ export function Inventory() {
   useEffect(() => {
     loadInventory();
   }, []);
+
+  useEffect(() => {
+    const filterFromUrl = searchParams.get("filter");
+    if (!filterFromUrl) return;
+
+    const allowedFilters = new Set(FILTERS.map((filter) => filter.key));
+    if (filterFromUrl === "low") {
+      setActiveFilter("low-stock");
+      return;
+    }
+
+    if (allowedFilters.has(filterFromUrl as typeof FILTERS[number]["key"])) {
+      setActiveFilter(filterFromUrl);
+    }
+  }, [searchParams]);
 
   // ── Centralised search via shared hook + category filter ──
   const searchFiltered = useSearchFilter(items, searchQuery, (item) => [
@@ -247,7 +284,13 @@ export function Inventory() {
   };
 
   const handleFormChange = (field: keyof InventoryFormValues, value: string) => {
-    setFormValues((prev) => ({ ...prev, [field]: value }));
+    setFormValues((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "category" && !editingItem) {
+        next.lowStockThreshold = String(defaultLowStockThreshold(value as InventoryCategory));
+      }
+      return next;
+    });
   };
 
   const handleSaveItem = async (e: React.FormEvent) => {
@@ -265,6 +308,7 @@ export function Inventory() {
       item_name: formValues.itemName.trim(),
       category: formValues.category,
       stock_quantity: Number(formValues.stockQuantity),
+      low_stock_threshold: Number(formValues.lowStockThreshold),
       price: Number(formValues.price),
     };
 
@@ -273,7 +317,7 @@ export function Inventory() {
         .from("inventory")
         .update(payload)
         .eq("item_id", editingItem.id)
-        .select("item_id,item_name,category,stock_quantity,price")
+        .select("item_id,item_name,category,stock_quantity,low_stock_threshold,price")
         .single();
 
       if (updateError) {
@@ -290,7 +334,7 @@ export function Inventory() {
       const { data, error: insertError } = await supabase
         .from("inventory")
         .insert([payload])
-        .select("item_id,item_name,category,stock_quantity,price")
+        .select("item_id,item_name,category,stock_quantity,low_stock_threshold,price")
         .single();
 
       if (insertError) {
@@ -368,7 +412,7 @@ export function Inventory() {
           <p className="text-red-600 text-[28px]" style={{ fontWeight: 700 }}>
             {isLoading ? "..." : lowStockCount}
           </p>
-          <p className="text-gray-400 text-[12px] mt-1">סף: {LOW_STOCK_THRESHOLD} יחידות ומטה</p>
+          <p className="text-gray-400 text-[12px] mt-1">לפי סף אישי שמוגדר לכל פריט</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <p className="text-gray-500 text-[13px] mb-1">שווי מלאי כולל</p>
@@ -457,6 +501,7 @@ export function Inventory() {
                   { label: "שם פריט", width: "" },
                   { label: "קטגוריה", width: "w-[160px]" },
                   { label: "כמות במלאי", width: "w-[140px]" },
+                  { label: "סף מלאי נמוך", width: "w-[140px]" },
                   { label: "מחיר ליחידה", width: "w-[130px]" },
                   { label: "פעולות", width: "w-[130px]" },
                 ].map((col) => (
@@ -476,14 +521,14 @@ export function Inventory() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <Loader2 className="w-8 h-8 text-[#1e40af] mx-auto mb-3 animate-spin" />
                     <p className="text-gray-500 text-[15px]" style={{ fontWeight: 600 }}>טוען מלאי מהמסד...</p>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <AlertTriangle className="w-10 h-10 text-red-300 mx-auto mb-3" />
                     <p className="text-red-500 text-[15px]" style={{ fontWeight: 600 }}>{error}</p>
                     <button
@@ -545,6 +590,12 @@ export function Inventory() {
                       </td>
                       <td className="px-5 py-4">
                         <span className="text-gray-700 text-[15px]" style={{ fontWeight: 500 }}>
+                          {item.lowStockThreshold}
+                        </span>
+                        <p className="text-gray-400 text-[12px] mt-0.5">יחידות ומטה</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-gray-700 text-[15px]" style={{ fontWeight: 500 }}>
                           {item.price.toLocaleString()} ₪
                         </span>
                       </td>
@@ -571,7 +622,7 @@ export function Inventory() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500 text-[15px]" style={{ fontWeight: 600 }}>
                       לא נמצאו פריטים עבור &quot;{searchQuery}&quot;
@@ -640,7 +691,7 @@ export function Inventory() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-gray-700 text-[14px] mb-2 font-medium">כמות במלאי</label>
                   <input
@@ -651,6 +702,19 @@ export function Inventory() {
                     onChange={(e) => handleFormChange("stockQuantity", e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">סף מלאי נמוך</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formValues.lowStockThreshold}
+                    onChange={(e) => handleFormChange("lowStockThreshold", e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                  />
+                  <p className="text-gray-400 text-[12px] mt-1">כשכמות הפריט שווה או נמוכה מזה, הוא יסומן כמלאי נמוך.</p>
                 </div>
 
                 <div>

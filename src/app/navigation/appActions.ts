@@ -1,5 +1,4 @@
 import type { StaffType } from "../data/staffAuth";
-import type { AiUserRole } from "../components/ai/aiTypes";
 
 export type AppActionGroup =
   | "today"
@@ -29,7 +28,7 @@ export type AppActionIconKey =
   | "clipboard"
   | "price";
 
-export type AppActionRole = StaffType | "owner" | "unknown";
+export type AppActionRole = "clinic_admin" | StaffType | "owner" | "unknown";
 
 export type AppAction = {
   id: string;
@@ -103,7 +102,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/patients?action=add-record",
     iconKey: "clipboard",
     group: "care",
-    roles: ["vet", "nurse"],
+    roles: ["clinic_admin", "vet", "nurse"],
     aliases: ["רשומה רפואית", "הוסף ביקור", "טיפול", "חיסון", "מרשם", "מעבדה", "מעקב"],
     guide: ["פתח מטופלים", "בחר חיה", "לחץ הוסף רשומה רפואית", "מלא את הפרטים ושמור רשומה רפואית"],
   },
@@ -114,7 +113,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/patients",
     iconKey: "stethoscope",
     group: "care",
-    roles: ["vet", "nurse"],
+    roles: ["clinic_admin", "vet", "nurse"],
     aliases: ["עוזר רפואי", "סיכום ביקור", "סכם תיק", "הנחיות לבעלים"],
     guide: ["פתח תיק חיה", "לחץ עוזר רפואי", "בחר סכם ביקורים או נסח הנחיות"],
   },
@@ -165,7 +164,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/digital-care?focus=video-summary",
     iconKey: "video",
     group: "care",
-    roles: ["vet", "nurse"],
+    roles: ["clinic_admin", "vet", "nurse"],
     aliases: ["סיכום וידאו", "שיחת וידאו לתיק", "וידאו לתיק רפואי"],
     guide: ["פתח מרפאה דיגיטלית", "בחר שיחה עם חיה משויכת", "פתח שיחת וידאו", "לחץ סכם לתיק רפואי"],
     badge: "חדש",
@@ -197,7 +196,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/lab-orders?filter=open",
     iconKey: "flask",
     group: "operations",
-    roles: ["vet", "nurse"],
+    roles: ["clinic_admin", "vet", "nurse"],
     aliases: ["מעבדה", "בדיקות", "בדיקות ממתינות", "תוצאות", "lab"],
     guide: ["בדשבורד לחץ בדיקות ממתינות", "או פתח מעבדה ממרכז הפעולות", "בחר בדיקה לעדכון תוצאה"],
   },
@@ -208,7 +207,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/lab-orders?filter=urgent",
     iconKey: "flask",
     group: "operations",
-    roles: ["vet", "nurse"],
+    roles: ["clinic_admin", "vet", "nurse"],
     aliases: ["בדיקות דחופות", "מעבדה דחופה", "urgent lab"],
     guide: ["פתח מעבדה", "בחר פילטר דחופות", "עדכן תוצאה או פתח תיק חיה"],
   },
@@ -239,7 +238,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/price-list",
     iconKey: "price",
     group: "billing",
-    roles: ["vet", "secretary"],
+    roles: ["clinic_admin", "vet", "secretary"],
     aliases: ["מחירון", "מחירים", "תמחור", "מחיר חיסון", "מחיר בדיקה", "מחיר אשפוז"],
     guide: ["פתח מלאי או מרכז פעולות", "לחץ מחירון מרפאה", "חפש שירות ועדכן מחיר"],
   },
@@ -250,7 +249,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/clients",
     iconKey: "receipt",
     group: "billing",
-    roles: ["vet", "secretary"],
+    roles: ["clinic_admin", "vet", "secretary"],
     aliases: ["חובות", "גבייה", "תשלומים", "תשלום פתוח", "חוב בעלים"],
     guide: ["פתח לקוחות", "בחר בעלים", "אם יש חוב פתוח לחץ גביית חוב"],
   },
@@ -261,7 +260,7 @@ export const APP_ACTIONS: AppAction[] = [
     route: "/reports",
     iconKey: "chart",
     group: "reports",
-    roles: ["vet", "secretary"],
+    roles: ["clinic_admin", "vet", "secretary"],
     aliases: ["דוחות", "תובנות", "BI", "גבייה", "מגמות", "reports"],
     guide: ["לחץ דוחות בסרגל העליון", "בחר תחום דוח", "השתמש בעוזר הדוחות לקבלת תובנות"],
   },
@@ -278,6 +277,7 @@ export const APP_ACTIONS: AppAction[] = [
 ];
 
 export function isActionAllowed(action: AppAction, role: AppActionRole) {
+  if (role === "clinic_admin") return true;
   if (!action.roles?.length) return true;
   return action.roles.includes(role);
 }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
-  Bot,
+  ShieldCheck,
+  Sparkles,
   CalendarClock,
   CreditCard,
   FlaskConical,
@@ -18,8 +19,8 @@ import {
 import { supabase } from "../../../services/supabaseClient";
 import {
   DateRangeKey,
-  LOW_STOCK_THRESHOLD,
   buildLookups,
+  getInventoryStatus,
   daysBetween,
   fetchReportDataset,
   formatCurrency,
@@ -457,9 +458,7 @@ async function generateInsights(
     (item) => Number(item.stock_quantity || 0) <= 0,
   );
   const lowStockItems = stockItems.filter(
-    (item) =>
-      Number(item.stock_quantity || 0) > 0 &&
-      Number(item.stock_quantity || 0) <= LOW_STOCK_THRESHOLD,
+    (item) => getInventoryStatus(item) === "low",
   );
   const lowStockAll = [...zeroStockItems, ...lowStockItems];
   if (lowStockAll.length > 0) {
@@ -1031,7 +1030,7 @@ export function AIInsightsPanel({
 
       const answerText = typeof data?.answer === "string" && data.answer.trim()
         ? data.answer.trim()
-        : "לא התקבלה תשובה מהסוכן.";
+        : "לא התקבלה תשובה מסוכן התובנות.";
       const finalAnswer = data?.truncated
         ? `${answerText}
 
@@ -1237,8 +1236,8 @@ export function AIInsightsPanel({
         <div className="rounded-3xl border border-slate-100 bg-white shadow-sm px-4 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="relative h-12 w-12 rounded-2xl bg-gradient-to-br from-slate-950 to-blue-900 text-white flex items-center justify-center shadow-sm shrink-0">
-                <Bot className="w-5 h-5" />
+              <div className="relative h-12 w-12 rounded-2xl bg-gradient-to-br from-[#1e40af] to-[#6366f1] text-white flex items-center justify-center shadow-sm shrink-0">
+                <Sparkles className="w-5 h-5" />
                 {(criticalCount + warningCount) > 0 && (
                   <span className="absolute -top-1.5 -left-1.5 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
                     {criticalCount + warningCount}
@@ -1249,7 +1248,7 @@ export function AIInsightsPanel({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h2 className="text-slate-950 text-[15px] font-black">סוכן תובנות</h2>
-                  <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">Smart Agent</span>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">עוזר חכם</span>
                   <span className="hidden sm:inline-flex text-[11px] text-slate-400 font-semibold">{contextLabel(context)} · {rangeLabel} · עודכן {generatedAt}</span>
                 </div>
 
@@ -1288,9 +1287,9 @@ export function AIInsightsPanel({
               <button
                 type="button"
                 onClick={() => openDrawer("chat")}
-                className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white rounded-2xl px-4 py-3 text-[12px] font-black cursor-pointer shadow-sm flex items-center gap-2"
+                className="border border-blue-100 bg-white text-[#1e40af] hover:bg-blue-50 hover:border-blue-200 rounded-2xl px-4 py-3 text-[12px] font-black cursor-pointer shadow-sm flex items-center gap-2"
               >
-                שאל את הסוכן <MessageCircle className="w-4 h-4" />
+                פתח סוכן תובנות <MessageCircle className="w-4 h-4" />
               </button>
               <button
                 type="button"
@@ -1304,44 +1303,29 @@ export function AIInsightsPanel({
         </div>
       </section>
 
-      {!showAll && insights.length > 0 && (
-        <button
-          type="button"
-          onClick={() => openDrawer("chat")}
-          className="fixed right-6 bottom-6 z-[220] h-14 w-14 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white shadow-2xl flex items-center justify-center cursor-pointer border border-white/10"
-          aria-label="פתח סוכן תובנות"
-        >
-          <Bot className="w-6 h-6" />
-          {(criticalCount + warningCount) > 0 && (
-            <span className="absolute -top-2 -left-2 bg-red-500 text-white text-[11px] rounded-full min-w-6 h-6 px-1 flex items-center justify-center font-black border-2 border-white">
-              {criticalCount + warningCount}
-            </span>
-          )}
-        </button>
-      )}
 
       {showAll && (
-        <div className="fixed inset-0 z-[500] pointer-events-none" dir="rtl">
+        <div className="fixed inset-0 z-[260] pointer-events-none" dir="rtl">
           <button
-            className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] pointer-events-auto lg:bg-transparent lg:backdrop-blur-0"
+            className="absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px] pointer-events-auto"
             type="button"
             onClick={() => setShowAll(false)}
             aria-label="סגור סוכן תובנות"
           />
 
-          <aside className="absolute right-4 top-4 bottom-4 w-[min(460px,calc(100vw-2rem))] bg-white shadow-2xl border border-slate-200 rounded-3xl flex flex-col pointer-events-auto overflow-hidden">
-            <header className="shrink-0 border-b border-slate-100 bg-white">
-              <div className="px-4 py-4 flex items-start justify-between gap-3">
+          <aside className="absolute left-0 top-0 flex h-full w-full max-w-[460px] flex-col border-r border-gray-100 bg-white shadow-2xl pointer-events-auto overflow-hidden animate-in slide-in-from-left duration-200">
+            <header className="shrink-0 border-b border-gray-100 bg-white">
+              <div className="bg-gradient-to-l from-slate-950 to-blue-900 px-5 py-4 text-white flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-11 w-11 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-sm shrink-0">
-                    <Bot className="w-5 h-5" />
+                  <div className="h-11 w-11 rounded-2xl bg-white/10 text-white flex items-center justify-center shadow-sm shrink-0">
+                    <Sparkles className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-slate-950 text-[18px] font-black">סוכן תובנות</h3>
-                      <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">Smart Agent</span>
+                      <h3 className="text-white text-[18px] font-black">סוכן תובנות</h3>
+                      <span className="text-[10px] bg-white/10 text-white border border-white/15 px-2 py-0.5 rounded-full font-bold">עוזר חכם</span>
                     </div>
-                    <p className="text-slate-500 text-[12px] font-semibold mt-0.5 truncate">
+                    <p className="text-white/70 text-[12px] font-semibold mt-0.5 truncate">
                       {getContextTitle(context)} · {rangeLabel} · עודכן {generatedAt}
                     </p>
                   </div>
@@ -1349,13 +1333,20 @@ export function AIInsightsPanel({
                 <button
                   type="button"
                   onClick={() => setShowAll(false)}
-                  className="h-10 w-10 rounded-2xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center cursor-pointer text-slate-500 shrink-0"
+                  className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center cursor-pointer text-white/80 hover:text-white shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="px-4 pb-4 grid grid-cols-3 gap-2">
+              <div className="border-b border-gray-100 bg-blue-50/70 px-5 py-3">
+                <div className="flex items-start gap-2 text-[12px] font-medium leading-5 text-blue-800">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>סוכן התובנות מסייע בניתוח דוחות ותפעול המרפאה. הוא לא מחליף החלטה רפואית או ניהולית.</span>
+                </div>
+              </div>
+
+              <div className="px-4 pt-4 pb-4 grid grid-cols-3 gap-2">
                 <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-2">
                   <p className="text-slate-400 text-[10px] font-black">סה״כ</p>
                   <p className="text-slate-950 text-[18px] font-black">{insights.length}</p>
@@ -1423,7 +1414,7 @@ export function AIInsightsPanel({
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <span className="font-black text-[10px] opacity-80">
-                          {message.role === "user" ? "אתה" : message.role === "system" ? "מערכת" : "סוכן"}
+                          {message.role === "user" ? "אתה" : message.role === "system" ? "מערכת" : "סוכן תובנות"}
                         </span>
                         <span className="text-[10px] opacity-60">{message.createdAt}</span>
                       </div>
@@ -1436,7 +1427,7 @@ export function AIInsightsPanel({
                   {isChatLoading && (
                     <div className="ml-auto max-w-[86%] rounded-3xl rounded-br-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2 text-slate-500 text-[12px] font-bold">
-                        <RefreshCw className="w-4 h-4 animate-spin" /> הסוכן מנתח את הדוח...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> סוכן התובנות מנתח את הדוח...
                       </div>
                     </div>
                   )}
@@ -1455,7 +1446,7 @@ export function AIInsightsPanel({
                         }
                       }}
                       rows={2}
-                      placeholder="שאל למשל: מה הייתי עושה היום כמנהל המרפאה?"
+                      placeholder="שאל את סוכן התובנות על הדוחות..."
                       className="flex-1 resize-none border-0 bg-transparent px-2 py-2 text-[13px] leading-5 focus:outline-none placeholder:text-slate-400"
                     />
                     <button
@@ -1468,7 +1459,7 @@ export function AIInsightsPanel({
                     </button>
                   </div>
                   <p className="mt-2 text-[10px] leading-4 text-slate-400 font-medium">
-                    הסוכן מסייע בניתוח תפעולי בלבד. החלטות רפואיות נשארות בידי הווטרינר.
+                    סוכן התובנות מסייע בניתוח תפעולי בלבד. החלטות רפואיות נשארות בידי הווטרינר.
                   </p>
                 </footer>
               </>

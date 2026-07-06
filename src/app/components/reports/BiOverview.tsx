@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import {
   DateRangeKey,
-  LOW_STOCK_THRESHOLD,
   fetchReportDataset,
+  getInventoryStatus,
   formatCurrency,
   getFilteredDataset,
   getDateRangeLabel,
@@ -45,7 +45,7 @@ export function BiOverview({ dateRange }: BiOverviewProps) {
         .filter((p) => p.status === "paid")
         .reduce((sum, p) => sum + Number(p.amount || 0), 0);
       const pendingLabs = filtered.labOrders.filter((l) => ["pending", "ordered", "in_progress"].includes(String(l.status || "")));
-      const lowStock = dataset.inventory.filter((item) => Number(item.stock_quantity || 0) <= LOW_STOCK_THRESHOLD);
+      const lowStock = dataset.inventory.filter((item) => getInventoryStatus(item) !== "healthy");
       const futureAppointments = filtered.appointments.filter((a) => isFuture(a.start_time));
 
       const vetMap = new Map<string, { name: string; visits: number; appointments: number }>();
@@ -101,7 +101,7 @@ export function BiOverview({ dateRange }: BiOverviewProps) {
         {
           title: "מלאי נמוך",
           value: lowStock.length.toLocaleString("he-IL"),
-          subText: `תמונת מצב נוכחית · סף ${LOW_STOCK_THRESHOLD} יחידות`,
+          subText: "תמונת מצב נוכחית · לפי סף אישי לכל פריט",
           icon: Package,
           color: "bg-amber-50 text-amber-600",
         },

@@ -201,6 +201,12 @@ function todayRange() {
   return { start, end };
 }
 
+function isLowInventoryItem(item: any) {
+  const quantity = Number(item.stock_quantity ?? 0);
+  const threshold = Number(item.low_stock_threshold ?? 5);
+  return quantity <= threshold;
+}
+
 function toneClasses(tone: WorkItem["tone"]) {
   const map = {
     red: "border-red-100 bg-red-50 text-red-700",
@@ -224,7 +230,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
   const openLabs = data.labs.filter((item) => String(item.status || "").toLowerCase() !== "completed");
   const urgentLabs = openLabs.filter((item) => item.is_urgent === true);
   const openPayments = data.payments.filter((item) => ["unpaid", "partial"].includes(String(item.status || "")));
-  const lowInventory = data.inventory.filter((item) => Number(item.stock_quantity || 0) <= 5);
+  const lowInventory = data.inventory.filter(isLowInventoryItem);
   const items: WorkItem[] = [];
 
   if (urgentConversations.length > 0) items.push({ id: "urgent-conversations", title: `${urgentConversations.length} פניות בעדיפות גבוהה`, detail: "לטיפול לפני פניות רגילות", icon: MessageCircle, tone: "red", path: "/digital-care?filter=urgent", action: "פתח", priority: 1 });
@@ -265,7 +271,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
     priority: 7,
   });
   if (isSecretary && openPayments.length > 0) items.push({ id: "payments", title: `${openPayments.length} תשלומים למעקב`, detail: "בדוק חיובים", icon: WalletCards, tone: "emerald", path: "/reports", action: "פתח", priority: 7 });
-  if (lowInventory.length > 0) items.push({ id: "inventory", title: `${lowInventory.length} פריטי מלאי נמוכים`, detail: "בדוק הזמנה", icon: Package, tone: "slate", path: "/inventory?filter=low", action: "פתח", priority: 8 });
+  if (lowInventory.length > 0) items.push({ id: "inventory", title: `${lowInventory.length} פריטי מלאי נמוכים`, detail: "בדוק הזמנה", icon: Package, tone: "slate", path: "/inventory?filter=low-stock", action: "פתח", priority: 8 });
 
   return items.sort((a, b) => a.priority - b.priority).slice(0, 4);
 }
@@ -326,7 +332,7 @@ export function Dashboard() {
     { label: "פניות פתוחות", value: dashboardData.conversations.length, icon: MessageCircle, tone: "bg-rose-50 text-rose-700", path: "/digital-care?filter=open" },
     { label: isSecretary ? "גבייה למעקב" : "בדיקות ממתינות", value: isSecretary ? dashboardData.payments.length : dashboardData.labs.length, icon: isSecretary ? WalletCards : FlaskConical, tone: "bg-amber-50 text-amber-700", path: isSecretary ? "/reports" : "/lab-orders?filter=open" },
     { label: "אשפוזים פעילים", value: dashboardData.hospitalizations.length, icon: Bed, tone: "bg-emerald-50 text-emerald-700", path: "/hospitalizations?filter=active" },
-    { label: "מלאי נמוך", value: dashboardData.inventory.length, icon: Package, tone: "bg-slate-50 text-slate-700", path: "/inventory?filter=low" },
+    { label: "מלאי נמוך", value: dashboardData.inventory.length, icon: Package, tone: "bg-slate-50 text-slate-700", path: "/inventory?filter=low-stock" },
   ], [dashboardData, isSecretary]);
 
   async function loadPatients() {
@@ -377,7 +383,7 @@ export function Dashboard() {
         supabase.from("lab_orders").select("lab_order_id, test_name, status, is_urgent, ordered_date, test_date, pet_id").neq("status", "completed"),
         supabase.from("hospitalizations").select("hospitalization_id, pet_id, department, status, severity, admitted_at, expected_discharge_at").eq("status", "active"),
         supabase.from("payments").select("payment_id, amount, status, due_date, owner_id, pet_id").in("status", ["unpaid", "partial"]),
-        supabase.from("inventory").select("item_id, item_name, category, stock_quantity, price").lte("stock_quantity", 5),
+        supabase.from("inventory").select("item_id, item_name, category, stock_quantity, low_stock_threshold, price"),
       ]);
 
       const rawAppointments = appointmentsResult.status === "fulfilled" && !appointmentsResult.value.error ? (appointmentsResult.value.data || []) as any[] : [];
@@ -427,7 +433,7 @@ export function Dashboard() {
         labs: labsResult.status === "fulfilled" && !labsResult.value.error ? labsResult.value.data || [] : [],
         hospitalizations: hospitalizationsResult.status === "fulfilled" && !hospitalizationsResult.value.error ? hospitalizationsResult.value.data || [] : [],
         payments: paymentsResult.status === "fulfilled" && !paymentsResult.value.error ? paymentsResult.value.data || [] : [],
-        inventory: inventoryResult.status === "fulfilled" && !inventoryResult.value.error ? inventoryResult.value.data || [] : [],
+        inventory: inventoryResult.status === "fulfilled" && !inventoryResult.value.error ? ((inventoryResult.value.data || []) as any[]).filter(isLowInventoryItem) : [],
       });
       setLastUpdated(new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }));
     } catch (error) {
@@ -564,7 +570,7 @@ export function Dashboard() {
   const openConversationTarget = () => navigate("/digital-care?filter=open");
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-4 h-[calc(100vh-84px)] overflow-hidden relative" dir="rtl">
+    <main className="max-w-7xl mx-auto px-4 py-5 min-h-[calc(100vh-84px)] relative" dir="rtl">
       {showSuccessToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-500" />
@@ -572,239 +578,234 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="h-full flex flex-col gap-3 min-h-0">
-        <header className="flex items-center justify-between gap-3 shrink-0">
+      <div className="space-y-5">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-gray-500 text-[13px] font-medium">ברוך הבא, {getStaffName()}</p>
-            <h1 className="text-gray-900 text-[24px] font-bold leading-tight">{dashboardTitle(staffType)}</h1>
+            <h1 className="text-gray-950 text-[28px] font-extrabold leading-tight">{dashboardTitle(staffType)}</h1>
+            <p className="text-gray-500 text-[13px] mt-1">תצוגה יומית רגועה: קודם חריגים, אחר כך תורים, ואז כניסה למסכי העבודה.</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden md:inline text-gray-400 text-[12px]">עודכן {lastUpdated || "--:--"}</span>
-            <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer">
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span className="text-gray-400 text-[12px] px-2">עודכן {lastUpdated || "--:--"}</span>
+            <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors">
               <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
             </button>
             <DashboardAssistant />
             {isSecretary ? (
-              <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm">
+              <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors">
                 <CalendarPlus className="w-4 h-4" /> קבע תור
               </button>
             ) : (
-              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-10 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm">
+              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-10 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors">
                 <Zap className="w-4 h-4" /> {walkInButtonLabel}
               </button>
             )}
           </div>
         </header>
 
-        <section className="grid grid-cols-5 gap-2 shrink-0">
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
           {statusTiles.map((tile) => {
             const Icon = tile.icon;
             return (
-              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className="bg-white border border-gray-100 rounded-2xl p-3 text-right hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-gray-500 text-[12px] font-medium">{tile.label}</p>
-                    <p className="text-gray-900 text-[22px] font-bold leading-none mt-1">{tile.value}</p>
+              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className="group bg-white border border-gray-100 rounded-2xl px-4 py-3 text-right hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-gray-500 text-[12px] font-semibold truncate">{tile.label}</p>
+                    <p className="text-gray-950 text-[24px] font-extrabold leading-none mt-1">{tile.value}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tile.tone}`}><Icon className="w-5 h-5" /></div>
+                  <div className="w-9 h-9 rounded-xl bg-gray-50 text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-700 flex items-center justify-center transition-colors">
+                    <Icon className="w-4.5 h-4.5" />
+                  </div>
                 </div>
               </button>
             );
           })}
         </section>
 
-        <section className="grid grid-cols-12 gap-3 flex-1 min-h-0">
-          <div className="col-span-4 bg-white rounded-2xl border border-gray-100 shadow-sm min-h-0 flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-gray-900 text-[16px] font-bold">מה דורש טיפול</h2>
-                <p className="text-gray-500 text-[12px] mt-0.5">הפעולות החשובות להיום</p>
-              </div>
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-            </div>
-            <div className="p-3 space-y-2 overflow-y-auto min-h-0">
-              {workItems.length === 0 ? (
-                <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-gray-400 text-[14px]">
-                  <Check className="w-8 h-8 text-emerald-500 mb-2" />
-                  אין משימות פתוחות כרגע
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+          <div className="xl:col-span-7 space-y-4">
+            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-gray-950 text-[18px] font-extrabold">מה דורש טיפול עכשיו</h2>
+                  <p className="text-gray-500 text-[12px] mt-1">רשימה אחת מסודרת לפי דחיפות, בלי כרטיסים צועקים.</p>
                 </div>
-              ) : workItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article key={item.id} className={`rounded-2xl border p-3 ${toneClasses(item.tone)}`}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/75 flex items-center justify-center shrink-0"><Icon className="w-5 h-5" /></div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-bold truncate">{item.title}</p>
-                        <p className="text-[12px] opacity-80 mt-0.5 truncate">{item.detail}</p>
-                      </div>
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="p-3">
+                {workItems.length === 0 ? (
+                  <div className="min-h-[170px] flex flex-col items-center justify-center text-center text-gray-500">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                      <Check className="w-5 h-5" />
                     </div>
-                    <button type="button" onClick={() => navigate(item.path)} className="mt-3 w-full h-9 rounded-xl bg-white/80 hover:bg-white text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer">
-                      {item.action} <ArrowLeft className="w-4 h-4" />
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
+                    <p className="text-[15px] font-bold text-gray-800">אין חריגים פתוחים כרגע</p>
+                    <p className="text-[13px] mt-1">אפשר להמשיך לתורים או לפתוח מסכי עבודה לפי צורך.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {workItems.map((item) => {
+                      const Icon = item.icon;
+                      const accent = item.tone === "red" ? "bg-red-500" : item.tone === "amber" ? "bg-amber-500" : item.tone === "blue" ? "bg-blue-500" : item.tone === "emerald" ? "bg-emerald-500" : item.tone === "purple" ? "bg-purple-500" : "bg-slate-400";
+                      const soft = item.tone === "red" ? "bg-red-50 text-red-700" : item.tone === "amber" ? "bg-amber-50 text-amber-700" : item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-slate-50 text-slate-700";
+                      return (
+                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="w-full px-2 py-3.5 text-right hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-1.5 h-10 rounded-full ${accent}`} />
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${soft}`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-gray-950 text-[14px] font-extrabold truncate">{item.title}</p>
+                              <p className="text-gray-500 text-[12px] mt-0.5 truncate">{item.detail}</p>
+                            </div>
+                            <div className="hidden sm:flex items-center gap-1 text-blue-700 text-[12px] font-bold shrink-0">
+                              {item.action} <ArrowLeft className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-gray-950 text-[18px] font-extrabold">מעקב מרפאה</h2>
+                  <p className="text-gray-500 text-[12px] mt-1">אותו מידע, אבל במצב סיכום. פירוט מלא נמצא במסך העבודה.</p>
+                </div>
+                <LayoutDashboard className="w-5 h-5 text-gray-400" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
+                <button type="button" onClick={openConversationTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-gray-950 text-[15px] font-extrabold">פניות פתוחות</p>
+                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.conversations.length === 0 ? "אין פניות פתוחות" : `${dashboardData.conversations.length} פניות מחכות לטיפול`}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center"><MessageCircle className="w-5 h-5" /></div>
+                  </div>
+                  {dashboardData.conversations[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">אחרונה: {dashboardData.conversations[0].subject || "פנייה פתוחה"}</p>}
+                </button>
+
+                <button type="button" onClick={openLabTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-gray-950 text-[15px] font-extrabold">מעבדה</p>
+                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.labs.length === 0 ? "אין בדיקות פתוחות" : `${dashboardData.labs.length} בדיקות ממתינות`}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center"><FlaskConical className="w-5 h-5" /></div>
+                  </div>
+                  {dashboardData.labs[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">אחרונה: {dashboardData.labs[0].test_name || "בדיקה"}</p>}
+                </button>
+
+                <button type="button" onClick={openHospitalizationTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-gray-950 text-[15px] font-extrabold">אשפוזים</p>
+                      <p className="text-gray-500 text-[12px] mt-1">{expectedDischarges.length === 0 ? `${dashboardData.hospitalizations.length} פעילים` : `${expectedDischarges.length} שחרורים צפויים`}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Bed className="w-5 h-5" /></div>
+                  </div>
+                  {expectedDischarges[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">לשחרור: {expectedDischarges[0].department || "אשפוז"}</p>}
+                </button>
+
+                <button type="button" onClick={() => navigate("/inventory?filter=low-stock")} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-gray-950 text-[15px] font-extrabold">מלאי נמוך</p>
+                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.inventory.length === 0 ? "אין חריגות מלאי" : `${dashboardData.inventory.length} פריטים לבדיקה`}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center"><Package className="w-5 h-5" /></div>
+                  </div>
+                  {dashboardData.inventory[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">נמוך: {dashboardData.inventory[0].item_name || "פריט"}</p>}
+                </button>
+              </div>
+            </section>
           </div>
 
-          <div className="col-span-5 bg-white rounded-2xl border border-gray-100 shadow-sm min-h-0 flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-gray-900 text-[16px] font-bold">תורים להיום</h2>
-                <p className="text-gray-500 text-[12px] mt-0.5">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="p-3 border-b border-gray-100 grid grid-cols-3 gap-2 shrink-0">
-              <div className="rounded-xl bg-blue-50/70 border border-blue-100 px-3 py-2">
-                <p className="text-blue-600 text-[11px] font-bold">התור הבא</p>
-                <p className="text-gray-900 text-[14px] font-bold mt-0.5 truncate">{nextAppointment ? `${nextAppointment.timeLabel} · ${nextAppointment.petName}` : "אין תור קרוב"}</p>
-              </div>
-              <div className="rounded-xl bg-purple-50/70 border border-purple-100 px-3 py-2">
-                <p className="text-purple-600 text-[11px] font-bold">וידאו</p>
-                <p className="text-gray-900 text-[14px] font-bold mt-0.5">{videoAppointmentsCount}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-                <p className="text-slate-600 text-[11px] font-bold">במרפאה</p>
-                <p className="text-gray-900 text-[14px] font-bold mt-0.5">{physicalAppointmentsCount}</p>
-              </div>
-            </div>
-
-            <div className="p-3 space-y-2 overflow-y-auto min-h-0 flex-1">
-              {todaysAppointments.length === 0 ? (
-                <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-gray-400 text-[14px]">
-                  <CalendarCheck className="w-8 h-8 text-gray-300 mb-2" />
-                  אין תורים להיום
+          <aside className="xl:col-span-5 space-y-4">
+            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-gray-950 text-[18px] font-extrabold">תורים להיום</h2>
+                  <p className="text-gray-500 text-[12px] mt-1">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
                 </div>
-              ) : todaysAppointments.map((appointment) => {
-                const appointmentTime = new Date(appointment.startTime).getTime();
-                const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
-                const isNext = nextAppointment?.id === appointment.id;
-                const statusLabel = isNext ? "הבא" : isPast ? "עבר" : "בהמשך";
-                const statusClass = isNext
-                  ? "bg-blue-600 text-white"
-                  : isPast
-                    ? "bg-gray-100 text-gray-500"
-                    : "bg-blue-50 text-blue-700";
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
 
-                return (
-                  <button key={appointment.id} type="button" onClick={() => appointment.mode === "video" ? navigate("/digital-care?filter=video") : navigate("/appointments")} className={`w-full rounded-2xl border p-3 text-right cursor-pointer transition-all ${isNext ? "border-blue-200 bg-blue-50/60 shadow-sm" : "border-gray-100 hover:border-blue-200 hover:bg-blue-50/30"}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-14 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 ${isNext ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-800"}`}>
-                        <span className="text-[15px] font-bold leading-none">{appointment.timeLabel}</span>
-                        <span className="text-[10px] opacity-80 mt-1">{statusLabel}</span>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-gray-900 text-[14px] font-bold truncate">{appointment.type || "ביקור"}</p>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${appointment.mode === "video" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}`}>{appointment.mode === "video" ? "וידאו" : "מרפאה"}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusClass}`}>{statusLabel}</span>
-                        </div>
-                        <p className="text-gray-600 text-[12px] truncate">{appointment.petName} · {appointment.ownerName}</p>
-                        <p className="text-gray-400 text-[11px] truncate">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
-                      </div>
-
-                      <ArrowLeft className="w-4 h-4 text-gray-400 shrink-0" />
-                    </div>
+              <div className="p-4 bg-gray-50/70 border-b border-gray-100">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl bg-white border border-gray-100 p-3">
+                    <p className="text-gray-500 text-[11px] font-bold">התור הבא</p>
+                    <p className="text-gray-950 text-[14px] font-extrabold mt-1 truncate">{nextAppointment ? nextAppointment.timeLabel : "אין"}</p>
+                  </div>
+                  <button type="button" onClick={() => navigate("/digital-care?filter=video")} className="rounded-2xl bg-white border border-gray-100 p-3 text-right hover:border-blue-200 transition-colors cursor-pointer">
+                    <p className="text-gray-500 text-[11px] font-bold">וידאו</p>
+                    <p className="text-gray-950 text-[14px] font-extrabold mt-1">{videoAppointmentsCount}</p>
                   </button>
-                );
-              })}
-            </div>
-
-            <div className="p-3 border-t border-gray-100 shrink-0 flex items-center gap-2">
-              <button type="button" onClick={() => navigate("/appointments")} className="flex-1 h-10 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer">
-                פתח יומן <ArrowLeft className="w-4 h-4" />
-              </button>
-              <button type="button" onClick={() => navigate("/appointments/new")} className="flex-1 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer">
-                קבע תור <CalendarPlus className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm min-h-0 flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-gray-900 text-[16px] font-bold">מעקב מרפאה</h2>
-                <p className="text-gray-500 text-[12px] mt-0.5">כניסה מהירה למסכי עבודה</p>
+                  <button type="button" onClick={() => navigate("/appointments")} className="rounded-2xl bg-white border border-gray-100 p-3 text-right hover:border-blue-200 transition-colors cursor-pointer">
+                    <p className="text-gray-500 text-[11px] font-bold">במרפאה</p>
+                    <p className="text-gray-950 text-[14px] font-extrabold mt-1">{physicalAppointmentsCount}</p>
+                  </button>
+                </div>
               </div>
-              <LayoutDashboard className="w-5 h-5 text-slate-600" />
-            </div>
-            <div className="p-3 overflow-y-auto min-h-0 space-y-3">
-              <section className="rounded-2xl border border-rose-100 bg-rose-50/60 p-3">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-rose-600" />
-                    <h3 className="text-rose-900 text-[13px] font-bold">פניות פתוחות</h3>
-                  </div>
-                  <span className="text-rose-700 text-[12px] font-bold">{dashboardData.conversations.length}</span>
-                </div>
-                {dashboardData.conversations.length === 0 ? (
-                  <p className="text-rose-700/70 text-[12px]">אין פניות פתוחות</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {dashboardData.conversations.slice(0, 2).map((conversation: any) => (
-                      <button key={conversation.conversation_id} type="button" onClick={openConversationTarget} className="w-full rounded-xl bg-white/80 hover:bg-white p-2 text-right cursor-pointer">
-                        <p className="text-gray-900 text-[12px] font-bold truncate">{conversation.subject || "פנייה פתוחה"}</p>
-                        <p className="text-gray-500 text-[11px] truncate">{conversation.priority === "urgent" || conversation.priority === "high" ? "עדיפות גבוהה" : "ממתינה לטיפול"}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button type="button" onClick={() => navigate("/digital-care?filter=open")} className="mt-2 w-full h-8 rounded-xl bg-white/80 hover:bg-white text-rose-700 text-[12px] font-bold cursor-pointer">פתח פניות</button>
-              </section>
 
-              <section className="rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <FlaskConical className="w-4 h-4 text-amber-600" />
-                    <h3 className="text-amber-900 text-[13px] font-bold">בדיקות ממתינות</h3>
+              <div className="p-3">
+                {todaysAppointments.length === 0 ? (
+                  <div className="min-h-[220px] flex flex-col items-center justify-center text-center text-gray-500">
+                    <CalendarCheck className="w-9 h-9 text-gray-300 mb-2" />
+                    <p className="text-[14px] font-bold text-gray-700">אין תורים להיום</p>
                   </div>
-                  <span className="text-amber-700 text-[12px] font-bold">{dashboardData.labs.length}</span>
-                </div>
-                {dashboardData.labs.length === 0 ? (
-                  <p className="text-amber-700/70 text-[12px]">אין בדיקות פתוחות</p>
                 ) : (
-                  <div className="space-y-1.5">
-                    {dashboardData.labs.slice(0, 2).map((lab: any) => (
-                      <button key={lab.lab_order_id} type="button" onClick={openLabTarget} className="w-full rounded-xl bg-white/80 hover:bg-white p-2 text-right cursor-pointer">
-                        <p className="text-gray-900 text-[12px] font-bold truncate">{lab.test_name || "בדיקת מעבדה"}</p>
-                        <p className="text-gray-500 text-[11px] truncate">{lab.is_urgent ? "דחופה" : "ממתינה לתוצאה"}</p>
-                      </button>
-                    ))}
+                  <div className="space-y-1">
+                    {todaysAppointments.map((appointment) => {
+                      const appointmentTime = new Date(appointment.startTime).getTime();
+                      const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
+                      const isNext = nextAppointment?.id === appointment.id;
+                      return (
+                        <button key={appointment.id} type="button" onClick={() => appointment.mode === "video" ? navigate("/digital-care?filter=video") : navigate("/appointments")} className={`w-full rounded-2xl px-3 py-3 text-right cursor-pointer transition-colors ${isNext ? "bg-blue-50 border border-blue-100" : "hover:bg-gray-50 border border-transparent"}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-14 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0 ${isNext ? "bg-blue-600 text-white" : isPast ? "bg-gray-100 text-gray-500" : "bg-gray-50 text-gray-900"}`}>
+                              <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
+                              <span className="text-[10px] opacity-75 mt-1">{isNext ? "הבא" : isPast ? "עבר" : "היום"}</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-gray-950 text-[14px] font-extrabold truncate">{appointment.type || "ביקור"}</p>
+                                {appointment.mode === "video" && <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold">וידאו</span>}
+                              </div>
+                              <p className="text-gray-600 text-[12px] truncate mt-0.5">{appointment.petName} · {appointment.ownerName}</p>
+                              <p className="text-gray-400 text-[11px] truncate">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
+                            </div>
+                            <ArrowLeft className="w-4 h-4 text-gray-400 shrink-0" />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-                <button type="button" onClick={() => navigate("/lab-orders?filter=open")} className="mt-2 w-full h-8 rounded-xl bg-white/80 hover:bg-white text-amber-700 text-[12px] font-bold cursor-pointer">פתח בדיקות</button>
-              </section>
+              </div>
 
-              <section className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Bed className="w-4 h-4 text-emerald-600" />
-                    <h3 className="text-emerald-900 text-[13px] font-bold">שחרורים צפויים</h3>
-                  </div>
-                  <span className="text-emerald-700 text-[12px] font-bold">{expectedDischarges.length}</span>
-                </div>
-                {expectedDischarges.length === 0 ? (
-                  <p className="text-emerald-700/70 text-[12px]">אין שחרורים צפויים</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {expectedDischarges.slice(0, 2).map((hospitalization: any) => (
-                      <button key={hospitalization.hospitalization_id} type="button" onClick={openHospitalizationTarget} className="w-full rounded-xl bg-white/80 hover:bg-white p-2 text-right cursor-pointer">
-                        <p className="text-gray-900 text-[12px] font-bold truncate">{hospitalization.department || "אשפוז"}</p>
-                        <p className="text-gray-500 text-[11px] truncate">{hospitalization.severity === "critical" ? "קריטי" : hospitalization.severity === "serious" ? "חמור" : "למעקב"}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button type="button" onClick={() => navigate("/hospitalizations?filter=discharge")} className="mt-2 w-full h-8 rounded-xl bg-white/80 hover:bg-white text-emerald-700 text-[12px] font-bold cursor-pointer">פתח שחרורים</button>
-              </section>
-            </div>
-          </div>
+              <div className="p-3 border-t border-gray-100 flex items-center gap-2">
+                <button type="button" onClick={() => navigate("/appointments")} className="flex-1 h-10 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                  פתח יומן <ArrowLeft className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => navigate("/appointments/new")} className="flex-1 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                  קבע תור <CalendarPlus className="w-4 h-4" />
+                </button>
+              </div>
+            </section>
+          </aside>
         </section>
       </div>
 

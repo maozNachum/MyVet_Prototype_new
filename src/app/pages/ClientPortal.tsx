@@ -303,14 +303,13 @@ const NOTIF_STYLE = {
 const datePills = AVAILABLE_DATE_STRINGS.map((d) => ({ key: d.value, label: d.label }));
 const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
 
-type PortalView = "home" | "appointments" | "digital" | "pets" | "documents" | "payments" | "notifications" | "profile";
+type PortalView = "home" | "appointments" | "digital" | "pets" | "payments" | "notifications" | "profile";
 
 const PORTAL_NAV_ITEMS: Array<{ key: PortalView; label: string; description: string; icon: ComponentType<{ className?: string }> }> = [
   { key: "home", label: "בית", description: "מה חשוב עכשיו", icon: Home },
   { key: "appointments", label: "תורים", description: "קביעה, הזזה וביטול", icon: CalendarClock },
   { key: "digital", label: "מרפאה דיגיטלית", description: "פניות, הודעות ווידאו", icon: MessageCircle },
   { key: "pets", label: "החיות שלי", description: "תיקים רפואיים וסיכומי ביקור", icon: Heart },
-  { key: "documents", label: "מסמכים", description: "העלאה וצפייה בקבצים", icon: Paperclip },
   { key: "payments", label: "תשלומים", description: "חיובים פתוחים והיסטוריה", icon: Receipt },
   { key: "notifications", label: "עדכונים", description: "התראות ותזכורות", icon: Bell },
   { key: "profile", label: "תיק אישי", description: "פרטים אישיים", icon: User },
@@ -321,7 +320,7 @@ function portalViewLabel(view: PortalView) {
 }
 
 function isPortalView(value: string | null): value is PortalView {
-  return Boolean(value) && ["home", "appointments", "digital", "pets", "documents", "payments", "notifications", "profile"].includes(value as PortalView);
+  return Boolean(value) && ["home", "appointments", "digital", "pets", "payments", "notifications", "profile"].includes(value as PortalView);
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -343,7 +342,6 @@ export function ClientPortal() {
     notifications: true,
     appointments: true, // שיניתי לברירת מחדל פתוח שיהיה קל לראות את התורים מה-Store
     pets: false,
-    documents: false,
     digital: true,
   });
   const toggleSection = (key: string) =>
@@ -358,7 +356,6 @@ export function ClientPortal() {
       appointments: view === "home" || view === "appointments" ? true : prev.appointments,
       digital: view === "digital" ? true : prev.digital,
       pets: view === "pets" ? true : prev.pets,
-      documents: view === "documents" ? true : prev.documents,
     }));
     window.scrollTo({ top: 0, behavior: "auto" });
   }, []);
@@ -413,47 +410,94 @@ export function ClientPortal() {
     setIsPortalLoading(true);
     setPortalError(null);
 
+    const clearPortalData = () => {
+      setOwnerProfile(null);
+      setPets([]);
+      setAppointments([]);
+      setPortalNotifications([]);
+      setVisitSummariesByPet({});
+      setPaymentsByPet({});
+      setUploadedFiles([]);
+      setDigitalConversations([]);
+      setDigitalMessages([]);
+      setDigitalAttachments([]);
+      setSelectedConversationId(null);
+    };
+
     try {
       const requestedOwnerId = (ownerIdOverride ?? ownerIdFromUrl).trim();
+      const ownerSelect = "owner_id, owner_first_name, owner_last_name, phone, email, address, auth_user_id";
+      let ownerData: (OwnerProfile & { auth_user_id?: string | null }) | null = null;
 
-      if (!requestedOwnerId) {
-        setOwnerProfile(null);
-        setPets([]);
-        setAppointments([]);
-        setPortalNotifications([]);
-        setVisitSummariesByPet({});
-        setPaymentsByPet({});
-        setUploadedFiles([]);
-        setDigitalConversations([]);
-        setDigitalMessages([]);
-        setDigitalAttachments([]);
-        setSelectedConversationId(null);
-        setPortalError("לא נבחר בעלים. היכנסו עם ‎?owner_id=תעודת_זהות של בעלים שקיים במסד.");
-        return;
-      }
+      // תמיכה בקישור דמו ישן: /portal?owner_id=...
+      if (requestedOwnerId) {
+        const { data, error } = await supabase
+          .from("owners")
+          .select(ownerSelect)
+          .eq("owner_id", requestedOwnerId)
+          .maybeSingle();
 
-      const { data: ownerData, error: ownerError } = await supabase
-        .from("owners")
-        .select("owner_id, owner_first_name, owner_last_name, phone, email, address")
-        .eq("owner_id", requestedOwnerId)
-        .maybeSingle();
+        if (error) throw error;
+        ownerData = data;
 
-      if (ownerError) throw ownerError;
+        if (!ownerData) {
+          clearPortalData();
+          setPortalError("לא מצאנו אזור אישי עבור המספר שהוזן. בדקו שהקישור נכון או פנו למרפאה.");
+          return;
+        }
+      } else {
+        // מצב אמיתי: /portal ללא owner_id. מזהים את הלקוח לפי Supabase Auth.
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
 
-      if (!ownerData) {
-        setOwnerProfile(null);
-        setPets([]);
-        setAppointments([]);
-        setPortalNotifications([]);
-        setVisitSummariesByPet({});
-        setPaymentsByPet({});
-        setUploadedFiles([]);
-        setDigitalConversations([]);
-        setDigitalMessages([]);
-        setDigitalAttachments([]);
-        setSelectedConversationId(null);
-        setPortalError(`לא מצאנו אזור אישי עבור המספר שהוזן. בדקו שהקישור נכון או פנו למרפאה.`);
-        return;
+        const authUser = authData.user;
+        if (!authUser) {
+          clearPortalData();
+          setPortalError("לא זוהה משתמש מחובר. התחברו מחדש כדי לפתוח את האזור האישי.");
+          return;
+        }
+
+        const { data: ownerByAuth, error: ownerByAuthError } = await supabase
+          .from("owners")
+          .select(ownerSelect)
+          .eq("auth_user_id", authUser.id)
+          .maybeSingle();
+
+        if (ownerByAuthError) throw ownerByAuthError;
+        ownerData = ownerByAuth;
+
+        // גיבוי חשוב לדמו: אם קיימת שורת owner לפי email אבל auth_user_id עדיין לא התחבר,
+        // מחברים אותה אוטומטית למשתמש המחובר.
+        if (!ownerData && authUser.email) {
+          const { data: ownerByEmail, error: ownerByEmailError } = await supabase
+            .from("owners")
+            .select(ownerSelect)
+            .eq("email", authUser.email)
+            .maybeSingle();
+
+          if (ownerByEmailError) throw ownerByEmailError;
+
+          if (ownerByEmail) {
+            ownerData = ownerByEmail;
+
+            if (!ownerByEmail.auth_user_id) {
+              const { error: linkOwnerError } = await supabase
+                .from("owners")
+                .update({ auth_user_id: authUser.id })
+                .eq("owner_id", ownerByEmail.owner_id);
+
+              if (linkOwnerError) {
+                console.warn("Owner was found by email but auth_user_id could not be linked:", linkOwnerError);
+              }
+            }
+          }
+        }
+
+        if (!ownerData) {
+          clearPortalData();
+          setPortalError("התחברת בהצלחה, אבל לא נמצא כרטיס בעלים שמחובר לחשבון הזה. בדקו שבטבלת owners קיימת שורה עם אותו אימייל או עם auth_user_id מתאים.");
+          return;
+        }
       }
 
       setOwnerProfile(ownerData);
@@ -1486,13 +1530,15 @@ export function ClientPortal() {
   const mainPet = pets[0] || null;
 
   const getNotificationTargetView = (notification: PortalNotification): PortalView => {
-    const viewFromUrl = extractViewFromActionUrl(notification.actionUrl) as PortalView | null;
-    if (viewFromUrl) return viewFromUrl;
+    const viewFromUrlRaw = extractViewFromActionUrl(notification.actionUrl);
+    if (viewFromUrlRaw === "documents") return "digital";
+    if (isPortalView(viewFromUrlRaw)) return viewFromUrlRaw;
 
-    const inferredView = defaultActionViewForType(notification.type) as PortalView;
-    if (["home", "appointments", "digital", "pets", "documents", "payments", "notifications", "profile"].includes(inferredView)) {
-      return inferredView;
-    }
+    const inferredViewRaw = defaultActionViewForType(notification.type);
+    if (inferredViewRaw === "documents") return "digital";
+    if (isPortalView(inferredViewRaw)) return inferredViewRaw;
+
+    if (notification.type === "document") return "digital";
 
     return "notifications";
   };
@@ -1829,12 +1875,12 @@ export function ClientPortal() {
                 <p className="text-gray-900 text-[14px] font-black">החיות שלי</p>
                 <p className="text-gray-500 text-[12px] font-semibold mt-1">{pets.length} חיות רשומות</p>
               </button>
-              <button onClick={() => goToPortalView("documents")} className="rounded-[26px] bg-white border border-gray-100 p-4 text-right shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
-                <div className="w-11 h-11 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600 mb-3">
-                  <Paperclip className="w-5 h-5" />
+              <button onClick={() => goToPortalView("digital")} className="rounded-[26px] bg-white border border-gray-100 p-4 text-right shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1e40af] mb-3">
+                  <MessageCircle className="w-5 h-5" />
                 </div>
-                <p className="text-gray-900 text-[14px] font-black">מסמכים</p>
-                <p className="text-gray-500 text-[12px] font-semibold mt-1">{uploadedFiles.length} קבצים</p>
+                <p className="text-gray-900 text-[14px] font-black">מרפאה דיגיטלית</p>
+                <p className="text-gray-500 text-[12px] font-semibold mt-1">{activeDigitalCount} שיחות פעילות</p>
               </button>
             </section>
 
@@ -2658,216 +2704,8 @@ export function ClientPortal() {
           </>
           )}
 
-{activePortalView === "documents" && (
-          <>
-          {/* ═══ 4. Documents & File Upload ═══ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <button
-              onClick={() => toggleSection("documents")}
-              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-violet-50 rounded-xl p-2.5"><Paperclip className="w-5 h-5 text-violet-500" /></div>
-                <div className="text-right">
-                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מסמכים וקבצים</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים שמורים</p>
-                </div>
-              </div>
-              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
-            </button>
 
-            {(activePortalView === "documents" || openSections.documents) && (
-              <div className="border-t border-gray-100 p-5">
-                {/* Upload controls */}
-                <div className="flex flex-wrap gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <label className="text-gray-600 text-[13px]" style={{ fontWeight: 500 }}>חיה:</label>
-                    <select
-                      value={uploadPetId}
-                      onChange={(e) => setUploadPetId(Number(e.target.value))}
-                      className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                    >
-                      {pets.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-gray-600 text-[13px]" style={{ fontWeight: 500 }}>קטגוריה:</label>
-                    <select
-                      value={uploadCategory}
-                      onChange={(e) => setUploadCategory(e.target.value)}
-                      className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                    >
-                      {FILE_CATEGORIES.map((c) => (
-                        <option key={c.key} value={c.key}>{c.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Drop zone */}
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => { if (!isUploadingFiles && pets.length > 0) fileInputRef.current?.click(); }}
-                  className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all mb-5 ${
-                    isDragging
-                      ? "border-[#1e40af] bg-blue-50/60"
-                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50/50"
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                    onChange={(e) => { void processFiles(e.target.files); e.target.value = ""; }}
-                  />
-                  <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${isDragging ? "bg-blue-100" : "bg-gray-100"}`}>
-                    <Upload className={`w-7 h-7 ${isDragging ? "text-[#1e40af]" : "text-gray-500 font-medium"}`} />
-                  </div>
-                  <p className="text-gray-700 text-[15px] mb-1" style={{ fontWeight: 600 }}>
-                    {isUploadingFiles ? "מעלה קבצים..." : isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
-                  </p>
-                  <p className="text-gray-500 font-medium text-[12px]">
-                    תמונות, PDF, Word או Excel — עד 10MB לקובץ. לאחר ההעלאה הקובץ יופיע באזור המסמכים.
-                  </p>
-                </div>
-
-                {/* Uploaded files list */}
-                {uploadedFiles.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 font-medium">
-                    <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-[14px]">לא נמצאו קבצים שמורים</p>
-                    <p className="text-[12px] mt-1">העלו תעודות חיסון, תוצאות בדיקות, מרשמים ועוד</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {uploadedFiles.map((file) => {
-                      const FIcon = getFileIcon(file.type);
-                      const pet = pets.find((p) => p.id === file.petId);
-                      const PIcon = pet?.type === "dog" ? Dog : Cat;
-                      return (
-                        <div key={file.id} className="flex items-center gap-3 rounded-xl border border-gray-100 hover:border-violet-200 p-3.5 transition-all hover:shadow-sm group">
-                          {/* Thumbnail / icon */}
-                          {file.previewUrl ? (
-                            <img src={file.previewUrl} alt={file.name} className="w-11 h-11 rounded-lg object-cover shrink-0" />
-                          ) : (
-                            <div className="w-11 h-11 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                              <FIcon className="w-5 h-5 text-violet-500" />
-                            </div>
-                          )}
-
-                          {/* File info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-gray-900 text-[13px] truncate" style={{ fontWeight: 600 }}>{file.name}</span>
-                              <span className="bg-violet-50 text-violet-600 text-[10px] px-2 py-0.5 rounded-full border border-violet-200 shrink-0" style={{ fontWeight: 500 }}>
-                                {CATEGORY_LABELS[file.category] || file.category}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-[13px] text-gray-500 font-medium">
-                              <span className="flex items-center gap-1"><PIcon className="w-3 h-3" />{file.petName}</span>
-                              <span>{formatFileSize(file.size)}</span>
-                              <span>{file.uploadDate}</span>
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => file.type.startsWith("image/") && file.previewUrl ? setPreviewFile(file) : void handleOpenFile(file)}
-                              className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 font-medium hover:text-blue-600 transition-colors cursor-pointer"
-                              title="צפייה / פתיחה"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => void handleOpenFile(file)}
-                              className="p-2 rounded-lg hover:bg-emerald-50 text-gray-500 font-medium hover:text-emerald-600 transition-colors cursor-pointer"
-                              title="פתיחה בחלון חדש"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirmFile(file)}
-                              className="p-2 rounded-lg hover:bg-red-50 text-gray-500 font-medium hover:text-red-500 transition-colors cursor-pointer"
-                              title="מחיקה"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          </>
-          )}
-
-          {activePortalView === "payments" && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="bg-emerald-50 rounded-xl p-2.5"><Receipt className="w-5 h-5 text-emerald-600" /></div>
-                  <div className="text-right">
-                    <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 700 }}>תשלומים וחיובים</h2>
-                    <p className="text-gray-500 font-medium text-[12px]">{openPayments.length} חיובים פתוחים · ₪{openPaymentsTotal.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3">
-                {allPayments.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500 font-medium text-[14px]">
-                    <Receipt className="w-9 h-9 mx-auto mb-2 text-gray-300" />
-                    אין חיובים שמורים כרגע.
-                  </div>
-                ) : (
-                  allPayments.map((payment) => {
-                    const pet = pets.find((item) => item.id === payment.petId);
-                    const open = isOpenPayment(payment.status);
-                    return (
-                      <div key={payment.id} className={`rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${open ? "bg-red-50/30 border-red-100" : "bg-white border-gray-100"}`}>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-gray-900 text-[14px] font-bold truncate">{payment.title}</p>
-                            <span className={`inline-flex items-center gap-1 border text-[11px] px-2 py-0.5 rounded-full font-bold ${open ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                              {open ? <AlertCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                              {getPaymentStatusLabel(payment.status)}
-                            </span>
-                          </div>
-                          <p className="text-gray-500 text-[12px] font-medium">
-                            {pet?.name || "כללי"} · ₪{payment.amount.toLocaleString()} · {payment.dueDate ? `לתשלום עד ${payment.dueDate}` : payment.date}
-                          </p>
-                        </div>
-                        {open && (
-                          <button
-                            onClick={() => openDemoPayment(payment)}
-                            disabled={payingPaymentId === payment.id}
-                            className={`flex items-center justify-center gap-1.5 text-white text-[12px] px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/15 ${payingPaymentId === payment.id ? "bg-gray-300 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] cursor-pointer"}`}
-                            style={{ fontWeight: 700 }}
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            {payingPaymentId === payment.id ? "מעבד תשלום..." : "שלם עכשיו"}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {activePortalView === "profile" && (
+{activePortalView === "profile" && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
                 <div className="bg-blue-50 rounded-xl p-2.5"><User className="w-5 h-5 text-[#1e40af]" /></div>

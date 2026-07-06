@@ -71,6 +71,23 @@ export interface InventoryRow {
   category?: string | null;
   stock_quantity?: number | null;
   price?: number | null;
+  low_stock_threshold?: number | null;
+}
+
+export interface PaymentItemRow {
+  payment_item_id: number;
+  payment_id?: number | null;
+  visit_id?: number | null;
+  item_type?: string | null;
+  item_name?: string | null;
+  quantity?: number | null;
+  unit_price?: number | null;
+  discount?: number | null;
+  total_price?: number | null;
+  source_type?: string | null;
+  source_id?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
 }
 
 export interface LabOrderRow {
@@ -141,6 +158,7 @@ export interface ReportDataset {
   medicalVisits: MedicalVisitRow[];
   payments: PaymentRow[];
   inventory: InventoryRow[];
+  paymentItems: PaymentItemRow[];
   labOrders: LabOrderRow[];
   reminders: ReminderRow[];
   notifications: NotificationRow[];
@@ -153,7 +171,32 @@ export interface ReportError {
   message: string;
 }
 
-export const LOW_STOCK_THRESHOLD = 5;
+export const DEFAULT_LOW_STOCK_THRESHOLD = 5;
+
+// Backwards-compatible alias. New inventory logic should use getLowStockThreshold(),
+// because every inventory item can now define its own threshold.
+export const LOW_STOCK_THRESHOLD = DEFAULT_LOW_STOCK_THRESHOLD;
+
+export function getLowStockThreshold(item: Pick<InventoryRow, "low_stock_threshold">) {
+  const threshold = Number(item.low_stock_threshold);
+  return Number.isFinite(threshold) && threshold >= 0
+    ? threshold
+    : DEFAULT_LOW_STOCK_THRESHOLD;
+}
+
+export function getInventoryStatus(item: Pick<InventoryRow, "stock_quantity" | "low_stock_threshold">) {
+  const quantity = Number(item.stock_quantity || 0);
+  const threshold = getLowStockThreshold(item);
+
+  if (quantity <= 0) return "out" as const;
+  if (quantity <= threshold) return "low" as const;
+  return "healthy" as const;
+}
+
+export function isLowInventoryItem(item: Pick<InventoryRow, "stock_quantity" | "low_stock_threshold">) {
+  const status = getInventoryStatus(item);
+  return status === "low" || status === "out";
+}
 
 
 export function getDateRangeLabel(dateRange: DateRangeKey) {
@@ -266,6 +309,7 @@ export async function fetchReportDataset(): Promise<{ dataset: ReportDataset; er
     medicalVisits,
     payments,
     inventory,
+    paymentItems,
     labOrders,
     reminders,
     notifications,
@@ -278,6 +322,7 @@ export async function fetchReportDataset(): Promise<{ dataset: ReportDataset; er
     selectTable<MedicalVisitRow>("medical_visits", "visit_date"),
     selectTable<PaymentRow>("payments", "created_at"),
     selectTable<InventoryRow>("inventory"),
+    selectTable<PaymentItemRow>("payment_items", "created_at"),
     selectTable<LabOrderRow>("lab_orders", "ordered_date"),
     selectTable<ReminderRow>("reminders", "due_at"),
     selectTable<NotificationRow>("notifications", "created_at"),
@@ -292,6 +337,7 @@ export async function fetchReportDataset(): Promise<{ dataset: ReportDataset; er
     medicalVisits.error,
     payments.error,
     inventory.error,
+    paymentItems.error,
     labOrders.error,
     reminders.error,
     notifications.error,
@@ -307,6 +353,7 @@ export async function fetchReportDataset(): Promise<{ dataset: ReportDataset; er
       medicalVisits: medicalVisits.data,
       payments: payments.data,
       inventory: inventory.data,
+      paymentItems: paymentItems.data,
       labOrders: labOrders.data,
       reminders: reminders.data,
       notifications: notifications.data,
@@ -325,6 +372,7 @@ export function getFilteredDataset(dataset: ReportDataset, dateRange: DateRangeK
     appointments: dataset.appointments.filter((a) => inRange(a.start_time, dateRange)),
     medicalVisits: dataset.medicalVisits.filter((v) => inRange(v.visit_date, dateRange)),
     payments: dataset.payments.filter((p) => inRange(p.created_at || p.paid_at || p.due_date, dateRange)),
+    paymentItems: dataset.paymentItems.filter((item) => inRange(item.created_at, dateRange)),
     labOrders: dataset.labOrders.filter((l) => inRange(l.ordered_date || l.completed_date, dateRange)),
     reminders: dataset.reminders.filter((r) => inRange(r.due_at || r.created_at, dateRange)),
     notifications: dataset.notifications.filter((n) => inRange(n.created_at, dateRange)),
