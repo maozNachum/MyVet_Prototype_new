@@ -1,243 +1,158 @@
-import { supabase } from "../../../services/supabaseClient";
 import { getStaffType } from "../../data/staffAuth";
 import { AiAssistantCard } from "./AiAssistantCard";
-import { compactText } from "./aiSanitizer";
 import type { AiQuickAction } from "./aiTypes";
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
+import {
+  buildClientsSummaryContext,
+  buildDashboardContext,
+  buildDigitalCareContext,
+  buildInventoryContext,
+  buildMedicalRecordContext,
+  buildPortalContext,
+  buildScheduleContext,
+} from "./aiContextBuilder";
 
 function staffRole() {
   return getStaffType();
 }
 
 const dashboardActions: AiQuickAction[] = [
-  { label: "מה הכי דחוף היום?", prompt: "תן לי סדר עדיפויות קצר להיום לפי הנתונים התפעוליים." },
-  { label: "מה לבדוק קודם?", prompt: "מה כדאי לבדוק קודם בתחילת יום עבודה?" },
-  { label: "סכם מצב מרפאה", prompt: "סכם את מצב המרפאה בשורה תחתונה ו-3 פעולות." },
+  { label: "מה לטפל קודם?", prompt: "תן לי סדר עדיפויות קצר להיום לפי מצב המרפאה." },
+  { label: "סכם את היום", prompt: "סכם את מצב המרפאה בשורה תחתונה ושלוש פעולות." },
+  { label: "מה דורש מעקב?", prompt: "מה הדברים שדורשים מעקב בהמשך היום?" },
 ];
 
 export function DashboardAssistant() {
+  const role = staffRole();
+
   return (
     <AiAssistantCard
       mode="dashboard"
       title="עוזר דשבורד"
-      compactTitle="עוזר תפעולי יומי"
-      subtitle="מסכם עומסים, תורים, מקרים דחופים ואשפוזים בלי לשלוח פרטים מזהים של לקוחות או חיות."
-      userRole={staffRole()}
+      compactTitle="עוזר יומי"
+      subtitle="עוזר להבין מה דורש טיפול עכשיו ומה כדאי לבדוק בהמשך היום."
+      userRole={role}
       quickActions={dashboardActions}
-      buildContext={async () => {
-        const { start, end } = todayRange();
-        const [appointments, hospitalizations, urgentProblems, openLabs, payments] = await Promise.all([
-          supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", start).lt("start_time", end),
-          supabase.from("hospitalizations").select("hospitalization_id", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("medical_problems").select("problem_id", { count: "exact", head: true }).eq("status", "active").in("severity", ["serious", "critical"]),
-          supabase.from("lab_orders").select("lab_order_id", { count: "exact", head: true }).not("status", "eq", "completed"),
-          supabase.from("payments").select("payment_id", { count: "exact", head: true }).in("status", ["unpaid", "partial"]),
-        ]);
-
-        return {
-          date: new Date().toLocaleDateString("he-IL"),
-          appointmentsToday: appointments.count ?? 0,
-          activeHospitalizations: hospitalizations.count ?? 0,
-          urgentActiveProblems: urgentProblems.count ?? 0,
-          openLabOrders: openLabs.count ?? 0,
-          openPayments: payments.count ?? 0,
-          notes: "הנתונים הם אגרגטיביים בלבד וללא שמות, טלפונים, כתובות או מזהים.",
-        };
-      }}
+      buildContext={() => buildDashboardContext(role)}
+      privacyNote="כאן אפשר לקבל סיכום קצר והמלצה לפעולה הבאה."
     />
   );
 }
 
 const scheduleActions: AiQuickAction[] = [
-  { label: "איפה יש עומס?", prompt: "נתח את עומס התורים ותן המלצה קצרה לאיזון היומן." },
-  { label: "המלץ זמן פנוי", prompt: "לפי התורים הקיימים, איפה כדאי לשבץ תור חדש בלי ליצור עומס?" },
-  { label: "בדוק התנגשויות", prompt: "האם יש סיכוי להתנגשות או עומס חריג ביומן?" },
+  { label: "איפה יש עומס?", prompt: "איפה יש עומס ביומן ומה כדאי לעשות כדי לאזן אותו?" },
+  { label: "איפה לשבץ תור?", prompt: "הצע חלון מתאים לשיבוץ תור נוסף בלי ליצור עומס." },
+  { label: "מה חסר ביומן?", prompt: "בדוק אם יש תורים שדורשים השלמה או טיפול." },
 ];
 
 export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appointments: any[]; viewMode: string; activeVet: string }) {
+  const role = staffRole();
+
   return (
     <AiAssistantCard
       mode="schedule"
       title="עוזר יומן תורים"
       compactTitle="עוזר שיבוץ"
-      subtitle="בודק עומסים וחלונות פנויים לפי שעות, מחלקות ורופאים — ללא שמות לקוחות או פרטי קשר."
-      userRole={staffRole()}
+      subtitle="עוזר לזהות עומסים, חלונות פנויים ותורים שדורשים טיפול."
+      userRole={role}
       quickActions={scheduleActions}
-      buildContext={() => ({
-        viewMode,
-        activeVet: activeVet === "all" ? "all" : activeVet,
-        totalAppointments: appointments.length,
-        appointments: appointments.slice(0, 120).map((appt) => ({
-          date: `${appt.year}-${String((appt.month ?? 0) + 1).padStart(2, "0")}-${String(appt.day).padStart(2, "0")}`,
-          time: appt.time,
-          endTime: appt.endTime,
-          department: appt.department,
-          vet: appt.vet,
-          room: appt.room,
-          type: appt.type,
-        })),
-      })}
+      buildContext={() => buildScheduleContext({ appointments, viewMode, activeVet, role })}
+      privacyNote="אפשר לשאול על עומסים, שיבוצים ותורים שדורשים תשומת לב."
     />
   );
 }
 
 const inventoryActions: AiQuickAction[] = [
   { label: "מה צריך להזמין?", prompt: "אילו פריטים כדאי להזמין עכשיו ולמה?" },
-  { label: "מה קריטי?", prompt: "סמן את פריטי המלאי הקריטיים ביותר ותן פעולה מומלצת." },
+  { label: "מה קריטי?", prompt: "מה הפריטים הדחופים ביותר במלאי ומה הפעולה המומלצת?" },
   { label: "סכם מלאי", prompt: "סכם את מצב המלאי בכמה נקודות קצרות." },
 ];
 
 export function InventoryAssistant({ items }: { items: any[] }) {
+  const role = staffRole();
+
   return (
     <AiAssistantCard
       mode="inventory"
       title="עוזר מלאי"
-      compactTitle="עוזר ניהול מלאי"
-      subtitle="מזהה חוסרים, פריטים קריטיים ועלויות משוערות. זהו אזור ללא מידע אישי ולכן מתאים במיוחד ל-AI."
-      userRole={staffRole()}
+      compactTitle="עוזר מלאי"
+      subtitle="עוזר לזהות חוסרים, פריטים קריטיים וסדר עדיפויות להזמנה."
+      userRole={role}
       quickActions={inventoryActions}
-      buildContext={() => ({
-        totalItems: items.length,
-        lowStockCount: items.filter((item) => item.lowStock).length,
-        totalValue: items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0),
-        items: items.slice(0, 120).map((item) => ({
-          itemName: item.name,
-          sku: item.sku,
-          category: item.categoryLabel || item.category,
-          quantity: item.quantity,
-          price: item.price,
-          lowStock: item.lowStock,
-        })),
-      })}
+      buildContext={() => buildInventoryContext({ items, role })}
+      privacyNote="אפשר לשאול על חוסרים, הזמנות וסדר עדיפויות במלאי."
     />
   );
 }
 
 const digitalActions: AiQuickAction[] = [
   { label: "סכם שיחה", prompt: "סכם את השיחה הנוכחית לצוות בשלושה סעיפים." },
-  { label: "הצע תשובה", prompt: "נסח טיוטת תשובה מקצועית וקצרה ללקוח. אל תשלח אותה לבד." },
+  { label: "הצע תשובה", prompt: "נסח טיוטת תשובה קצרה ללקוח. אל תשלח אותה לבד." },
   { label: "זהה דחיפות", prompt: "הערך רמת דחיפות תפעולית לפי השיחה והצע פעולה מתאימה." },
   { label: "מה הפעולה הבאה?", prompt: "מה הפעולה הבאה שהצוות צריך לבצע בשיחה הזו?" },
 ];
 
 export function DigitalCareAssistant({ conversation, messages, attachments }: { conversation: any | null; messages: any[]; attachments: any[] }) {
+  const role = staffRole();
+
   return (
     <AiAssistantCard
       mode="digital-care"
       title="עוזר מרפאה דיגיטלית"
       compactTitle="עוזר שיחה"
-      subtitle="מסכם שיחות, מציע טיוטת תשובה ומזהה דחיפות. ההודעה לא נשלחת אוטומטית."
-      userRole={staffRole()}
+      subtitle="עוזר לסכם שיחה, להכין טיוטת תשובה ולהבין מה הפעולה הבאה."
+      userRole={role}
       disabledReason={!conversation ? "בחר שיחה כדי להפעיל את העוזר." : null}
       quickActions={digitalActions}
-      buildContext={() => ({
-        conversation: conversation
-          ? {
-              status: conversation.status,
-              priority: conversation.priority,
-              subject: compactText(conversation.subject || ""),
-              petSpecies: conversation.pet?.species || null,
-              hasPetAssigned: Boolean(conversation.pet_id),
-              hasAttachments: attachments.length > 0,
-              attachmentCount: attachments.length,
-            }
-          : null,
-        recentMessages: messages.slice(-18).map((message) => ({
-          senderType: message.sender_type,
-          messageType: message.message_type,
-          text: compactText(message.message_text || "", 500),
-          createdAt: message.created_at,
-        })),
-      })}
-      privacyNote="נשלחות רק ההודעות האחרונות לאחר ניקוי פרטים מזהים. העוזר מציע טיוטה בלבד והצוות מחליט אם לשלוח."
+      buildContext={() => buildDigitalCareContext({ conversation, messages, attachments, role })}
+      privacyNote="העוזר מכין טיוטה בלבד. הצוות מחליט מה לשלוח."
     />
   );
 }
 
 const medicalActions: AiQuickAction[] = [
   { label: "סכם ביקורים", prompt: "סכם את הרשומות האחרונות בצורה ברורה לצוות." },
-  { label: "נסח הנחיות לבעלים", prompt: "נסח טיוטת הנחיות כלליות לבעלים לפי הרשומה, בלי אבחון חדש ובלי מינונים חדשים." },
-  { label: "בדוק שדות חסרים", prompt: "בדוק האם חסרים פרטים חשובים ברשומה הרפואית האחרונה." },
+  { label: "נסח הנחיות", prompt: "נסח טיוטת הנחיות כלליות לבעלים לפי הרשומה, בלי אבחון חדש ובלי מינונים חדשים." },
+  { label: "בדוק חוסרים", prompt: "בדוק האם חסרים פרטים חשובים ברשומה הרפואית האחרונה." },
 ];
 
 export function MedicalRecordAssistant({ patient, visits, activeHospitalization }: { patient: any; visits: any[]; activeHospitalization?: any }) {
   const role = staffRole();
-  const disabledReason = role === "secretary" ? "מזכירה לא מקבלת עוזר AI רפואי לפי ברירת המחדל שהגדרנו." : null;
+  const disabledReason = role === "secretary" ? "פעולות רפואיות זמינות לצוות רפואי בלבד." : null;
 
   return (
     <AiAssistantCard
       mode="medical-record"
       title="עוזר תיק רפואי"
-      compactTitle="עוזר כתיבה רפואית"
-      subtitle="עוזר לסכם ולנסח. הוא לא מאבחן, לא קובע מינונים ולא מחליף החלטה של וטרינר."
+      compactTitle="עוזר רפואי"
+      subtitle="עוזר לסכם ביקור, לנסח הנחיות ולבדוק אם חסרים פרטים ברשומה."
       userRole={role}
       disabledReason={disabledReason}
       quickActions={medicalActions}
-      buildContext={() => ({
-        pet: {
-          species: patient?.pet?.species,
-          gender: patient?.pet?.gender,
-          age: patient?.pet?.age,
-          weight: patient?.pet?.weight,
-          neuteredStatus: patient?.pet?.neuteredStatus,
-          hasAllergies: Boolean(patient?.pet?.allergies),
-        },
-        activeHospitalization: activeHospitalization
-          ? {
-              department: activeHospitalization.department,
-              severity: activeHospitalization.severity,
-              status: activeHospitalization.status,
-            }
-          : null,
-        recentVisits: visits.slice(0, 8).map((visit) => ({
-          date: visit.date || visit.visitDate,
-          visitType: visit.visitType,
-          reason: compactText(visit.reason || visit.chiefComplaint || "", 400),
-          treatment: compactText(visit.treatment || "", 550),
-          finalDiagnosisExists: Boolean(visit.finalDiagnosis || visit.diagnosis),
-          notes: compactText(visit.notes || "", 450),
-        })),
-      })}
-      privacyNote="העוזר מקבל רק מידע רפואי מצומצם על החיה והרשומות האחרונות, ללא פרטי בעלים, טלפון, תעודת זהות או כתובת."
+      buildContext={() => buildMedicalRecordContext({ patient, visits, activeHospitalization, role })}
+      privacyNote="העוזר מסייע בכתיבה וסיכום. החלטה רפואית נשארת אצל הצוות."
     />
   );
 }
 
 const clientsActions: AiQuickAction[] = [
-  { label: "מי דורש מעקב?", prompt: "לפי סיכום הלקוחות, אילו קבוצות דורשות מעקב שירותי?" },
+  { label: "מי דורש מעקב?", prompt: "אילו קבוצות לקוחות דורשות מעקב שירותי?" },
   { label: "הצע פעולות שירות", prompt: "הצע פעולות שירות קצרות למזכירות או לצוות." },
-  { label: "סכם מצב לקוחות", prompt: "סכם את מצב הלקוחות בלי להתייחס לפרטים מזהים." },
+  { label: "סכם מצב לקוחות", prompt: "סכם את מצב הלקוחות בכמה נקודות קצרות." },
 ];
 
 export function ClientsAssistant({ clients }: { clients: any[] }) {
+  const role = staffRole();
+
   return (
     <AiAssistantCard
       mode="clients"
       title="עוזר לקוחות"
-      compactTitle="עוזר שירות לקוחות"
-      subtitle="מנתח רק נתונים אגרגטיביים על לקוחות וחיות, בלי שמות, טלפונים, מיילים או כתובות."
-      userRole={staffRole()}
+      compactTitle="עוזר שירות"
+      subtitle="עוזר לזהות פעולות שירות ומעקב ללקוחות."
+      userRole={role}
       quickActions={clientsActions}
-      buildContext={() => ({
-        totalClients: clients.length,
-        totalPets: clients.reduce((sum, client) => sum + (client.pets?.length || 0), 0),
-        clientsWithoutPets: clients.filter((client) => (client.pets?.length || 0) === 0).length,
-        multiPetClients: clients.filter((client) => (client.pets?.length || 0) >= 2).length,
-        petSpeciesBreakdown: clients.reduce<Record<string, number>>((acc, client) => {
-          for (const pet of client.pets || []) {
-            const key = pet.species || "unknown";
-            acc[key] = (acc[key] || 0) + 1;
-          }
-          return acc;
-        }, {}),
-      })}
+      buildContext={() => buildClientsSummaryContext({ clients, role })}
+      privacyNote="אפשר לשאול על פעולות שירות ומעקב."
     />
   );
 }
@@ -245,29 +160,36 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
 const portalActions: AiQuickAction[] = [
   { label: "איך קובעים תור?", prompt: "הסבר לי איך לקבוע תור דרך הפורטל, צעד אחר צעד." },
   { label: "איך פותחים פנייה?", prompt: "הסבר לי איך לפתוח פנייה לצוות במרפאה הדיגיטלית." },
-  { label: "איך מצטרפים לשיחת וידאו?", prompt: "הסבר לי איך מצטרפים לשיחת וידאו אם הצוות שלח קישור." },
+  { label: "איך מצטרפים לווידאו?", prompt: "הסבר לי איך מצטרפים לשיחת וידאו אם הצוות שלח קישור." },
   { label: "איפה המסמכים?", prompt: "הסבר איפה לראות ולהעלות מסמכים בפורטל." },
   { label: "עזור לנסח הודעה", prompt: "עזור לי לנסח הודעה קצרה לצוות המרפאה. אל תיתן אבחנה, טיפול או מינון." },
 ];
 
-export function ClientPortalAssistant({ pets, appointments, notifications, digitalConversations, paymentsByPet }: { pets: any[]; appointments: any[]; notifications: any[]; digitalConversations: any[]; paymentsByPet: Record<string | number, any[]> }) {
+export function ClientPortalAssistant({
+  pets,
+  appointments,
+  notifications,
+  digitalConversations,
+  paymentsByPet,
+}: {
+  pets: any[];
+  appointments: any[];
+  notifications: any[];
+  digitalConversations: any[];
+  paymentsByPet: Record<string | number, any[]>;
+}) {
+  const billingItems = Object.values(paymentsByPet || {}).flat();
+
   return (
     <AiAssistantCard
       mode="portal"
       title="עזרה באתר"
       compactTitle="עזרה באתר"
-      subtitle="עוזר שירות לניווט בפורטל, קביעת תורים, פתיחת פנייה, צירוף מסמכים והצטרפות לשיחת וידאו. לא נותן ייעוץ רפואי."
+      subtitle="עוזר למצוא פעולות בפורטל: תורים, פניות, מסמכים ושיחת וידאו."
       userRole="owner"
       quickActions={portalActions}
-      buildContext={() => ({
-        petsCount: pets.length,
-        upcomingAppointmentsCount: appointments.length,
-        unreadNotificationsCount: notifications.filter((n) => !n.isRead).length,
-        openDigitalConversations: digitalConversations.filter((c) => c.status !== "closed").length,
-        unpaidPaymentsCount: Object.values(paymentsByPet || {}).flat().filter((payment: any) => payment.status !== "paid").length,
-        availablePortalActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "תשלום דמו"],
-      })}
-      privacyNote="העוזר בפורטל הוא עוזר שירות בלבד. הוא מקבל רק נתוני ניווט וסיכומים כלליים, לא תיק רפואי מלא, ולא נותן אבחנה, טיפול או מינון במקום וטרינר."
+      buildContext={() => buildPortalContext({ pets, appointments, notifications, digitalConversations, billingItems })}
+      privacyNote="אפשר לשאול איך לבצע פעולות בפורטל. לשאלות רפואיות יש לפתוח פנייה לצוות."
     />
   );
 }

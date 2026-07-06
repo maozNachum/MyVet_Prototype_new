@@ -3,17 +3,21 @@ import { sanitizeAiContext } from "./aiSanitizer";
 import type { AiAssistantRequest, AiAssistantResponse } from "./aiTypes";
 
 function friendlyEdgeError(message?: string) {
-  const text = message || "שגיאה בהפעלת העוזר החכם";
+  const text = message || "לא הצלחנו להפעיל את העוזר כרגע.";
 
-  if (text.includes("non-2xx") || text.includes("FunctionsHttpError")) {
-    return "העוזר לא הצליח לקבל תשובה כרגע. נסה שוב בעוד רגע.";
+  if (text.includes("high demand") || text.includes("UNAVAILABLE") || text.includes("503") || text.includes("RESOURCE_EXHAUSTED")) {
+    return "העוזר עמוס כרגע. נסה שוב בעוד כמה שניות.";
   }
 
-  if (text.includes("high demand") || text.includes("UNAVAILABLE") || text.includes("503")) {
-    return "המודל עמוס כרגע. נסה שוב בעוד כמה שניות.";
+  if (text.includes("Missing question")) {
+    return "חסרה שאלה לעוזר.";
   }
 
-  return text;
+  if (text.includes("Missing GEMINI_API_KEY") || text.includes("Unauthorized") || text.includes("non-2xx") || text.includes("FunctionsHttpError") || text.includes("Failed to fetch")) {
+    return "העוזר לא זמין כרגע. נסה שוב בעוד רגע.";
+  }
+
+  return "לא הצלחנו לקבל תשובה מהעוזר כרגע. נסה שוב.";
 }
 
 export async function askAiAssistant(request: AiAssistantRequest): Promise<string> {
@@ -32,6 +36,6 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<strin
     throw new Error(friendlyEdgeError(error.message));
   }
 
-  if (!data?.answer) throw new Error("העוזר לא החזיר תשובה תקינה");
+  if (!data?.answer) throw new Error("העוזר לא החזיר תשובה תקינה. נסה שוב.");
   return data.answer;
 }

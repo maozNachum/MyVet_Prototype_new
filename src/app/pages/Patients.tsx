@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { supabase } from '../../services/supabaseClient'; // הייבוא שלך
+import { supabase } from '../../services/supabaseClient';
 import {
   Users, UserPlus, Eye, Search, Cat, Dog, AlertTriangle,
   Calendar, AlertCircle, CalendarCheck, ChevronLeft, Stethoscope,
@@ -18,6 +18,7 @@ import { LabResultsPanel } from "../components/LabResultsPanel";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import { VISIT_TYPES } from "../data/categoryConfig";
 import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
+import { PatientMedicalTimeline } from "../components/PatientMedicalTimeline";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -473,7 +474,7 @@ export function Patients() {
         }
       } catch (error) {
         console.error("Error fetching patients from Supabase:", error);
-        toast.error("שגיאה בטעינת נתוני מטופלים מהשרת");
+        toast.error("לא הצלחנו לטעון את רשימת המטופלים");
       } finally {
         setIsLoadingData(false);
       }
@@ -652,7 +653,7 @@ export function Patients() {
       window.location.reload();
     } catch (error) {
       console.error("Supabase Insert Error:", error);
-      toast.error("אירעה שגיאה בעת שמירת הנתונים לענן");
+      toast.error("לא הצלחנו לשמור את המטופל. נסה שוב");
     }
   };
 
@@ -771,49 +772,67 @@ export function Patients() {
           <ArrowRight className="w-4 h-4" /> חזרה לרשימת מטופלים
         </button>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex flex-wrap items-start gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl w-[88px] h-[88px] flex items-center justify-center shrink-0">
               <PetIcon className="w-11 h-11 text-[#1e40af]" />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h2 className="text-gray-900 text-[24px] font-bold">{pet.name}</h2>
-                <span className="text-gray-500 text-[15px]">
-                  {pet.species}, {pet.gender}, בן {pet.age} · {getNeuteredLabel(pet.neuteredStatus, pet.gender)}
+                <h2 className="text-gray-900 text-[26px] font-bold">{pet.name}</h2>
+                <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[13px] font-bold border border-blue-100">
+                  {pet.species}
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-x-8 gap-y-2 text-[14px] text-gray-500 mb-3">
-                <span><span className="font-medium text-gray-700">גזע:</span> {pet.breed}</span>
-                <span><span className="font-medium text-gray-700">משקל:</span> {pet.weight}</span>
-                <span><span className="font-medium text-gray-700">שבב:</span> {pet.microchip}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-[14px] mt-4">
+                <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                  <p className="text-gray-400 text-[12px] font-semibold mb-1">פרטים</p>
+                  <p className="text-gray-800 font-semibold">{pet.gender}, בן {pet.age}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                  <p className="text-gray-400 text-[12px] font-semibold mb-1">גזע</p>
+                  <p className="text-gray-800 font-semibold">{pet.breed || "לא צוין"}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                  <p className="text-gray-400 text-[12px] font-semibold mb-1">משקל</p>
+                  <p className="text-gray-800 font-semibold">{pet.weight || "לא צוין"}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                  <p className="text-gray-400 text-[12px] font-semibold mb-1">עיקור / סירוס</p>
+                  <p className="text-gray-800 font-semibold">{getNeuteredLabel(pet.neuteredStatus, pet.gender)}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-[14px] text-gray-500">
+                <span><span className="font-medium text-gray-700">שבב:</span> {pet.microchip || "לא צוין"}</span>
                 <span><span className="font-medium text-gray-700">בעלים:</span> {owner.name} ({owner.phone})</span>
               </div>
 
               {pet.allergies && (
-                <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                <div className="mt-4 inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
                   <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                   <span className="text-red-700 text-[14px] font-semibold">אלרגיות: {pet.allergies}</span>
                 </div>
               )}
+            </div>
+          </div>
 
-              <div className="shrink-0 flex flex-col gap-1 mr-auto mt-4 sm:mt-0">
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+              <h3 className="text-gray-900 text-[15px] font-bold">פעולות מהירות</h3>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {canEditMedicalRecords() && (
+                  <MedicalRecordAssistant patient={selectedPatient} visits={patientHistory} activeHospitalization={activeHospitalization} />
+                )}
                 <button
                   onClick={() => setIsEditPetOpen(true)}
-                  className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-blue-200 w-fit font-medium"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-[13px] font-bold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> עריכת פרטי חיה
+                  <Pencil className="w-4 h-4" /> עריכת פרטים
                 </button>
-                <button
-                  onClick={handleDeletePatient}
-                  disabled={isDeletingPet}
-                  className={`flex items-center gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors text-[12px] border border-transparent hover:border-red-200 w-fit font-medium ${isDeletingPet ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> {isDeletingPet ? "מוחק מטופל..." : "מחיקת מטופל"}
-                </button>
-                <MedicalRecordAssistant patient={selectedPatient} visits={patientHistory} activeHospitalization={activeHospitalization} />
                 <button
                   onClick={() => {
                     const formattedHistory = patientHistory.map(v => ({
@@ -826,303 +845,113 @@ export function Patients() {
                     }));
                     exportMedicalRecord(selectedPatient as any, formattedHistory as any);
                   }}
-                  className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-emerald-200 w-fit font-medium"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-[13px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
                 >
-                  <Download className="w-3.5 h-3.5" /> ייצוא תיק רפואי לאקסל
+                  <Download className="w-4 h-4" /> ייצוא תיק
+                </button>
+                <button
+                  onClick={handleDeletePatient}
+                  disabled={isDeletingPet}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-bold transition-colors ${isDeletingPet ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400" : "cursor-pointer border-red-100 bg-red-50 text-red-700 hover:bg-red-100"}`}
+                >
+                  <Trash2 className="w-4 h-4" /> {isDeletingPet ? "מוחק..." : "מחיקה"}
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
-              <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-6 py-4 flex items-center gap-2.5">
-                <CalendarCheck className="w-5 h-5 text-white/90" />
-                <h3 className="text-white text-[17px] font-semibold">תיק רפואי</h3>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div>
+              <h3 className="text-gray-900 text-[18px] font-bold">פעולות בתיק</h3>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-gray-500">
+                <span>ביקור אחרון: {selectedPatient.lastVisit || "לא צוין"}</span>
+                <span className="hidden sm:inline text-gray-300">|</span>
+                <span>אשפוז: {isHospitalizationLoading ? "בודק..." : activeHospitalization ? "פעיל" : "אין"}</span>
               </div>
-
-              <div className="p-6 flex flex-col flex-1">
-                <div className="flex items-center gap-3 text-[14px] text-gray-500 mb-5">
-                  <span><span className="font-medium text-gray-700">תאריך:</span> {selectedPatient.lastVisit}</span>
-                  <span className="text-gray-300">|</span>
-                  <span><span className="font-medium text-gray-700">שעה:</span> 10:30</span>
-                </div>
-
-                <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-5 mb-6">
-                  <p className="text-gray-500 text-[13px] mb-1 font-medium">סיבת הגעה</p>
-                  <p className="text-gray-900 text-[16px] font-semibold">הוספת רשומה חדשה לתיק הרפואי</p>
-                </div>
-
-                <div className="text-[14px] text-gray-500 mb-5">
-                  <span className="font-medium text-gray-700">פעולות:</span> בדיקה מלאה, חיסון, שקילה, מרשם, מעבדה, מעקב, הערה או אשפוז
-                </div>
-
-                <div className={`rounded-xl border p-4 mb-5 ${activeHospitalization ? "border-emerald-200 bg-emerald-50/70" : "border-gray-100 bg-gray-50"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-gray-900 text-[14px] font-bold">סטטוס אשפוז</p>
-                      {isHospitalizationLoading ? (
-                        <p className="text-gray-500 text-[13px] mt-1">בודק אשפוז פעיל...</p>
-                      ) : activeHospitalization ? (
-                        <div className="text-gray-600 text-[13px] mt-1 leading-6">
-                          <p>מאושפז/ת במחלקת {activeHospitalization.department || "לא צוין"}{activeHospitalization.cage_or_room ? ` · ${activeHospitalization.cage_or_room}` : ""}</p>
-                          <p>סיבה: {activeHospitalization.reason || "לא צוינה"}</p>
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-[13px] mt-1">אין אשפוז פעיל לחיה הזו.</p>
-                      )}
-                    </div>
-                    {activeHospitalization && (
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-bold">פעיל</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-auto">
-                  {canEditMedicalRecords() ? (
-                    <div className="space-y-3">
-                      {canPerformTreatment() && (
-                        <button
-                          className="w-full bg-[#1e40af] hover:bg-[#1e3a8a] text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
-                          onClick={() => setIsTreatmentOpen(true)}
-                        >
-                          הוסף רשומה רפואית <ChevronLeft className="w-5 h-5" />
-                        </button>
-                      )}
-                      {canPerformTreatment() && (
-                        <button
-                          className={`w-full py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold ${activeHospitalization ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}`}
-                          onClick={() => setIsHospitalizationOpen(true)}
-                        >
-                          {activeHospitalization ? "שחרר מאשפוז" : "פתח אשפוז"} <ChevronLeft className="w-5 h-5" />
-                        </button>
-                      )}
-                      <button
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 font-semibold"
-                        onClick={() => setIsAnesthesiaOpen(true)}
-                      >
-                        חתימת הסכמת הרדמה <ChevronLeft className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-full bg-gray-100 text-gray-500 font-medium py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 border border-gray-200 font-medium">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      עדכון תיק רפואי — למורשים בלבד
-                    </div>
-                  )}
-                </div>
-              </div>
+              {activeHospitalization && (
+                <p className="mt-2 text-[13px] text-emerald-700 font-semibold">
+                  מאושפז/ת במחלקת {activeHospitalization.department || "לא צוין"}{activeHospitalization.cage_or_room ? ` · ${activeHospitalization.cage_or_room}` : ""}
+                </p>
+              )}
             </div>
-          </div>
 
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-gray-900 text-[17px] font-semibold">היסטוריה רפואית</h3>
-                  <p className="text-gray-500 text-[12px] mt-1">לחיצה על ביקור פותחת את כל הפרטים: בעיות, בדיקה גופנית, טיפול, אבחנות ומרשמים</p>
-                </div>
-                <span className="text-gray-500 font-medium text-[13px]">{patientHistory.length} ביקורים</span>
-              </div>
-
-              <div className="p-6">
-                {patientHistory.length > 0 ? (
-                  <div className="space-y-4">
-                    {patientHistory.map((visit) => {
-                      const cfg = getVisitDisplayConfig((visit as any).visitType);
-                      const IconComponent = cfg.icon;
-                      const expanded = expandedVisitId === visit.id;
-                      const visitProblems = getMedicalProblemsForVisit(visit.id);
-                      const visitExams = getPhysicalExamsForVisit(visit.id);
-                      const visitDifferentials = getDifferentialDiagnosesForVisit(visit.id);
-                      const visitPrescriptions = patientPrescriptions.filter((prescription) => prescription.visitId === visit.id);
-
-                      return (
-                        <article key={visit.id} className={`rounded-2xl border transition-all overflow-hidden ${expanded ? "border-blue-200 shadow-sm" : "border-gray-100 hover:border-blue-100"}`}>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedVisitId(expanded ? null : visit.id)}
-                            className="w-full p-4 text-right bg-white hover:bg-gray-50 transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-start gap-4">
-                              <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${cfg.color}`}>
-                                <IconComponent className="w-5 h-5" />
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <span className="text-gray-900 text-[15px] font-bold">{visit.chiefComplaint || visit.reason || "ביקור רפואי"}</span>
-                                  <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${severityClass(visit.urgencyLevel)}`}>
-                                    {severityLabel(visit.urgencyLevel)}
-                                  </span>
-                                  {visitPrescriptions.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">
-                                      {visitPrescriptions.length} מרשמים
-                                    </span>
-                                  )}
-                                  {visit.followUpRequired && (
-                                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-bold">
-                                      נדרש מעקב
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-gray-500 text-[13px] font-medium">{visit.date} · {visit.vetName || "צוות המרפאה"}</p>
-                                <p className="text-gray-500 text-[13px] mt-1 line-clamp-1">{visit.treatment || visit.finalDiagnosis || visit.diagnosis || "לחץ לפתיחת פרטי הביקור"}</p>
-                              </div>
-
-                              <span className="text-blue-600 text-[12px] font-semibold shrink-0 mt-1">{expanded ? "סגור" : "פתח פרטים"}</span>
-                            </div>
-                          </button>
-
-                          {expanded && (
-                            <div className="border-t border-gray-100 p-5 bg-gray-50/60 space-y-4">
-                              <MedicalDetailSection icon={ClipboardList} title="פרטי ביקור">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                  <p><b>תאריך:</b> {visit.date}</p>
-                                  <p><b>רופא מטפל:</b> {visit.vetName || "לא צוין"}</p>
-                                  <p><b>סוג רשומה:</b> {cfg.label}</p>
-                                  <p><b>רמת דחיפות:</b> {severityLabel(visit.urgencyLevel)}</p>
-                                </div>
-                                <p className="mt-2"><b>סיבת ביקור:</b> {visit.chiefComplaint || visit.reason || "לא צוין"}</p>
-                              </MedicalDetailSection>
-
-                              {visitProblems.length > 0 && (
-                                <MedicalDetailSection icon={AlertTriangle} title="בעיות / תלונות פעילות">
-                                  <div className="space-y-2 whitespace-normal">
-                                    {visitProblems.map((problem) => (
-                                      <div key={problem.id} className="rounded-xl border border-gray-100 bg-white p-3">
-                                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                                          <b className="text-gray-900">{problem.problemText}</b>
-                                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${severityClass(problem.severity)}`}>{severityLabel(problem.severity)}</span>
-                                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-bold">{statusLabel(problem.status)}</span>
-                                        </div>
-                                        {problem.notes && <p className="text-gray-600 whitespace-pre-wrap">{problem.notes}</p>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </MedicalDetailSection>
-                              )}
-
-                              {visitExams.length > 0 && (
-                                <MedicalDetailSection icon={Activity} title="בדיקה גופנית">
-                                  <div className="space-y-2 whitespace-normal">
-                                    {visitExams.map((exam) => (
-                                      <div key={exam.id} className="rounded-xl border border-gray-100 bg-white p-3">
-                                        <p className="text-gray-400 text-[12px] mb-1">{exam.examDate}</p>
-                                        <p className="whitespace-pre-wrap leading-7">{exam.findings || "לא צוין"}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </MedicalDetailSection>
-                              )}
-
-                              <MedicalDetailSection icon={Stethoscope} title="טיפול שבוצע והנחיות">
-                                {visit.treatment || "לא צוין"}
-                              </MedicalDetailSection>
-
-                              {visitDifferentials.length > 0 && (
-                                <MedicalDetailSection icon={FileText} title="אבחנות מבדלות">
-                                  <div className="space-y-2 whitespace-normal">
-                                    {visitDifferentials.map((diagnosis) => (
-                                      <div key={diagnosis.id} className="rounded-xl border border-gray-100 bg-white p-3">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <b className="text-gray-900">{diagnosis.diagnosisText}</b>
-                                          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{statusLabel(diagnosis.likelihood)}</span>
-                                        </div>
-                                        {diagnosis.notes && <p className="text-gray-600 whitespace-pre-wrap">{diagnosis.notes}</p>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </MedicalDetailSection>
-                              )}
-
-                              <MedicalDetailSection icon={CheckCircle2} title="אבחנה סופית">
-                                {visit.finalDiagnosis || visit.diagnosis || "לא צוין"}
-                              </MedicalDetailSection>
-
-                              {visitPrescriptions.length > 0 && (
-                                <MedicalDetailSection icon={Pill} title="מרשמים מהביקור">
-                                  <div className="space-y-2 whitespace-normal">
-                                    {visitPrescriptions.map((prescription) => (
-                                      <div key={prescription.id} className="rounded-xl border border-gray-100 bg-white p-3 flex items-start justify-between gap-3">
-                                        <div>
-                                          <p className="font-bold text-gray-900">{prescription.medication || "תרופה"}</p>
-                                          <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || "אין פרטי מינון"}</p>
-                                          <p className="text-gray-400 text-[12px] mt-1">תאריך התחלה: {prescription.startDate || "לא צוין"}</p>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
-                                            setSelectedPrescriptionVisit(mapVisitForPrescriptionDocument(visit));
-                                          }}
-                                          className="shrink-0 flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-lg text-[12px] font-bold cursor-pointer"
-                                        >
-                                          <FileText className="w-4 h-4" /> הצג מרשם
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </MedicalDetailSection>
-                              )}
-
-                              {(visit.notes || visit.followUpNotes) && (
-                                <MedicalDetailSection icon={FileText} title="סיכום והערות">
-                                  {visit.notes && <p>{visit.notes}</p>}
-                                  {visit.followUpNotes && <p className="mt-2"><b>הערות מעקב:</b> {visit.followUpNotes}</p>}
-                                </MedicalDetailSection>
-                              )}
-                            </div>
-                          )}
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-gray-500 font-medium">
-                    <Stethoscope className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p>אין היסטוריה רפואית</p>
-                  </div>
+            {canEditMedicalRecords() ? (
+              <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                {canPerformTreatment() && (
+                  <button
+                    className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-5 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[14px] flex items-center justify-center gap-2 font-semibold"
+                    onClick={() => setIsTreatmentOpen(true)}
+                  >
+                    הוסף רשומה רפואית <ChevronLeft className="w-4 h-4" />
+                  </button>
                 )}
+                {canPerformTreatment() && (
+                  <button
+                    className={`px-5 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[14px] flex items-center justify-center gap-2 font-semibold ${activeHospitalization ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}`}
+                    onClick={() => setIsHospitalizationOpen(true)}
+                  >
+                    {activeHospitalization ? "שחרר מאשפוז" : "פתח אשפוז"}
+                  </button>
+                )}
+                <button
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[14px] flex items-center justify-center gap-2 font-semibold"
+                  onClick={() => setIsAnesthesiaOpen(true)}
+                >
+                  הסכמת הרדמה
+                </button>
               </div>
-            </div>
-
-            {patientPrescriptions.some((prescription) => !prescription.visitId) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                  <h3 className="text-gray-900 text-[17px] font-semibold">מרשמים כלליים</h3>
-                  <span className="text-gray-500 font-medium text-[13px]">{patientPrescriptions.filter((prescription) => !prescription.visitId).length} מרשמים</span>
-                </div>
-                <div className="p-6 space-y-3">
-                  {patientPrescriptions.filter((prescription) => !prescription.visitId).map((prescription) => (
-                    <div key={prescription.id} className="rounded-2xl border border-gray-100 p-4 flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-gray-900">{prescription.medication || "תרופה"}</p>
-                        <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || "אין פרטי מינון"}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
-                          setSelectedPrescriptionVisit(null);
-                        }}
-                        className="shrink-0 flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-lg text-[12px] font-bold cursor-pointer"
-                      >
-                        <FileText className="w-4 h-4" /> הצג מרשם
-                      </button>
-                    </div>
-                  ))}
-                </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500 text-[14px] font-medium">
+                אין הרשאת עדכון לתיק רפואי
               </div>
             )}
           </div>
         </div>
+
+        <div className="mb-8">
+          <PatientMedicalTimeline
+            visits={patientHistory}
+            prescriptions={patientPrescriptions}
+            getPhysicalExamsForVisit={getPhysicalExamsForVisit}
+            getMedicalProblemsForVisit={getMedicalProblemsForVisit}
+            getDifferentialDiagnosesForVisit={getDifferentialDiagnosesForVisit}
+            onOpenPrescription={(prescription, visit) => {
+              setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
+              setSelectedPrescriptionVisit(visit ? mapVisitForPrescriptionDocument(visit) : null);
+            }}
+          />
+        </div>
+
+        {patientPrescriptions.some((prescription) => !prescription.visitId) && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-gray-900 text-[17px] font-semibold">מרשמים כלליים</h3>
+              <span className="text-gray-500 font-medium text-[13px]">{patientPrescriptions.filter((prescription) => !prescription.visitId).length} מרשמים</span>
+            </div>
+            <div className="p-6 space-y-3">
+              {patientPrescriptions.filter((prescription) => !prescription.visitId).map((prescription) => (
+                <div key={prescription.id} className="rounded-2xl border border-gray-100 p-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-gray-900">{prescription.medication || "תרופה"}</p>
+                    <p className="text-gray-600 text-[13px] mt-1">{[prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || "אין פרטי מינון"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPrescriptionForPrint(mapPrescriptionForDocument(prescription));
+                      setSelectedPrescriptionVisit(null);
+                    }}
+                    className="shrink-0 flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-lg text-[12px] font-bold cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4" /> הצג מרשם
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8">
           <LabResultsPanel patientId={selectedPatient.id} petName={pet.name} />
@@ -1134,7 +963,7 @@ export function Patients() {
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                 <div>
                   <h3 className="text-gray-900 text-[18px] font-bold">עריכת פרטי חיה</h3>
-                  <p className="text-gray-500 text-[13px] mt-1">עדכון הפרטים יישמר ישירות בטבלת patients ב-Supabase</p>
+                  <p className="text-gray-500 text-[13px] mt-1">עדכון פרטי החיה בתיק המטופל</p>
                 </div>
                 <button
                   type="button"
@@ -1410,7 +1239,7 @@ export function Patients() {
                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                </svg>
-               <p className="text-gray-500 font-medium text-[15px]">טוען נתונים מהשרת...</p>
+               <p className="text-gray-500 font-medium text-[15px]">טוען מטופלים...</p>
              </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

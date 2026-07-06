@@ -4,6 +4,7 @@ import { KpiCards } from "../components/KpiCards";
 import { DashboardAssistant } from "../components/ai/PageAssistants";
 import { AppointmentsTable } from "../components/AppointmentsTable";
 import { ClinicFlowboard } from "../components/ClinicFlowboard";
+import { SmartWorklist } from "../components/SmartWorklist";
 import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, Check, Loader2, AlertCircle, CalendarPlus } from "lucide-react";
 import { TreatmentModal } from "../components/TreatmentModal";
 import { getStaffName, getStaffType, canEditMedicalRecords } from "../data/staffAuth";
@@ -410,6 +411,7 @@ export function Dashboard() {
         </div>
       </div>
       <KpiCards />
+      <SmartWorklist />
       <ClinicFlowboard />
       <AppointmentsTable />
 

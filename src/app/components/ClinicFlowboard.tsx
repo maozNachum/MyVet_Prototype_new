@@ -65,7 +65,7 @@ type FlowItem = {
 type FlowColumn = {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   count: number;
   icon: typeof CalendarClock;
   tone: FlowItemTone;
@@ -169,7 +169,7 @@ function isUrgentAppointment(appt: CalendarAppointment) {
 }
 
 function appointmentActionReason(appt: CalendarAppointment) {
-  if (appt.appointmentMode === "video") return "צריך לוודא שקיימת פנייה/קישור בדיגיטל";
+  if (appt.appointmentMode === "video") return "חסר קישור וידאו";
   if (isEmptyValue(appt.vet)) return "חסר שיבוץ רופא";
   if (appt.appointmentMode === "physical" && isEmptyValue(appt.room)) return "חסר חדר/מיקום";
   if (isUrgentAppointment(appt)) return "מסומן כדחוף";
@@ -242,7 +242,7 @@ function buildHospitalItems(hospitalizations: HospitalizationRow[], staffType: S
     title: hospitalization.department || "אשפוז פעיל",
     subtitle:
       staffType === "secretary"
-        ? hospitalization.cage_or_room ? `מיקום: ${hospitalization.cage_or_room}` : "דורש מעקב תפעולי"
+        ? hospitalization.cage_or_room ? `מיקום: ${hospitalization.cage_or_room}` : "דורש מעקב"
         : hospitalization.expected_discharge_at
           ? `שחרור צפוי ${formatDate(hospitalization.expected_discharge_at)}`
           : hospitalization.reason || "ללא תאריך שחרור צפוי",
@@ -291,8 +291,8 @@ export function ClinicFlowboard() {
       .sort((a, b) => appointmentDate(a).getTime() - appointmentDate(b).getTime());
   }, [calendarAppointments]);
 
-  const loadFlowboard = useCallback(async () => {
-    setIsLoading(true);
+  const loadFlowboard = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true);
     setHasLoadWarning(false);
 
     try {
@@ -347,42 +347,20 @@ export function ClinicFlowboard() {
   }, []);
 
   useEffect(() => {
-    const syncAll = () => {
-      void refreshAppointments();
-      void loadFlowboard();
-    };
-
-    const syncWhenVisible = () => {
-      if (typeof document === "undefined" || document.visibilityState === "visible") {
-        syncAll();
-      }
-    };
-
-    syncAll();
-
-    window.addEventListener("focus", syncWhenVisible);
-    document.addEventListener("visibilitychange", syncWhenVisible);
-
-    const intervalId = window.setInterval(() => {
-      if (typeof document === "undefined" || document.visibilityState === "visible") {
-        syncAll();
-      }
-    }, 30000);
+    void refreshAppointments();
+    void loadFlowboard(true);
 
     const channel = supabase
       .channel("myvet-flowboard-live-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => void refreshAppointments())
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => void loadFlowboard())
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void loadFlowboard())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders" }, () => void loadFlowboard())
-      .on("postgres_changes", { event: "*", schema: "public", table: "hospitalizations" }, () => void loadFlowboard())
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => void loadFlowboard())
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => void loadFlowboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void loadFlowboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders" }, () => void loadFlowboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "hospitalizations" }, () => void loadFlowboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => void loadFlowboard(false))
       .subscribe();
 
     return () => {
-      window.removeEventListener("focus", syncWhenVisible);
-      document.removeEventListener("visibilitychange", syncWhenVisible);
-      window.clearInterval(intervalId);
       void supabase.removeChannel(channel);
     };
   }, [loadFlowboard, refreshAppointments]);
@@ -391,20 +369,20 @@ export function ClinicFlowboard() {
     const appointmentColumn: FlowColumn = {
       id: "appointments",
       title: staffType === "secretary" ? "תורים שדורשים תיאום" : "תורים שדורשים תשומת לב",
-      description: "רק תורי וידאו, שיבוץ חסר או תורים חריגים — לא כל תורי היום",
+      description: "",
       count: appointmentTasks.length,
       icon: CalendarClock,
       tone: "blue",
       actionLabel: "פתח יומן",
       onOpen: () => navigate("/appointments"),
       items: buildAppointmentActionItems(appointmentTasks, staffType),
-      emptyText: "כל התורים מסודרים כרגע",
+      emptyText: "אין משימות פתוחות כרגע",
     };
 
     const digitalColumn: FlowColumn = {
       id: "digital",
       title: "פניות דיגיטליות",
-      description: staffType === "secretary" ? "פניות שממתינות לשירות או תיאום" : "שיחות והודעות שמחכות לצוות",
+      description: "",
       count: conversations.length,
       icon: staffType === "secretary" ? MessageCircle : Video,
       tone: "purple",
@@ -417,11 +395,11 @@ export function ClinicFlowboard() {
     const hospitalColumn: FlowColumn = {
       id: "hospitalizations",
       title: staffType === "secretary" ? "אשפוזים פעילים" : "מאושפזים למעקב",
-      description: staffType === "secretary" ? "תמונת עומס ותיאומי שחרור" : "מטופלים שדורשים בדיקה או החלטה בהמשך היום",
+      description: "",
       count: hospitalizations.length,
       icon: BedDouble,
       tone: "amber",
-      actionLabel: "פתח תיקי מטופלים",
+      actionLabel: "פתח מטופלים",
       onOpen: () => navigate("/patients"),
       items: buildHospitalItems(hospitalizations, staffType),
       emptyText: "אין מאושפזים פעילים",
@@ -434,7 +412,7 @@ export function ClinicFlowboard() {
         {
           id: "payments",
           title: "גבייה למעקב",
-          description: "תשלומים פתוחים או חלקיים שצריך לסגור",
+          description: "",
           count: payments.length,
           icon: CreditCard,
           tone: "rose",
@@ -452,7 +430,7 @@ export function ClinicFlowboard() {
       {
         id: "labs",
         title: staffType === "nurse" ? "מעבדה ותוצאות" : "בדיקות שממתינות",
-        description: staffType === "nurse" ? "בדיקות שצריך לבצע, לעדכן או לעקוב אחריהן" : "בדיקות פתוחות או חריגות שכדאי לבדוק",
+        description: "",
         count: labs.length,
         icon: FlaskConical,
         tone: "amber",
@@ -479,10 +457,10 @@ export function ClinicFlowboard() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-gray-900 text-[20px] font-bold">לוח עבודה יומי</h2>
               <span className={`px-2.5 py-1 rounded-full text-[12px] font-bold ${getWorkloadTone(totalOpenWork)}`}>
-                {getWorkloadLabel(totalOpenWork)} · {totalOpenWork} משימות
+                {totalOpenWork === 0 ? "אין משימות" : `${getWorkloadLabel(totalOpenWork)} · ${totalOpenWork} משימות`}
               </span>
             </div>
-            <p className="text-gray-500 text-[14px] mt-1">משימות להיום</p>
+            <p className="text-gray-500 text-[14px] mt-1">משימות פתוחות להיום</p>
           </div>
         </div>
         <div className="self-start lg:self-auto flex flex-wrap items-center gap-2">
@@ -490,7 +468,7 @@ export function ClinicFlowboard() {
             type="button"
             onClick={() => {
               void refreshAppointments();
-              void loadFlowboard();
+              void loadFlowboard(true);
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors text-[14px] font-semibold"
           >
@@ -508,13 +486,13 @@ export function ClinicFlowboard() {
 
       {(isLoading || isLoadingAppointments) ? (
         <div className="px-6 py-10 flex items-center justify-center gap-3 text-gray-500 text-[14px]">
-          <Loader2 className="w-5 h-5 animate-spin" /> טוען את לוח העבודה...
+          <Loader2 className="w-5 h-5 animate-spin" /> טוען משימות...
         </div>
       ) : (
         <>
           {hasLoadWarning && (
             <div className="mx-6 mt-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-amber-700 text-[13px] flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" /> חלק מהנתונים לא נטענו כרגע. אפשר להמשיך לעבוד ולרענן בהמשך.
+              <AlertCircle className="w-4 h-4 shrink-0" /> לא הצלחנו לטעון את כל הנתונים. אפשר לרענן ולנסות שוב.
             </div>
           )}
 
@@ -531,7 +509,9 @@ export function ClinicFlowboard() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-gray-900 text-[15px] font-bold truncate">{column.title}</h3>
-                        <p className="text-gray-500 text-[12px] leading-relaxed mt-0.5">{column.description}</p>
+                        {column.description && (
+                          <p className="text-gray-500 text-[12px] leading-relaxed mt-0.5">{column.description}</p>
+                        )}
                       </div>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[12px] font-bold ${classes.badge}`}>{column.count}</span>
