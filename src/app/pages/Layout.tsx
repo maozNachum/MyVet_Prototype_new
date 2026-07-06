@@ -1,6 +1,7 @@
 import { Outlet } from "react-router";
 import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
+import { CommandCenter } from "../components/CommandCenter";
 
 export function Layout() {
   return (
@@ -10,6 +11,7 @@ export function Layout() {
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
       <Navbar />
+      <CommandCenter />
       <main className="flex-1">
         <Outlet />
       </main>
