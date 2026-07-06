@@ -19,9 +19,10 @@ import {
   Phone,
 } from "lucide-react";
 import { MyVetLogo } from "../components/MyVetLogo";
+import { supabase } from "../../services/supabaseClient";
 
 const heroImage =
-  "https://images.unsplash.com/photo-1681779876669-50709aa75025?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZyUyMGNhdCUyMHRvZ2V0aGVyJTIwc29mdCUyMGxpZ2h0JTIwcG9ydHJhaXR8ZW58MXx8fHwxNzcyNDU2MTg0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+  "https://images.unsplash.com/photo-1681779876669-50709aa75025?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZyUyMGNhdCUyMHRvZ2V0aGVyJTIwc29mdCUyMGxpZ2h0JTIwcG9ydHJhaXR|en|1|||1772456184|0&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
 type LoginRole = null | "owner" | "staff";
 
@@ -47,16 +48,104 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    setFormMessage(null);
     setIsLoading(true);
-    if (role === "staff") {
-      localStorage.setItem("myvet_staff_type", staffType);
-    }
-    setTimeout(() => {
+
+    try {
+      if (role === "owner" && isSignUp) {
+        // --- שלב 1: הרשמה (Sign Up) ללקוחות בלבד ---
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+        if (!data.user) throw new Error("המשתמש לא נוצר במערכת האימות.");
+
+        // פיצול השם המלא לשם פרטי ושם משפחה עבור טבלת owners
+        const nameParts = fullName.trim().split(" ");
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        // שמירת הנתונים בטבלת users המעודכנת שלכם
+        const { error: usersError } = await supabase
+          .from("users")
+          .insert({
+            id: data.user.id,
+            role: "client",
+            full_name: fullName,
+            phone: phoneNumber,
+            id_number: idNumber,
+          });
+
+        if (usersError) throw usersError;
+
+        // שמירת פרטי הבעלים בטבלת owners לניהול התיק הרפואי
+        const { error: ownersError } = await supabase
+          .from("owners")
+          .insert({
+            owner_id: idNumber,
+            auth_user_id: data.user.id,
+            owner_first_name: firstName,
+            owner_last_name: lastName,
+            phone: phoneNumber,
+            email: email,
+          });
+
+        if (ownersError) throw ownersError;
+
+        setFormMessage("החשבון נוצר בהצלחה! מעביר אותך לאזור האישי...");
+        setTimeout(() => navigate("/portal"), 1500);
+        return;
+
+      } else {
+        // --- שלב 2: התחברות (Log In) ללקוחות ולצוות ---
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email, // שים לב: כאן יש להזין את הכתובת אימייל שאיתה המשתמש נרשם
+          password,
+        });
+
+        if (error) throw new Error("פרטי ההתחברות שגויים או שהמשתמש אינו קיים.");
+        if (!data.user) throw new Error("שגיאה בתהליך ההתחברות.");
+
+        // משיכת תפקיד המשתמש מטבלת הראוטינג users כדי לוודא הרשאות ומניעת זיופים
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (userError || !userData) {
+          throw new Error("לא נמצאו הרשאות מתאימות למשתמש זה במערכת.");
+        }
+
+        // אבטחה: מניעת גישה צולבת (לקוח שמנסה להיכנס ממסך צוות או הפוך)
+        if (role === "owner" && userData.role !== "client") {
+          await supabase.auth.signOut();
+          throw new Error("חשבון זה מוגדר כאיש צוות. אנא התחברו מאזור הצוות.");
+        }
+
+        if (role === "staff" && userData.role === "client") {
+          await supabase.auth.signOut();
+          throw new Error("חשבון זה מוגדר כלקוח. אנא התחברו מהאזור האישי.");
+        }
+
+        // ניתוב סופי בהתאם לסוג המשתמש שאומת
+        if (role === "staff") {
+          localStorage.setItem("myvet_staff_type", staffType);
+          navigate("/"); // מעבר לדשבורד הראשי של המרפאה
+        } else {
+          navigate("/portal"); // מעבר לפורטל הלקוחות
+        }
+      }
+    } catch (err: any) {
+      setFormMessage(err.message);
+    } finally {
       setIsLoading(false);
-      navigate(role === "owner" ? "/portal" : "/");
-    }, 800);
+    }
   };
 
   const handleFaceId = () => {
@@ -132,7 +221,6 @@ export function Login() {
                   }}
                   className="group relative bg-white border-2 border-gray-100 hover:border-rose-300 rounded-2xl p-4 pt-5 transition-all cursor-pointer hover:shadow-lg hover:shadow-rose-500/10 text-center overflow-hidden"
                 >
-                  {/* Accent stripe top */}
                   <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-l from-pink-400 to-rose-500 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-100 group-hover:from-rose-100 group-hover:to-pink-200 flex items-center justify-center transition-colors shadow-sm mx-auto mb-4">
@@ -146,7 +234,6 @@ export function Login() {
                     אזור אישי
                   </h3>
 
-                  {/* Feature pills */}
                   <div className="space-y-1.5 mt-2.5">
                     <div className="flex items-center gap-2 text-[12px] text-gray-500">
                       <div className="w-5 h-5 rounded-md bg-rose-50 flex items-center justify-center shrink-0">
@@ -186,7 +273,6 @@ export function Login() {
                   }}
                   className="group relative bg-white border-2 border-gray-100 hover:border-blue-300 rounded-2xl p-4 pt-5 transition-all cursor-pointer hover:shadow-lg hover:shadow-blue-500/10 text-center overflow-hidden"
                 >
-                  {/* Accent stripe top */}
                   <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-l from-blue-500 to-indigo-600 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 group-hover:from-blue-100 group-hover:to-indigo-200 flex items-center justify-center transition-colors shadow-sm mx-auto mb-4">
@@ -200,7 +286,6 @@ export function Login() {
                     צוות מרפאה
                   </h3>
 
-                  {/* Feature pills */}
                   <div className="space-y-1.5 mt-2.5">
                     <div className="flex items-center gap-2 text-[12px] text-gray-500">
                       <div className="w-5 h-5 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
@@ -242,7 +327,7 @@ export function Login() {
           {/* ── STEP 2: Login Form ── */}
           {role !== null && (
             <div
-              className={`rounded-2xl shadow-sm border-2 p-6 sm:p-10 transition-all${
+              className={`rounded-2xl shadow-sm border-2 p-6 sm:p-10 transition-all ${
                 role === "owner"
                   ? "bg-white border-rose-100"
                   : "bg-white border-blue-100"
@@ -269,7 +354,6 @@ export function Login() {
 
               {/* Role Identity */}
               <div className="text-center mb-8">
-                {/* Icon */}
                 <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-sm ${
                   role === "owner"
                     ? "bg-gradient-to-br from-rose-50 to-pink-100"
@@ -490,15 +574,13 @@ export function Login() {
                     style={{ fontWeight: 500 }}
                   >
                     {role === "owner"
-                      ? isSignUp
-                        ? "אימייל"
-                        : "תעודת זהות / אימייל"
-                      : "שם משתמש / אימייל"}
+                      ? "אימייל"
+                      : "אימייל צוות"}
                   </label>
                   <div className="relative">
                     <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 font-medium pointer-events-none" />
                     <input
-                      type="text"
+                      type="email"
                       id="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -507,13 +589,7 @@ export function Login() {
                           ? "border-gray-200 focus:ring-rose-500/20 focus:border-rose-300"
                           : "border-gray-200 focus:ring-blue-500/20 focus:border-blue-400"
                       }`}
-                      placeholder={
-                        role === "owner"
-                          ? isSignUp
-                            ? "הזינו כתובת אימייל"
-                            : "הזינו מספר טלפון או אימייל"
-                          : "הזינו שם משתמש או אימייל"
-                      }
+                      placeholder="הזינו כתובת אימייל"
                       required
                     />
                   </div>
