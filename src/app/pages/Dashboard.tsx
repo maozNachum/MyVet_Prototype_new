@@ -3,10 +3,12 @@ import { useNavigate } from "react-router";
 import { KpiCards } from "../components/KpiCards";
 import { DashboardAssistant } from "../components/ai/PageAssistants";
 import { AppointmentsTable } from "../components/AppointmentsTable";
+import { ClinicFlowboard } from "../components/ClinicFlowboard";
 import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, Check, Loader2, AlertCircle, CalendarPlus } from "lucide-react";
 import { TreatmentModal } from "../components/TreatmentModal";
 import { getStaffName, getStaffType, canEditMedicalRecords } from "../data/staffAuth";
 import { supabase } from "../../services/supabaseClient";
+import { useAppointmentStore } from "../data/AppointmentStore";
 
 type SpeciesType = "dog" | "cat" | "bird" | "rabbit" | "hamster" | "other";
 
@@ -156,6 +158,7 @@ export function Dashboard() {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const navigate = useNavigate();
+  const { refreshAppointments } = useAppointmentStore();
   const staffType = getStaffType();
   const isSecretary = staffType === "secretary";
   const canTreat = canEditMedicalRecords();
@@ -228,8 +231,24 @@ export function Dashboard() {
   }
 
   useEffect(() => {
-    loadPatients();
-  }, []);
+    void refreshAppointments();
+    void loadPatients();
+
+    const syncDashboard = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        void refreshAppointments();
+        void loadPatients();
+      }
+    };
+
+    window.addEventListener("focus", syncDashboard);
+    document.addEventListener("visibilitychange", syncDashboard);
+
+    return () => {
+      window.removeEventListener("focus", syncDashboard);
+      document.removeEventListener("visibilitychange", syncDashboard);
+    };
+  }, [refreshAppointments]);
 
   const closeModal = () => {
     setShowWalkInPicker(false);
@@ -391,6 +410,7 @@ export function Dashboard() {
         </div>
       </div>
       <KpiCards />
+      <ClinicFlowboard />
       <AppointmentsTable />
 
       {showWalkInPicker && (

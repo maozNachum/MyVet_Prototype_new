@@ -207,7 +207,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     } catch (err: any) {
       console.error("Error loading appointments from Supabase:", err);
       setError(err?.message || "שגיאה בטעינת תורים");
-      toast.error("לא הצלחנו לטעון את התורים");
+      toast.error("שגיאה בטעינת תורים מהענן");
     } finally {
       setIsLoading(false);
     }
@@ -215,6 +215,41 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     refreshAppointments();
+  }, [refreshAppointments]);
+
+  useEffect(() => {
+    const syncAppointments = () => {
+      void refreshAppointments();
+    };
+
+    const syncWhenVisible = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        syncAppointments();
+      }
+    };
+
+    window.addEventListener("focus", syncWhenVisible);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+
+    const intervalId = window.setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        syncAppointments();
+      }
+    }, 30000);
+
+    const channel = supabase
+      .channel("myvet-appointments-live-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, syncAppointments)
+      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, syncAppointments)
+      .on("postgres_changes", { event: "*", schema: "public", table: "owners" }, syncAppointments)
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("focus", syncWhenVisible);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+      window.clearInterval(intervalId);
+      void supabase.removeChannel(channel);
+    };
   }, [refreshAppointments]);
 
   const unreadCount = useCallback(

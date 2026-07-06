@@ -229,6 +229,12 @@ export function Navbar() {
     navigate(`/inventory?search=${encodeURIComponent(query)}`);
   };
 
+  const openCommandCenter = () => {
+    setSearchQuery("");
+    setIsSearchOpen(false);
+    window.dispatchEvent(new CustomEvent("myvet:open-command-center"));
+  };
+
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
       <div className="w-full px-4 h-16 flex items-center justify-between mx-auto">
@@ -395,6 +401,16 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={openCommandCenter}
+            className="hidden xl:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[13px] font-medium text-white/90 transition hover:bg-white/15 hover:text-white"
+            title="פתח מרכז פעולות"
+          >
+            <Search className="w-4 h-4" />
+            <span>פעולות</span>
+            <kbd className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white/80">Ctrl K</kbd>
+          </button>
           <div className="hidden lg:block w-px h-6 bg-white/20 ml-2"></div>
           <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-3 py-1.5 border border-white/10 shadow-inner">
             <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />

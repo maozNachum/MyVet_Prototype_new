@@ -652,7 +652,7 @@ export function Patients() {
       window.location.reload();
     } catch (error) {
       console.error("Supabase Insert Error:", error);
-      toast.error("לא הצלחנו לשמור את פרטי המטופל. נסה שוב.");
+      toast.error("אירעה שגיאה בעת שמירת הנתונים לענן");
     }
   };
 
@@ -1134,7 +1134,7 @@ export function Patients() {
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                 <div>
                   <h3 className="text-gray-900 text-[18px] font-bold">עריכת פרטי חיה</h3>
-                  <p className="text-gray-500 text-[13px] mt-1">כאן אפשר לעדכן פרטי זיהוי, משקל ומידע בסיסי על החיה.</p>
+                  <p className="text-gray-500 text-[13px] mt-1">עדכון הפרטים יישמר ישירות בטבלת patients ב-Supabase</p>
                 </div>
                 <button
                   type="button"
