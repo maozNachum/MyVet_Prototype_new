@@ -208,7 +208,7 @@ export function LabStoreProvider({ children }: { children: ReactNode }) {
 
       const mapped = { ...mapLabOrderRow(data), petName: order.petName };
       setLabOrders((prev) => [mapped, ...prev.filter((o) => o.id !== mapped.id)]);
-      toast.success("בדיקת המעבדה נשלחה ונשמרה במסד הנתונים");
+      toast.success("בדיקת המעבדה נשלחה בהצלחה");
       return mapped;
     } catch (err: any) {
       console.error("Failed to add lab order", err);
@@ -236,7 +236,7 @@ export function LabStoreProvider({ children }: { children: ReactNode }) {
 
       const mapped = mapLabOrderRow(data);
       setLabOrders((prev) => prev.map((o) => (o.id === id ? { ...mapped, petName: o.petName } : o)));
-      toast.success("תוצאות הבדיקה עודכנו במסד הנתונים");
+      toast.success("תוצאות הבדיקה עודכנו בהצלחה");
       return mapped;
     } catch (err: any) {
       console.error("Failed to update lab order", err);

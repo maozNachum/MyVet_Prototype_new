@@ -29,6 +29,7 @@ import {
   ownerName,
   petName,
 } from "../../data/reportMetrics";
+import { toast } from "sonner";
 
 export type ReportInsightContext =
   "overview" | "revenue" | "staff" | "inventory" | "medical" | "compliance";
@@ -719,7 +720,7 @@ async function generateInsights(
     insights.unshift({
       id: "report-data-errors",
       title: "חלק מהנתונים לא נטענו",
-      description: `לא ניתן היה לטעון ${errors.length} טבלאות. ייתכן שחסרות הרשאות RLS או שהטבלאות עדיין לא קיימות.`,
+      description: `חלק מהמידע לא נטען כרגע, ולכן התובנות עשויות להיות חלקיות.`,
       severity: "warning",
       category: "general",
       metric: `${errors.length} שגיאות`,
@@ -727,7 +728,7 @@ async function generateInsights(
       recommendedAction: errors
         .map((e) => `${e.table}: ${e.message}`)
         .join(" | "),
-      actionLabel: "בדוק הרשאות",
+      actionLabel: "נסה שוב מאוחר יותר",
       score: 9999,
     });
   }
@@ -915,7 +916,7 @@ export function AIInsightsPanel({
 
     if (error) {
       console.error("Failed to update insight status", error);
-      alert("לא הצלחנו לעדכן את סטטוס התובנה");
+      toast.error("לא הצלחנו לעדכן את סטטוס התובנה");
       setActionLoadingId(null);
       return;
     }
@@ -955,7 +956,7 @@ export function AIInsightsPanel({
 
     if (error) {
       console.error("Failed to save insight", error);
-      alert("לא הצלחנו לשמור את התובנה למעקב");
+      toast.error("לא הצלחנו לשמור את התובנה למעקב");
       setActionLoadingId(null);
       return;
     }

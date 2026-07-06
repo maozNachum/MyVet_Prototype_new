@@ -256,7 +256,7 @@ export function OwnerBookAppointment({
       }, 2200);
     } catch (error) {
       console.error("Supabase appointment insert error:", error);
-      setValidationError("אירעה שגיאה בעת קביעת התור. בדקו הרשאות/טבלת appointments ב-Supabase.");
+      setValidationError("לא הצלחנו לקבוע את התור כרגע. נסה שוב בעוד רגע או פנה לצוות המרפאה.");
     } finally {
       setIsSaving(false);
     }

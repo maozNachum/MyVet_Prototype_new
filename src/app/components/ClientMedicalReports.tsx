@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
 import { PrescriptionDocumentModal } from "./PrescriptionDocumentModal";
+import { toast } from "sonner";
 
 interface ClientMedicalReportsProps {
   petId: number;
@@ -283,7 +284,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
     const { data, error: signedError } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 60 * 5);
 
     if (signedError || !data?.signedUrl) {
-      alert("לא הצלחנו לפתוח את המסמך");
+      toast.error("לא הצלחנו לפתוח את המסמך");
       return;
     }
 

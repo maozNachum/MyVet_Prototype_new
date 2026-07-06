@@ -235,7 +235,7 @@ export function AppointmentSchedule() {
 
       {(isLoading || isStaffLoading) && (
         <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 text-[13px] font-medium">
-          מסנכרן תורים ואנשי צוות מול Supabase...
+          טוען את היומן ואת רשימת אנשי הצוות...
         </div>
       )}
 
@@ -246,12 +246,12 @@ export function AppointmentSchedule() {
           {/* Status legend - top left corner */}
           <div className="absolute -top-14 left-0 flex items-center gap-4 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-100 shadow-sm">
             <span className="text-gray-500 font-medium text-[12px]" style={{ fontWeight: 600 }}>
-              מקור נתונים:
+              תצוגת היומן:
             </span>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full shrink-0 bg-gray-400" />
               <span className="text-gray-500 text-[11.5px]" style={{ fontWeight: 500 }}>
-                תורים מטבלת appointments
+                תורים פעילים במערכת
               </span>
             </div>
           </div>

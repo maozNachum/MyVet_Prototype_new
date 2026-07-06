@@ -228,6 +228,9 @@ export function AppointmentActionModal({
                 selected={rescheduleTime || null}
                 onSelect={setRescheduleTime}
               />
+              {(!rescheduleDate || !rescheduleTime) && (
+                <p className="text-blue-600 text-[12px] font-semibold mt-1">בחרו תאריך ושעה חדשים כדי להזיז את התור.</p>
+              )}
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={onReschedule}

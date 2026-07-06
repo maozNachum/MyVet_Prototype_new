@@ -1,11 +1,13 @@
 interface MyVetLogoProps {
   className?: string;
   color?: string;
+  showTagline?: boolean;
 }
 
 export function MyVetLogo({
   className = "",
   color = "currentColor",
+  showTagline = true,
 }: MyVetLogoProps) {
   const fillColor = color === "currentColor" ? color : color || "#000000";
 
@@ -15,7 +17,7 @@ export function MyVetLogo({
       xmlns="http://www.w3.org/2000/svg"
       width="full"
       height="full"
-      viewBox="0 0 600 290"
+      viewBox={showTagline ? "0 0 600 330" : "0 0 600 290"}
       preserveAspectRatio="xMidYMid meet"
       className={className}
       aria-label="MyVet"
@@ -37,6 +39,21 @@ export function MyVetLogo({
         <path d="M3550 1017 c-141 -47 -166 -235 -41 -305 99 -56 278 -5 213 60 -19 19 -21 19 -43 4 -37 -25 -111 -21 -143 9 -44 41 -35 45 99 45 141 0 143 1 125 68 -26 98 -118 150 -210 119z m111 -87 c42 -41 31 -50 -67 -50 -95 0 -105 10 -53 54 42 35 82 34 120 -4z" />
         <path d="M2670 1016 c0 -4 32 -77 70 -163 73 -165 75 -175 35 -213 -24 -22 -28 -23 -61 -11 -36 13 -53 6 -54 -22 0 -20 71 -38 109 -27 49 13 55 22 151 241 90 204 89 199 57 199 -21 0 -31 -16 -76 -122 -30 -68 -56 -126 -60 -130 -3 -4 -31 50 -61 120 -50 115 -58 127 -82 130 -16 2 -28 1 -28 -2z" />
       </g>
+      {showTagline && (
+        <text
+          x="300"
+          y="315"
+          fill={fillColor}
+          textAnchor="middle"
+          fontSize="30"
+          fontFamily="Heebo, Arial, sans-serif"
+          fontWeight="700"
+          direction="rtl"
+          unicodeBidi="plaintext"
+        >
+          טיפול מכל הלב, לכל המשפחה.
+        </text>
+      )}
     </svg>
   );
 }

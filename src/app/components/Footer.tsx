@@ -25,15 +25,11 @@ export function Footer() {
           </a>
         </div>
 
-        {/* Links */}
-        <div className="flex items-center gap-4">
-          <a href="#" className="text-blue-100 hover:text-white text-[13px] transition-colors">
-            פרטיות
-          </a>
+        {/* Legal note */}
+        <div className="flex items-center gap-4 text-blue-100 text-[13px]">
+          <span>פרטיות</span>
           <span className="text-white/20">•</span>
-          <a href="#" className="text-blue-100 hover:text-white text-[13px] transition-colors">
-            תנאים
-          </a>
+          <span>תנאי שימוש</span>
         </div>
       </div>
     </footer>

@@ -265,7 +265,7 @@ export function ClientPortalAssistant({ pets, appointments, notifications, digit
         unreadNotificationsCount: notifications.filter((n) => !n.isRead).length,
         openDigitalConversations: digitalConversations.filter((c) => c.status !== "closed").length,
         unpaidPaymentsCount: Object.values(paymentsByPet || {}).flat().filter((payment: any) => payment.status !== "paid").length,
-        availablePortalActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "תשלום דמו"],
+        availablePortalActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "תשלום לדוגמה"],
       })}
       privacyNote="לעזרה טכנית ושירותית בפורטל. לשאלה רפואית יש לפתוח פנייה לצוות או לקבוע תור."
     />

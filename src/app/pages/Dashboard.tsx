@@ -220,7 +220,7 @@ export function Dashboard() {
       );
     } catch (error) {
       console.error("Failed to load walk-in patients", error);
-      setLoadError("לא הצלחנו לטעון מטופלים מ-Supabase");
+      setLoadError("לא הצלחנו לטעון את רשימת המטופלים. נסה שוב בעוד רגע.");
       setPatients([]);
     } finally {
       setIsLoadingPatients(false);
@@ -326,7 +326,7 @@ export function Dashboard() {
       handleSelectPatient(newPatient);
     } catch (error) {
       console.error("Failed to create walk-in patient", error);
-      setLoadError("לא הצלחנו לשמור את המטופל החדש ב-Supabase");
+      setLoadError("לא הצלחנו לשמור את המטופל החדש. בדוק שהפרטים מלאים ונסה שוב.");
     } finally {
       setIsSavingPatient(false);
     }
@@ -403,7 +403,7 @@ export function Dashboard() {
                 ) : <Zap className="w-5 h-5 text-white/80" />}
                 <div>
                   <h3 className="text-white text-[17px] font-semibold">{modalView === "list" ? "טיפול ללא תור" : "רישום מטופל חדש"}</h3>
-                  <p className="text-white/70 text-[12px]">{modalView === "list" ? "בחרו חיה אמיתית מ-Supabase או הוסיפו מטופל חדש" : "הפרטים יישמרו בטבלאות owners ו-patients"}</p>
+                  <p className="text-white/70 text-[12px]">{modalView === "list" ? "בחרו מטופל קיים או הוסיפו מטופל חדש" : "מלאו את פרטי הבעלים והחיה לפתיחת טיפול"}</p>
                 </div>
               </div>
               <button onClick={closeModal} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-5 h-5" /></button>
@@ -427,7 +427,7 @@ export function Dashboard() {
                   {isLoadingPatients ? (
                     <div className="py-10 text-center text-gray-500 text-[14px]"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />טוען מטופלים...</div>
                   ) : filteredPatients.length === 0 ? (
-                    <div className="py-10 text-center text-gray-400 text-[14px]">לא נמצאו מטופלים מתאימים במסד.</div>
+                    <div className="py-10 text-center text-gray-400 text-[14px]">לא נמצאו מטופלים מתאימים.</div>
                   ) : (
                     filteredPatients.map((patient) => {
                       const Icon = patient.petSpecies === "dog" ? Dog : patient.petSpecies === "cat" ? Cat : PawPrint;

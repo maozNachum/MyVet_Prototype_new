@@ -411,7 +411,10 @@ export function DigitalCare() {
   async function sendMessage(text?: string, type: MessageType = "text") {
     if (!selectedConversation) return;
     const content = (text ?? messageText).trim();
-    if (!content) return;
+    if (!content) {
+      toast.error("כתבו הודעה לפני השליחה.");
+      return;
+    }
     setSending(true);
     setError(null);
     try {
@@ -519,7 +522,7 @@ export function DigitalCare() {
       )));
     } catch (err) {
       console.error("Failed uploading chat attachment", err);
-      setError("העלאת הקובץ לשיחה נכשלה. בדוק הרשאות Storage או שם Bucket");
+      setError("לא הצלחנו להעלות את הקובץ לשיחה. נסה שוב או פנה למנהל המערכת.");
     } finally {
       setSending(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1124,7 +1127,7 @@ export function DigitalCare() {
                     />
                     <button
                       onClick={() => sendMessage()}
-                      disabled={sending || !messageText.trim()}
+                      disabled={sending}
                       className="w-11 h-11 rounded-2xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
                     >
                       {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
@@ -1281,7 +1284,7 @@ export function DigitalCare() {
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-              <button onClick={createConversation} disabled={sending || !newConversation.owner_id} className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
+              <button onClick={createConversation} disabled={sending} className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
                 פתח שיחה
               </button>
               <button onClick={() => setIsNewModalOpen(false)} className="px-5 py-3 border border-gray-200 rounded-2xl text-gray-600 font-semibold cursor-pointer hover:bg-white">
@@ -1328,11 +1331,11 @@ export function DigitalCare() {
                 {meetLinkError && <p className="text-red-500 text-[12px] font-semibold mt-2">{meetLinkError}</p>}
               </div>
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-blue-800 text-[13px] leading-6">
-                טיפ: בפרויקט הדמו אנחנו לא יוצרים קישור אוטומטית דרך Google API. הצוות יוצר את הקישור, והמערכת שומרת אותו כך ששני הצדדים ייכנסו לאותה שיחה.
+                צור קישור Google Meet והדבק אותו כאן. אותו קישור יופיע גם אצל הלקוח בפורטל.
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-              <button onClick={createMeetVideoSession} disabled={sending || !meetLinkInput.trim()} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
+              <button onClick={createMeetVideoSession} disabled={sending} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
                 שמור ושלח ללקוח
               </button>
               <button onClick={() => setIsMeetLinkModalOpen(false)} className="px-5 py-3 border border-gray-200 rounded-2xl text-gray-600 font-semibold cursor-pointer hover:bg-white">

@@ -1,4 +1,5 @@
-import { Calendar, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 import { useFormData } from "../hooks/useFormData";
 
 const initialValues = {
@@ -18,12 +19,12 @@ const initialValues = {
 
 export function PatientRegistration() {
   const { formData, handleChange } = useFormData(initialValues);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
-    // Here you would typically send the data to your backend
-    alert("הנתונים נשמרו בהצלחה!");
+    setSuccessMessage("הפרטים נשמרו בהצלחה.");
   };
 
   return (
@@ -34,8 +35,14 @@ export function PatientRegistration() {
           רישום לקוח וחיה חדשה
         </h1>
         <p className="text-gray-500 mt-1 text-[15px]">
-          מלא את הפרטים המלאים עבור בעל החיה והחיית מחמד
+          מלא את הפרטים המלאים עבור בעל החיה והחיה.
         </p>
+        {successMessage && (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-emerald-700 text-[14px] font-semibold">
+            <CheckCircle2 className="w-4 h-4" />
+            {successMessage}
+          </div>
+        )}
       </div>
 
       {/* Registration Form Card */}

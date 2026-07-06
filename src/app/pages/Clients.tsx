@@ -298,7 +298,7 @@ export function Clients() {
       setClients(mappedClients);
     } catch (error) {
       console.error("Error loading clients:", error);
-      setErrorMessage("אירעה שגיאה בטעינת הלקוחות מ-Supabase");
+      setErrorMessage("לא הצלחנו לטעון את רשימת הלקוחות. נסה לרענן את הדף.");
       toast.error("שגיאה בטעינת לקוחות");
     } finally {
       setIsLoading(false);
@@ -908,7 +908,7 @@ export function Clients() {
                   </div>
                 ) : (
                   <div className="bg-gray-50 rounded-xl p-4 mb-5 text-gray-700 text-[14px] leading-6">
-                    פעולה זו תמחק את הלקוח מטבלת owners. לא ניתן לבטל את הפעולה מתוך המערכת.
+                    פעולה זו תמחק את הלקוח מהמערכת. לא ניתן לבטל את הפעולה לאחר האישור.
                   </div>
                 )}
 

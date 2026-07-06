@@ -19,6 +19,7 @@ import { exportOwnerMedicalRecord } from "../hooks/useExportOwnerRecord";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { supabase } from "../../services/supabaseClient";
+import { toast } from "sonner";
 
 // ─── Assets ──────────────────────────────────────────────────────────
 const dogImg = "https://images.unsplash.com/photo-1609348490161-a879e4327ae9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkZW4lMjByZXRyaWV2ZXIlMjBkb2clMjBoYXBweSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MjM3NDQxMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
@@ -391,7 +392,7 @@ export function ClientPortal() {
         setDigitalMessages([]);
         setDigitalAttachments([]);
         setSelectedConversationId(null);
-        setPortalError(`לא נמצא בעלים עם owner_id=${requestedOwnerId}. בדקו שהמספר קיים בטבלת owners.`);
+        setPortalError(`לא מצאנו אזור אישי עבור המספר שהוזן. בדקו שהקישור נכון או פנו למרפאה.`);
         return;
       }
 
@@ -689,7 +690,7 @@ export function ClientPortal() {
       setDigitalMessages([]);
       setDigitalAttachments([]);
       setSelectedConversationId(null);
-      setPortalError("שגיאה בטעינת האזור האישי מ-Supabase. בדקו Console / הרשאות RLS / שמות עמודות.");
+      setPortalError("לא הצלחנו לטעון את האזור האישי. נסה לרענן את הדף או פנה למרפאה.");
     } finally {
       setIsPortalLoading(false);
     }
@@ -760,7 +761,7 @@ export function ClientPortal() {
       });
     } catch (error) {
       console.error("Failed to load digital conversations", error);
-      setDigitalError("לא הצלחנו לטעון את השיחות הדיגיטליות. בדקו הרשאות לטבלאות conversations/messages.");
+      setDigitalError("לא הצלחנו לטעון את השיחות הדיגיטליות. נסה שוב בעוד רגע.");
     } finally {
       setDigitalLoading(false);
     }
@@ -849,7 +850,7 @@ export function ClientPortal() {
   const handleCreateConversation = async () => {
     if (!ownerProfile?.owner_id) return;
     if (!newConversationSubject.trim()) {
-      alert("כתבו נושא קצר לפנייה.");
+      toast.error("כתבו נושא קצר לפנייה.");
       return;
     }
 
@@ -900,14 +901,18 @@ export function ClientPortal() {
       await loadDigitalMessages(conversationId);
     } catch (error) {
       console.error("Failed to create conversation", error);
-      alert("לא הצלחנו לפתוח פנייה חדשה. בדקו הרשאות conversations/messages.");
+      toast.error("לא הצלחנו לפתוח פנייה חדשה. נסה שוב בעוד רגע.");
     } finally {
       setCreatingConversation(false);
     }
   };
 
   const handleSendOwnerMessage = async () => {
-    if (!ownerProfile?.owner_id || !selectedConversationId || !messageInput.trim()) return;
+    if (!ownerProfile?.owner_id || !selectedConversationId) return;
+    if (!messageInput.trim()) {
+      toast.error("כתבו הודעה לפני השליחה.");
+      return;
+    }
 
     try {
       setSendingMessage(true);
@@ -938,7 +943,7 @@ export function ClientPortal() {
       if (ownerProfile?.owner_id) await loadDigitalConversations(ownerProfile.owner_id);
     } catch (error) {
       console.error("Failed to send message", error);
-      alert("לא הצלחנו לשלוח את ההודעה.");
+      toast.error("לא הצלחנו לשלוח את ההודעה.");
     } finally {
       setSendingMessage(false);
     }
@@ -1013,7 +1018,7 @@ export function ClientPortal() {
       await loadDigitalConversations(ownerProfile.owner_id);
     } catch (error) {
       console.error("Failed to upload chat attachment", error);
-      alert("לא הצלחנו להעלות את הקובץ לשיחה. בדקו הרשאות Storage עבור chat-attachments.");
+      toast.error("לא הצלחנו להעלות את הקובץ לשיחה. נסה שוב בעוד רגע.");
     } finally {
       setUploadingChatFile(false);
     }
@@ -1029,7 +1034,7 @@ export function ClientPortal() {
       if (data?.signedUrl) window.open(data.signedUrl, "_blank");
     } catch (error) {
       console.error("Failed to open chat attachment", error);
-      alert("לא הצלחנו לפתוח את הקובץ.");
+      toast.error("לא הצלחנו לפתוח את הקובץ.");
     }
   };
 
@@ -1099,10 +1104,10 @@ export function ClientPortal() {
 
       await loadDigitalMessages(selectedConversationId);
       await loadDigitalConversations(ownerProfile.owner_id);
-      alert("הבקשה לשיחת וידאו נשלחה לצוות המרפאה. כשהצוות ייצור קישור Google Meet, הוא יופיע כאן בשיחה.");
+      toast.success("הבקשה לשיחת וידאו נשלחה לצוות המרפאה.");
     } catch (error) {
       console.error("Failed to request video session", error);
-      alert("לא הצלחנו לשלוח בקשה לשיחת וידאו.");
+      toast.error("לא הצלחנו לשלוח בקשה לשיחת וידאו.");
     } finally {
       setStartingVideo(false);
     }
@@ -1110,7 +1115,11 @@ export function ClientPortal() {
 
   // 2. עדכון להזזת תור מול Supabase
   const handleReschedule = async () => {
-    if (!rescheduleAppt || !rescheduleDate || !rescheduleTime) return;
+    if (!rescheduleAppt) return;
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error("בחרו תאריך ושעה חדשים לפני אישור הזזת התור.");
+      return;
+    }
     
     // מפענח את התאריך החדש
     const [dayStr, monthStr, yearStr] = rescheduleDate.split("/");
@@ -1183,7 +1192,7 @@ export function ClientPortal() {
     if (payment) {
       openDemoPayment(payment);
     } else {
-      alert("לא נמצא חיוב מתאים במסד הנתונים.");
+      toast.error("לא נמצא חיוב מתאים לתשלום.");
     }
   };
 
@@ -1200,8 +1209,8 @@ export function ClientPortal() {
           payment_method: "credit",
           paid_at: new Date().toISOString(),
           notes: paymentToPay.notes
-            ? `${paymentToPay.notes} | שולם דרך פורטל בעלים - תשלום דמו`
-            : "שולם דרך פורטל בעלים - תשלום דמו",
+            ? `${paymentToPay.notes} | שולם דרך פורטל בעלים`
+            : "שולם דרך פורטל בעלים",
         })
         .eq("payment_id", paymentToPay.id);
 
@@ -1215,7 +1224,7 @@ export function ClientPortal() {
       }, 1800);
     } catch (error) {
       console.error("Failed to complete demo payment", error);
-      alert("לא הצלחנו להשלים את תשלום הדמו. בדקו הרשאות RLS / Console.");
+      toast.error("לא הצלחנו להשלים את התשלום כרגע. נסה שוב או פנה למרפאה.");
     } finally {
       setPayingPaymentId(null);
     }
@@ -1236,12 +1245,12 @@ export function ClientPortal() {
     if (!files || files.length === 0) return;
 
     if (!ownerProfile?.owner_id) {
-      alert("לא ניתן להעלות קבצים בלי בעלים מחובר.");
+      toast.error("לא ניתן להעלות קבצים בלי בעלים מחובר.");
       return;
     }
 
     if (!uploadPetId) {
-      alert("בחרו חיה לפני העלאת קובץ.");
+      toast.error("בחרו חיה לפני העלאת קובץ.");
       return;
     }
 
@@ -1253,7 +1262,7 @@ export function ClientPortal() {
 
     for (const file of Array.from(files)) {
       if (file.size > maxSize) {
-        alert(`הקובץ "${file.name}" גדול מדי (מקסימום 10MB)`);
+        toast.error(`הקובץ "${file.name}" גדול מדי (מקסימום 10MB)`);
         continue;
       }
 
@@ -1312,7 +1321,7 @@ export function ClientPortal() {
         });
       } catch (error) {
         console.error("Failed to upload document", error);
-        alert(`לא הצלחנו להעלות את הקובץ "${file.name}". בדקו הרשאות Storage / טבלת documents.`);
+        toast.error(`לא הצלחנו להעלות את הקובץ "${file.name}". נסה שוב בעוד רגע.`);
       }
     }
 
@@ -1353,14 +1362,14 @@ export function ClientPortal() {
       }
 
       if (!url) {
-        alert("לא נמצא קישור לקובץ.");
+        toast.error("לא נמצא קישור לקובץ.");
         return;
       }
 
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to open document", error);
-      alert("לא הצלחנו לפתוח את הקובץ. בדקו הרשאות Storage.");
+      toast.error("לא הצלחנו לפתוח את הקובץ כרגע. נסה שוב בעוד רגע.");
     }
   };
 
@@ -1387,7 +1396,7 @@ export function ClientPortal() {
       setDeleteConfirmFile(null);
     } catch (error) {
       console.error("Failed to delete document", error);
-      alert("לא הצלחנו למחוק את הקובץ. בדקו הרשאות Storage / documents.");
+      toast.error("לא הצלחנו למחוק את הקובץ כרגע. נסה שוב בעוד רגע.");
     } finally {
       setDeletingDocumentId(null);
     }
@@ -1483,7 +1492,7 @@ export function ClientPortal() {
 
         {isPortalLoading && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5 text-center text-gray-500 font-medium">
-            טוען נתונים מ-Supabase...
+            טוען את האזור האישי...
           </div>
         )}
 
@@ -1636,8 +1645,8 @@ export function ClientPortal() {
 
                         <button
                           onClick={handleCreateConversation}
-                          disabled={creatingConversation || !ownerProfile || !newConversationSubject.trim()}
-                          className={`w-full rounded-xl py-3 text-[13px] flex items-center justify-center gap-2 transition-colors shadow-sm ${creatingConversation || !newConversationSubject.trim() ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer"}`}
+                          disabled={creatingConversation || !ownerProfile}
+                          className={`w-full rounded-xl py-3 text-[13px] flex items-center justify-center gap-2 transition-colors shadow-sm ${creatingConversation ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer"}`}
                           style={{ fontWeight: 800 }}
                         >
                           {creatingConversation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
@@ -1808,8 +1817,8 @@ export function ClientPortal() {
                             />
                             <button
                               onClick={handleSendOwnerMessage}
-                              disabled={!messageInput.trim() || sendingMessage}
-                              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0 ${!messageInput.trim() || sendingMessage ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer shadow-sm"}`}
+                              disabled={sendingMessage}
+                              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0 ${sendingMessage ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer shadow-sm"}`}
                               title="שליחת הודעה"
                             >
                               {sendingMessage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
@@ -1981,6 +1990,8 @@ export function ClientPortal() {
 
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <button
+                            type="button"
+                            onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
                             className="flex items-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap"
                             style={{ fontWeight: 600 }}
                           >
@@ -2045,10 +2056,10 @@ export function ClientPortal() {
                                           <CheckCircle2 className="w-3.5 h-3.5" />
                                           שולם ({visit.amount.toLocaleString()} ₪)
                                         </span>
-                                        <button className="text-[#1e40af] text-[12px] hover:text-[#1e3a8a] hover:underline cursor-pointer transition-colors flex items-center gap-1" style={{ fontWeight: 500 }}>
+                                        <span className="text-gray-500 text-[12px] flex items-center gap-1" style={{ fontWeight: 500 }}>
                                           <Eye className="w-3.5 h-3.5" />
-                                          צפה בסיכום
-                                        </button>
+                                          הסיכום מופיע בתיק
+                                        </span>
                                       </>
                                     ) : (
                                       <>
@@ -2154,7 +2165,7 @@ export function ClientPortal() {
                 <div className="bg-violet-50 rounded-xl p-2.5"><Paperclip className="w-5 h-5 text-violet-500" /></div>
                 <div className="text-right">
                   <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מסמכים וקבצים</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים בענן</p>
+                  <p className="text-gray-500 font-medium text-[12px]">{uploadedFiles.length} קבצים שמורים</p>
                 </div>
               </div>
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
@@ -2214,10 +2225,10 @@ export function ClientPortal() {
                     <Upload className={`w-7 h-7 ${isDragging ? "text-[#1e40af]" : "text-gray-500 font-medium"}`} />
                   </div>
                   <p className="text-gray-700 text-[15px] mb-1" style={{ fontWeight: 600 }}>
-                    {isUploadingFiles ? "מעלה קבצים לענן..." : isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
+                    {isUploadingFiles ? "מעלה קבצים..." : isDragging ? "שחררו כאן להעלאה" : "גררו קבצים לכאן או לחצו לבחירה"}
                   </p>
                   <p className="text-gray-500 font-medium text-[12px]">
-                    תמונות, PDF, Word, Excel — עד 10MB לקובץ. הקבצים נשמרים ב-Supabase Storage
+                    תמונות, PDF, Word או Excel — עד 10MB לקובץ. לאחר ההעלאה הקובץ יופיע באזור המסמכים.
                   </p>
                 </div>
 
@@ -2225,7 +2236,7 @@ export function ClientPortal() {
                 {uploadedFiles.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 font-medium">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-[14px]">לא נמצאו קבצים בענן</p>
+                    <p className="text-[14px]">לא נמצאו קבצים שמורים</p>
                     <p className="text-[12px] mt-1">העלו תעודות חיסון, תוצאות בדיקות, מרשמים ועוד</p>
                   </div>
                 ) : (
@@ -2313,9 +2324,12 @@ export function ClientPortal() {
                 </div>
                 <PillPicker label="בחרו תאריך חדש" items={datePills} selected={rescheduleDate || null} onSelect={setRescheduleDate} />
                 <PillPicker label="בחרו שעה חדשה" items={timePills} selected={rescheduleTime || null} onSelect={setRescheduleTime} />
+                {(!rescheduleDate || !rescheduleTime) && (
+                  <p className="text-blue-600 text-[12px] font-semibold mt-2">בחרו תאריך ושעה חדשים כדי להזיז את התור.</p>
+                )}
                 <div className="flex gap-3 mt-2">
-                  <button onClick={handleReschedule} disabled={!rescheduleDate || !rescheduleTime}
-                    className={`flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 ${rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"}`}
+                  <button onClick={handleReschedule}
+                    className="flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white"
                     style={{ fontWeight: 600 }}
                   >
                     <CalendarClock className="w-4 h-4" /> אישור הזזת תור
@@ -2377,7 +2391,7 @@ export function ClientPortal() {
           zIndex="z-[320]"
         >
           <ModalHeader
-            title="תשלום מאובטח - דמו"
+            title="אישור תשלום לדוגמה"
             icon={<CreditCard className="w-5 h-5 text-white/80" />}
             onClose={() => {
               if (!payingPaymentId) {
@@ -2405,7 +2419,7 @@ export function ClientPortal() {
                         {paymentToPay.title}
                       </p>
                       <p className="text-gray-500 text-[13px] mt-1">
-                        זהו מסך תשלום דמו לפרויקט. אין להזין פרטי אשראי אמיתיים.
+                        זהו מסך תשלום לדוגמה לצורך הצגת המערכת. אין להזין פרטי אשראי אמיתיים.
                       </p>
                     </div>
                   </div>
@@ -2424,7 +2438,7 @@ export function ClientPortal() {
                       אמצעי תשלום
                     </label>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-800 text-[14px] font-semibold">כרטיס אשראי דמו</span>
+                      <span className="text-gray-800 text-[14px] font-semibold">כרטיס לדוגמה</span>
                       <span className="text-gray-500 text-[13px]">**** 4242</span>
                     </div>
                   </div>
@@ -2439,7 +2453,7 @@ export function ClientPortal() {
 
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
                   <p className="text-amber-700 text-[12px] leading-5 font-medium">
-                    במערכת אמיתית הכפתור היה מחובר לספק סליקה. בדמו הזה אנחנו מעדכנים את הרשומה בטבלת payments לסטטוס paid.
+                    בלחיצה על אישור התשלום יסומן כשולם במערכת לצורך הדגמה בלבד.
                   </p>
                 </div>
 
@@ -2455,7 +2469,7 @@ export function ClientPortal() {
                     style={{ fontWeight: 700 }}
                   >
                     <CreditCard className="w-4 h-4" />
-                    {payingPaymentId === paymentToPay.id ? "מעבד תשלום..." : "אישור תשלום דמו"}
+                    {payingPaymentId === paymentToPay.id ? "מעבד תשלום..." : "אישור תשלום"}
                   </button>
                   <button
                     onClick={() => setPaymentToPay(null)}

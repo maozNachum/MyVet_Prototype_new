@@ -6,7 +6,7 @@ function friendlyEdgeError(message?: string) {
   const text = message || "שגיאה בהפעלת העוזר החכם";
 
   if (text.includes("non-2xx") || text.includes("FunctionsHttpError")) {
-    return "העוזר לא הצליח לקבל תשובה כרגע. נסה שוב בעוד רגע. אם זה חוזר, בדוק את Logs של ai-assistant ב-Supabase.";
+    return "העוזר לא הצליח לקבל תשובה כרגע. נסה שוב בעוד רגע.";
   }
 
   if (text.includes("high demand") || text.includes("UNAVAILABLE") || text.includes("503")) {

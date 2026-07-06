@@ -68,7 +68,7 @@ export function Reports() {
         </div>
         <div>
           <h1 className="text-gray-900 text-[24px] font-bold">דוחות ותובנות</h1>
-          <p className="text-gray-500 text-[14px]">BI תפעולי וניהולי מבוסס נתוני Supabase</p>
+          <p className="text-gray-500 text-[14px]">מבט מהיר על פעילות המרפאה, תשלומים, מלאי ומעקב לקוחות</p>
         </div>
       </div>
 

@@ -45,6 +45,7 @@ export function Login() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +128,7 @@ export function Login() {
                   onClick={() => {
                     setRole("owner");
                     setIsSignUp(false);
+                    setFormMessage(null);
                   }}
                   className="group relative bg-white border-2 border-gray-100 hover:border-rose-300 rounded-2xl p-4 pt-5 transition-all cursor-pointer hover:shadow-lg hover:shadow-rose-500/10 text-center overflow-hidden"
                 >
@@ -180,6 +182,7 @@ export function Login() {
                   onClick={() => {
                     setRole("staff");
                     setIsSignUp(false);
+                    setFormMessage(null);
                   }}
                   className="group relative bg-white border-2 border-gray-100 hover:border-blue-300 rounded-2xl p-4 pt-5 transition-all cursor-pointer hover:shadow-lg hover:shadow-blue-500/10 text-center overflow-hidden"
                 >
@@ -255,6 +258,7 @@ export function Login() {
                   setPassword("");
                   setFullName("");
                   setPhoneNumber("");
+                  setFormMessage(null);
                 }}
                 className="flex items-center gap-1.5 text-gray-500 font-medium hover:text-gray-600 text-[13px] mb-6 cursor-pointer transition-colors"
                 style={{ fontWeight: 500 }}
@@ -318,6 +322,11 @@ export function Login() {
                       : "התחברו כדי לצפות בתיק הרפואי ובתורים"
                     : "התחברו כדי לגשת ללוח הבקרה"}
                 </p>
+                {formMessage && (
+                  <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[#1e40af] text-[13px] font-semibold leading-6">
+                    {formMessage}
+                  </div>
+                )}
               </div>
 
               {/* Form */}
@@ -326,6 +335,7 @@ export function Login() {
                   <>
                     <button
                       type="button"
+                      onClick={() => setFormMessage("אפשרות ההרשמה עם Google תיפתח בהמשך. כרגע אפשר להמשיך בהרשמה רגילה דרך הטופס.")}
                       disabled={isLoading}
                       className="w-full border-2 border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-70 rounded-xl py-3.5 px-4 transition-all cursor-pointer flex items-center justify-center text-gray-700"
                       style={{ fontWeight: 600 }}
@@ -552,6 +562,7 @@ export function Login() {
                   <div className="text-left">
                     <button
                       type="button"
+                      onClick={() => setFormMessage(role === "owner" ? "לאיפוס סיסמה פנו למרפאה או בקשו קישור התחברות חדש." : "לאיפוס סיסמה פנו למנהל המערכת במרפאה.")}
                       className={`text-[13px] hover:underline cursor-pointer transition-colors ${
                         role === "owner" ? "text-rose-500" : "text-[#1e40af]"
                       }`}
@@ -600,6 +611,7 @@ export function Login() {
                         setIsSignUp((prev) => !prev);
                         setIdNumber("");
                         setPassword("");
+                        setFormMessage(null);
                       }}
                       className="text-[13px] text-rose-500 hover:text-rose-600 hover:underline transition-colors"
                       style={{ fontWeight: 500 }}

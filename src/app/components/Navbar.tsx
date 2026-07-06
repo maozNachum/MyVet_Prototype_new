@@ -235,7 +235,7 @@ export function Navbar() {
         <div className="flex items-center gap-4 xl:gap-6">
           <Link to="/" className="flex items-center hover:opacity-90 transition-opacity shrink-0">
             <div className="w-22 h-19 flex items-center justify-center transform scale-[1.6] origin-right">
-              <MyVetLogo color="white" />
+              <MyVetLogo color="white" showTagline={false} />
             </div>
           </Link>
           <div className="hidden md:block w-px h-6 bg-white/20 ml-2"></div>

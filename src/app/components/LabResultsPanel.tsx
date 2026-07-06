@@ -20,6 +20,7 @@ import { LabOrderModal } from "./LabOrderModal";
 import { canEditMedicalRecords } from "../data/staffAuth";
 import { exportLabResults } from "../hooks/useExportLabResults";
 import { LAB_CATEGORIES } from "../data/categoryConfig";
+import { toast } from "sonner";
 
 interface LabResultsPanelProps {
   patientId: number;
@@ -107,6 +108,11 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
   };
 
   const saveResults = async (orderId: number) => {
+    if (!updateForm.results.trim()) {
+      toast.error("חובה להזין תוצאות בדיקה לפני שמירה.");
+      return;
+    }
+
     const now = new Date();
     const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(
       now.getMonth() + 1
@@ -203,7 +209,7 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
           {isLoading && allOrders.length === 0 ? (
             <div className="text-center py-10 text-gray-500 font-medium">
               <Loader2 className="w-8 h-8 mx-auto mb-2 text-teal-500 animate-spin" />
-              <p className="text-[14px]">טוען בדיקות מעבדה מהענן...</p>
+              <p className="text-[14px]">טוען בדיקות מעבדה...</p>
             </div>
           ) : filteredOrders.length > 0 ? (
             <div className="space-y-3">
@@ -468,12 +474,7 @@ export function LabResultsPanel({ patientId, petName }: LabResultsPanelProps) {
                             <div className="flex gap-2 pt-1">
                               <button
                                 onClick={() => saveResults(order.id)}
-                                disabled={!updateForm.results.trim()}
-                                className={`flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-[13px] transition-all cursor-pointer shadow-sm ${
-                                  updateForm.results.trim()
-                                    ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                                    : "bg-gray-100 text-gray-500 font-medium cursor-not-allowed"
-                                }`}
+                                className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-[13px] transition-all cursor-pointer shadow-sm bg-emerald-500 hover:bg-emerald-600 text-white"
                                 style={{ fontWeight: 600 }}
                               >
                                 <Save className="w-4 h-4" />

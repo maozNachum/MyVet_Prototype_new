@@ -115,7 +115,7 @@ export function InventoryControl({ dateRange }: InventoryControlProps) {
         <div className="p-5 border-b border-gray-100 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
           <div>
             <h3 className="font-bold text-gray-900 text-[17px]">בקרת מלאי</h3>
-            <p className="text-gray-500 text-[12px] font-medium">מבוסס על טבלת inventory</p>
+            <p className="text-gray-500 text-[12px] font-medium">מלאי פעיל לפי קטגוריה וכמות</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <div className="relative w-full sm:w-72">

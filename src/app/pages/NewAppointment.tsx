@@ -359,7 +359,7 @@ export function NewAppointment() {
                 קביעת תור חדש
               </h1>
               <p className="text-white/60 mt-1 text-[14px]">
-                התור נשמר ישירות בטבלת appointments בענן
+                בחרו את פרטי התור, ואנחנו נוסיף אותו ליומן המרפאה
               </p>
             </div>
           </div>
@@ -689,7 +689,7 @@ export function NewAppointment() {
                   )}
                   {!isLoadingStaff && vetOptions.length === 0 && (
                     <p className="text-amber-600 text-sm mt-1">
-                      לא נמצאו וטרינרים בטבלת staff. הוסף איש צוות מסוג vet כדי
+                      לא נמצאו רופאים זמינים. הוסף רופא לצוות כדי
                       לקבוע תור לרופא.
                     </p>
                   )}
@@ -786,7 +786,7 @@ export function NewAppointment() {
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-[14px] text-amber-800">
                 {isLoadingPatients
                   ? "רשימת הלקוחות והחיות עדיין נטענת. המתן כמה שניות ונסה שוב."
-                  : "לא נמצאו וטרינרים זמינים בטבלת הצוות. צריך להוסיף איש צוות מסוג vet לפני קביעת תור."}
+                  : "לא נמצאו רופאים זמינים לקביעת תור. יש להוסיף רופא לצוות לפני שממשיכים."}
               </div>
             )}
 
@@ -806,7 +806,7 @@ export function NewAppointment() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    שומר תור בענן...
+                    שומר את התור...
                   </>
                 ) : (
                   <>

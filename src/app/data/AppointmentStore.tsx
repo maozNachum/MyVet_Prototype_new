@@ -207,7 +207,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     } catch (err: any) {
       console.error("Error loading appointments from Supabase:", err);
       setError(err?.message || "שגיאה בטעינת תורים");
-      toast.error("שגיאה בטעינת תורים מהענן");
+      toast.error("לא הצלחנו לטעון את התורים");
     } finally {
       setIsLoading(false);
     }

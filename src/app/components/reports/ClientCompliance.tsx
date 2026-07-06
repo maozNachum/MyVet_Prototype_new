@@ -144,7 +144,7 @@ export function ClientCompliance({ dateRange }: ClientComplianceProps) {
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <h3 className="font-bold text-gray-900 text-[17px]">תזכורות ומעקב</h3>
-                <p className="text-gray-500 text-[12px] font-medium">מבוסס על reminders</p>
+                <p className="text-gray-500 text-[12px] font-medium">מעקב אחר תזכורות ולקוחות שדורשים קשר</p>
               </div>
               <CheckCircle2 className="w-5 h-5 text-emerald-500" />
             </div>
