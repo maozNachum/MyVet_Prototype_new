@@ -17,6 +17,7 @@ import { ModalOverlay, ModalHeader } from "../components/shared/ModalOverlay";
 import { AVAILABLE_DATE_STRINGS, AVAILABLE_TIMES } from "../data/calendar-constants";
 import { exportOwnerMedicalRecord } from "../hooks/useExportOwnerRecord";
 import { MyVetLogo } from "../components/MyVetLogo";
+import { ClientPortalAssistant } from "../components/ai/PageAssistants";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { supabase } from "../../services/supabaseClient";
 import { toast } from "sonner";
@@ -1412,8 +1413,7 @@ export function ClientPortal() {
           {/* ─── צד ימין: לוגו ותגית ─── */}
           <div className="flex items-center gap-5">
             <div className="flex items-center shrink-0 mr-2 cursor-pointer hover:opacity-90 transition-opacity">
-              {/* הלוגו המקורי בפרופורציה מלאה (סמל + טקסט מובנה), ללא קופסאות או טקסטים כפולים לידו */}
-              <MyVetLogo color="#1e40af" className="h-19 w-auto" />
+              <MyVetLogo color="#1e40af" showTagline={false} className="h-14 w-auto" />
             </div>
 
             <div className="hidden md:block w-px h-6 bg-gray-200"></div>
@@ -1487,6 +1487,16 @@ export function ClientPortal() {
               שלום, {ownerDisplayName}<span className="inline-block mr-2">👋</span>
             </h1>
             <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ClientPortalAssistant
+              pets={pets}
+              appointments={appointments}
+              notifications={portalNotifications}
+              digitalConversations={digitalConversations}
+              paymentsByPet={paymentsByPet}
+            />
           </div>
         </div>
 

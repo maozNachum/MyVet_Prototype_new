@@ -933,7 +933,7 @@ export function DigitalCare() {
 
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard icon={<MessageCircle className="w-5 h-5" />} title="שיחות פתוחות" value={metrics.open} tone="blue" />
-          <MetricCard icon={<AlertCircle className="w-5 h-5" />} title="דחופות" value={metrics.urgent} tone="red" />
+          
           <MetricCard icon={<Clock className="w-5 h-5" />} title="ממתינות לצוות" value={metrics.waitingStaff} tone="amber" />
           <MetricCard icon={<Circle className="w-5 h-5" />} title="הודעות שלא נקראו" value={metrics.unread} tone="emerald" />
         </section>
