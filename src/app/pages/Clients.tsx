@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
+import { OwnerPortalNotificationsPanel } from "../components/OwnerPortalNotificationsPanel";
 
 type SpeciesType = "dog" | "cat" | "other";
 
@@ -578,6 +579,10 @@ export function Clients() {
 
         <div className="mb-8">
           <OwnerDebtPanel ownerId={selectedClient.owner_id} ownerName={selectedClient.fullName} />
+        </div>
+
+        <div className="mb-8">
+          <OwnerPortalNotificationsPanel ownerId={selectedClient.owner_id} ownerName={selectedClient.fullName} />
         </div>
 
         <div className="flex items-center justify-between mb-4">

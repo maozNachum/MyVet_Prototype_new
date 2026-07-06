@@ -21,6 +21,13 @@ import { ClientPortalAssistant } from "../components/ai/PageAssistants";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { supabase } from "../../services/supabaseClient";
 import { toast } from "sonner";
+import {
+  defaultActionViewForType,
+  extractViewFromActionUrl,
+  markAllPortalNotificationsRead,
+  markPortalNotificationRead,
+  portalActionLabelForType,
+} from "../../services/portalNotifications";
 
 // ─── Assets ──────────────────────────────────────────────────────────
 const dogImg = "https://images.unsplash.com/photo-1609348490161-a879e4327ae9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkZW4lMjByZXRyaWV2ZXIlMjBkb2clMjBoYXBweSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MjM3NDQxMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
@@ -36,9 +43,11 @@ interface PortalNotification {
   petImage: string;
   title: string;
   text: string;
-  type: "warning" | "info" | "success" | "payment" | "appointment" | "medical" | "lab";
+  type: "warning" | "info" | "success" | "payment" | "appointment" | "medical" | "lab" | "document" | "digital";
   date: string;
   isRead?: boolean;
+  actionUrl?: string | null;
+  createdAt?: string | null;
 }
 
 interface Pet {
@@ -286,13 +295,15 @@ const NOTIF_STYLE = {
   appointment: { border: "border-r-indigo-400", bg: "bg-indigo-50", iconColor: "text-indigo-500", Icon: CalendarClock },
   medical: { border: "border-r-blue-400", bg: "bg-blue-50", iconColor: "text-blue-500", Icon: Stethoscope },
   lab: { border: "border-r-purple-400", bg: "bg-purple-50", iconColor: "text-purple-500", Icon: FileText },
+  document: { border: "border-r-violet-400", bg: "bg-violet-50", iconColor: "text-violet-600", Icon: Paperclip },
+  digital: { border: "border-r-blue-400", bg: "bg-blue-50", iconColor: "text-[#1e40af]", Icon: MessageCircle },
 } as const;
 
 // ─── PillPicker data ─────────────────────────────────────────────────
 const datePills = AVAILABLE_DATE_STRINGS.map((d) => ({ key: d.value, label: d.label }));
 const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
 
-type PortalView = "home" | "appointments" | "digital" | "pets" | "documents" | "payments" | "profile";
+type PortalView = "home" | "appointments" | "digital" | "pets" | "documents" | "payments" | "notifications" | "profile";
 
 const PORTAL_NAV_ITEMS: Array<{ key: PortalView; label: string; description: string; icon: ComponentType<{ className?: string }> }> = [
   { key: "home", label: "בית", description: "מה חשוב עכשיו", icon: Home },
@@ -301,11 +312,16 @@ const PORTAL_NAV_ITEMS: Array<{ key: PortalView; label: string; description: str
   { key: "pets", label: "החיות שלי", description: "תיקים רפואיים וסיכומי ביקור", icon: Heart },
   { key: "documents", label: "מסמכים", description: "העלאה וצפייה בקבצים", icon: Paperclip },
   { key: "payments", label: "תשלומים", description: "חיובים פתוחים והיסטוריה", icon: Receipt },
+  { key: "notifications", label: "עדכונים", description: "התראות ותזכורות", icon: Bell },
   { key: "profile", label: "תיק אישי", description: "פרטים אישיים", icon: User },
 ];
 
 function portalViewLabel(view: PortalView) {
   return PORTAL_NAV_ITEMS.find((item) => item.key === view)?.label || "בית";
+}
+
+function isPortalView(value: string | null): value is PortalView {
+  return Boolean(value) && ["home", "appointments", "digital", "pets", "documents", "payments", "notifications", "profile"].includes(value as PortalView);
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -316,7 +332,10 @@ export function ClientPortal() {
 
   const [expandedPet, setExpandedPet] = useState<number | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [activePortalView, setActivePortalView] = useState<PortalView>("home");
+  const [activePortalView, setActivePortalView] = useState<PortalView>(() => {
+    const viewFromUrl = searchParams.get("view");
+    return isPortalView(viewFromUrl) ? viewFromUrl : "home";
+  });
   const [isPortalMenuOpen, setIsPortalMenuOpen] = useState(false);
 
   // Section accordion state
@@ -335,7 +354,7 @@ export function ClientPortal() {
     setIsPortalMenuOpen(false);
     setOpenSections((prev) => ({
       ...prev,
-      notifications: view === "home" ? true : prev.notifications,
+      notifications: view === "home" || view === "notifications" ? true : prev.notifications,
       appointments: view === "home" || view === "appointments" ? true : prev.appointments,
       digital: view === "digital" ? true : prev.digital,
       pets: view === "pets" ? true : prev.pets,
@@ -356,6 +375,13 @@ export function ClientPortal() {
   const [isPortalLoading, setIsPortalLoading] = useState(true);
   const [portalError, setPortalError] = useState<string | null>(null);
   const ownerDisplayName = getOwnerDisplayName(ownerProfile);
+
+  useEffect(() => {
+    const viewFromUrl = searchParams.get("view");
+    if (isPortalView(viewFromUrl)) {
+      setActivePortalView(viewFromUrl);
+    }
+  }, [searchParams]);
 
   const [rescheduleAppt, setRescheduleAppt] = useState<FutureAppointment | null>(null);
   const [cancelAppt, setCancelAppt] = useState<FutureAppointment | null>(null);
@@ -658,7 +684,7 @@ export function ClientPortal() {
 
       const { data: notificationRows, error: notificationsError } = await supabase
         .from("notifications")
-        .select("notification_id, owner_id, pet_id, title, message, type, is_read, created_at")
+        .select("notification_id, owner_id, pet_id, title, message, type, is_read, read_at, action_url, created_at")
         .eq("owner_id", ownerData.owner_id)
         .in("target", ["owner", "both"])
         .order("created_at", { ascending: false });
@@ -667,9 +693,9 @@ export function ClientPortal() {
 
       const { data: reminderRows, error: remindersError } = await supabase
         .from("reminders")
-        .select("reminder_id, owner_id, pet_id, title, message, reminder_type, due_at, status")
+        .select("reminder_id, owner_id, pet_id, title, message, reminder_type, due_at, status, is_read, read_at, action_url")
         .eq("owner_id", ownerData.owner_id)
-        .in("status", ["open", "sent"])
+        .in("status", ["open", "sent", "pending"])
         .order("due_at", { ascending: true });
 
       if (remindersError) throw remindersError;
@@ -686,9 +712,11 @@ export function ClientPortal() {
           petImage: getSpeciesImage(petType),
           title: row.title || "התראה",
           text: row.message || "",
-          type: (row.type || "info") as PortalNotification["type"],
+          type: (row.type === "medical_summary" ? "medical" : row.type || "info") as PortalNotification["type"],
           date: formatPortalDate(row.created_at),
-          isRead: Boolean(row.is_read),
+          isRead: Boolean(row.is_read || row.read_at),
+          actionUrl: row.action_url || null,
+          createdAt: row.created_at || null,
         };
       });
 
@@ -704,13 +732,21 @@ export function ClientPortal() {
           petImage: getSpeciesImage(petType),
           title: row.title || "תזכורת",
           text: row.message || "",
-          type: (row.reminder_type === "payment" ? "payment" : row.reminder_type === "appointment" ? "appointment" : row.reminder_type === "lab_result" ? "lab" : "warning") as PortalNotification["type"],
+          type: (row.reminder_type === "payment" ? "payment" : row.reminder_type === "appointment" ? "appointment" : row.reminder_type === "lab_result" ? "lab" : row.reminder_type === "follow_up" ? "medical" : "warning") as PortalNotification["type"],
           date: formatPortalDate(row.due_at),
-          isRead: row.status !== "open",
+          isRead: Boolean(row.is_read || row.read_at || row.status === "sent"),
+          actionUrl: row.action_url || null,
+          createdAt: row.due_at || null,
         };
       });
 
-      setPortalNotifications([...mappedNotifications, ...mappedReminders]);
+      setPortalNotifications(
+        [...mappedNotifications, ...mappedReminders].sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bTime - aTime;
+        })
+      );
     } catch (error) {
       console.error("Error loading owner portal from Supabase:", error);
       setOwnerProfile(null);
@@ -1449,6 +1485,55 @@ export function ClientPortal() {
   const latestOpenConversation = digitalConversations.find((conversation) => conversation.status !== "closed") || null;
   const mainPet = pets[0] || null;
 
+  const getNotificationTargetView = (notification: PortalNotification): PortalView => {
+    const viewFromUrl = extractViewFromActionUrl(notification.actionUrl) as PortalView | null;
+    if (viewFromUrl) return viewFromUrl;
+
+    const inferredView = defaultActionViewForType(notification.type) as PortalView;
+    if (["home", "appointments", "digital", "pets", "documents", "payments", "notifications", "profile"].includes(inferredView)) {
+      return inferredView;
+    }
+
+    return "notifications";
+  };
+
+  const markNotificationLocallyRead = (notification: PortalNotification) => {
+    setPortalNotifications((current) => current.map((item) => (
+      item.source === notification.source && item.sourceId === notification.sourceId
+        ? { ...item, isRead: true }
+        : item
+    )));
+  };
+
+  const handleNotificationClick = async (notification: PortalNotification) => {
+    try {
+      if (!notification.isRead) {
+        markNotificationLocallyRead(notification);
+        await markPortalNotificationRead(notification.source, notification.sourceId);
+      }
+    } catch (error) {
+      console.error("Failed marking portal notification as read", error);
+    }
+
+    goToPortalView(getNotificationTargetView(notification));
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    if (!ownerProfile?.owner_id || unreadNotificationsCount === 0) return;
+
+    const previous = portalNotifications;
+    setPortalNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
+
+    try {
+      await markAllPortalNotificationsRead(ownerProfile.owner_id);
+      toast.success("כל העדכונים סומנו כנקראו");
+    } catch (error) {
+      console.error("Failed marking all portal notifications as read", error);
+      setPortalNotifications(previous);
+      toast.error("לא הצלחנו לסמן את כל העדכונים כנקראו");
+    }
+  };
+
   return (
     <div dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#ffffff_100%)] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
       
@@ -1473,9 +1558,9 @@ export function ClientPortal() {
           </button>
 
           <button
-            onClick={() => goToPortalView("home")}
+            onClick={() => goToPortalView("notifications")}
             className="relative w-11 h-11 rounded-2xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer shadow-sm justify-self-end"
-            title="התראות ותזכורות"
+            title="עדכונים והתראות"
           >
             <Bell className="w-5 h-5 text-gray-500" />
             {unreadNotificationsCount > 0 && (
@@ -1678,7 +1763,7 @@ export function ClientPortal() {
                     <p className="text-[20px] font-black leading-none">{appointments.length}</p>
                     <p className="text-[11px] text-blue-50 mt-1 font-bold">תורים</p>
                   </button>
-                  <button onClick={() => goToPortalView("home")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
+                  <button onClick={() => goToPortalView("notifications")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
                     <p className="text-[20px] font-black leading-none">{unreadNotificationsCount}</p>
                     <p className="text-[11px] text-blue-50 mt-1 font-bold">חדשות</p>
                   </button>
@@ -1760,10 +1845,13 @@ export function ClientPortal() {
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-gray-900 text-[16px] font-black">מרכז התראות</h3>
-                    <p className="text-gray-500 text-[12px] font-semibold">{portalNotifications.length} התראות / תזכורות</p>
+                    <h3 className="text-gray-900 text-[16px] font-black">מרכז עדכונים</h3>
+                    <p className="text-gray-500 text-[12px] font-semibold">{unreadNotificationsCount > 0 ? `${unreadNotificationsCount} חדשים` : "הכול מעודכן"}</p>
                   </div>
                 </div>
+                <button onClick={() => goToPortalView("notifications")} className="text-[#1e40af] text-[12px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
+                  הכל
+                </button>
               </div>
 
               {latestNotifications.length === 0 ? (
@@ -1772,14 +1860,14 @@ export function ClientPortal() {
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <p className="text-gray-900 text-[14px] font-black">הכול מעודכן</p>
-                  <p className="text-gray-500 text-[12px] leading-5 mt-1">אין כרגע התראות או תזכורות.</p>
+                  <p className="text-gray-500 text-[12px] leading-5 mt-1">אין כרגע עדכונים חדשים.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {latestNotifications.map((notif) => {
                     const s = NOTIF_STYLE[notif.type];
                     return (
-                      <div key={notif.id} className="p-4 flex items-start gap-3">
+                      <button key={notif.id} onClick={() => handleNotificationClick(notif)} className="w-full p-4 flex items-start gap-3 text-right hover:bg-gray-50 transition-colors cursor-pointer">
                         <div className={`w-11 h-11 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 border border-gray-100`}>
                           <s.Icon className={`w-5 h-5 ${s.iconColor}`} />
                         </div>
@@ -1789,9 +1877,12 @@ export function ClientPortal() {
                             {!notif.isRead && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
                           </div>
                           <p className="text-gray-500 text-[12px] font-semibold">{notif.petName} · {notif.date}</p>
-                          <p className="text-gray-600 text-[12px] leading-5 mt-1">{notif.text}</p>
+                          <p className="text-gray-600 text-[12px] leading-5 mt-1 line-clamp-2">{notif.text}</p>
+                          <span className="inline-flex items-center gap-1 text-[#1e40af] text-[12px] font-black mt-2">
+                            {portalActionLabelForType(notif.type)} <ChevronLeft className="w-3.5 h-3.5" />
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -1822,6 +1913,72 @@ export function ClientPortal() {
               </section>
             )}
           </div>
+        )}
+
+        {activePortalView === "notifications" && (
+          <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden mb-5">
+            <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 text-[17px] font-black">מרכז עדכונים</h2>
+                  <p className="text-gray-500 text-[12px] font-semibold">
+                    {portalNotifications.length} עדכונים · {unreadNotificationsCount} חדשים
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleMarkAllNotificationsRead}
+                disabled={unreadNotificationsCount === 0}
+                className="rounded-full bg-blue-50 disabled:bg-gray-50 text-[#1e40af] disabled:text-gray-400 border border-blue-100 disabled:border-gray-100 px-3 py-1.5 text-[12px] font-black cursor-pointer disabled:cursor-not-allowed"
+              >
+                סמן הכל כנקרא
+              </button>
+            </div>
+
+            {portalNotifications.length === 0 ? (
+              <div className="p-10 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <p className="text-gray-900 text-[15px] font-black">הכול מעודכן</p>
+                <p className="text-gray-500 text-[13px] leading-6 mt-1">כאן יופיעו עדכונים מהמרפאה, תזכורות, תשלומים וסיכומי ביקור.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {portalNotifications.map((notif) => {
+                  const s = NOTIF_STYLE[notif.type];
+                  return (
+                    <button
+                      key={`${notif.source}-${notif.sourceId}`}
+                      type="button"
+                      onClick={() => handleNotificationClick(notif)}
+                      className={`w-full p-4 flex items-start gap-3 text-right transition-colors cursor-pointer ${notif.isRead ? "hover:bg-gray-50" : "bg-blue-50/30 hover:bg-blue-50/50"}`}
+                    >
+                      <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 border border-gray-100`}>
+                        <s.Icon className={`w-5 h-5 ${s.iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-gray-900 text-[14px] font-black truncate">{notif.title}</p>
+                          {!notif.isRead && <span className="bg-red-500 text-white text-[10px] font-black rounded-full px-2 py-0.5 shrink-0">חדש</span>}
+                        </div>
+                        <p className="text-gray-500 text-[12px] font-semibold">{notif.petName} · {notif.date}</p>
+                        <p className="text-gray-600 text-[13px] leading-6 mt-1">{notif.text}</p>
+                        <span className="inline-flex items-center gap-1 text-[#1e40af] text-[12px] font-black mt-3">
+                          {portalActionLabelForType(notif.type)} <ChevronLeft className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {/* ── Portal Sections ── */}

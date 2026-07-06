@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Plus, Trash2, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  CreditCard,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { publishPaymentToOwner } from "../../services/portalNotifications";
 
 type EntryType =
   | "full_exam"
@@ -128,7 +136,10 @@ export function VisitCheckoutModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const total = useMemo(() => items.reduce((sum, item) => sum + totalForItem(item), 0), [items]);
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + totalForItem(item), 0),
+    [items],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -140,7 +151,9 @@ export function VisitCheckoutModal({
         const [servicesResult, inventoryResult] = await Promise.all([
           supabase
             .from("service_catalog")
-            .select("service_id, service_code, service_name, category, default_price, is_active")
+            .select(
+              "service_id, service_code, service_name, category, default_price, is_active",
+            )
             .eq("is_active", true)
             .order("category", { ascending: true })
             .order("service_name", { ascending: true }),
@@ -153,14 +166,18 @@ export function VisitCheckoutModal({
         if (servicesResult.error) throw servicesResult.error;
         if (inventoryResult.error) throw inventoryResult.error;
 
-        const loadedServices = (servicesResult.data || []).map((service: any) => ({
-          ...service,
-          default_price: toNumber(service.default_price),
-        }));
-        const loadedInventory = (inventoryResult.data || []).map((item: any) => ({
-          ...item,
-          price: toNumber(item.price),
-        }));
+        const loadedServices = (servicesResult.data || []).map(
+          (service: any) => ({
+            ...service,
+            default_price: toNumber(service.default_price),
+          }),
+        );
+        const loadedInventory = (inventoryResult.data || []).map(
+          (item: any) => ({
+            ...item,
+            price: toNumber(item.price),
+          }),
+        );
 
         setServices(loadedServices);
         setInventory(loadedInventory);
@@ -177,12 +194,17 @@ export function VisitCheckoutModal({
     loadPriceData();
   }, [isOpen, visitId]);
 
-  const buildSuggestedItems = (loadedServices: ServiceCatalogItem[], loadedInventory: InventoryItem[]) => {
+  const buildSuggestedItems = (
+    loadedServices: ServiceCatalogItem[],
+    loadedInventory: InventoryItem[],
+  ) => {
     const nextItems: CheckoutItem[] = [];
 
     const addServiceByCode = (code?: string, fallbackName?: string) => {
       if (!code && !fallbackName) return;
-      const service = code ? loadedServices.find((item) => item.service_code === code) : undefined;
+      const service = code
+        ? loadedServices.find((item) => item.service_code === code)
+        : undefined;
       nextItems.push({
         localId: makeId(),
         itemType: service ? "service" : "manual",
@@ -200,7 +222,9 @@ export function VisitCheckoutModal({
 
     labs.forEach((lab) => {
       if (!lab.testName?.trim()) return;
-      const service = loadedServices.find((item) => item.service_code === labServiceCode(lab.category));
+      const service = loadedServices.find(
+        (item) => item.service_code === labServiceCode(lab.category),
+      );
       nextItems.push({
         localId: makeId(),
         itemType: service ? "service" : "manual",
@@ -217,8 +241,10 @@ export function VisitCheckoutModal({
     prescriptions.forEach((prescription) => {
       const medication = prescription.medication?.trim();
       if (!medication) return;
-      const inventoryMatch = loadedInventory.find((item) =>
-        item.item_name?.toLowerCase().includes(medication.toLowerCase()) || medication.toLowerCase().includes(item.item_name?.toLowerCase())
+      const inventoryMatch = loadedInventory.find(
+        (item) =>
+          item.item_name?.toLowerCase().includes(medication.toLowerCase()) ||
+          medication.toLowerCase().includes(item.item_name?.toLowerCase()),
       );
       nextItems.push({
         localId: makeId(),
@@ -229,7 +255,10 @@ export function VisitCheckoutModal({
         discount: 0,
         sourceType: inventoryMatch ? "inventory" : "prescription",
         sourceId: inventoryMatch ? String(inventoryMatch.item_id) : null,
-        notes: [prescription.dosage, prescription.frequency, prescription.duration].filter(Boolean).join(" · ") || undefined,
+        notes:
+          [prescription.dosage, prescription.frequency, prescription.duration]
+            .filter(Boolean)
+            .join(" · ") || undefined,
       });
     });
 
@@ -252,7 +281,9 @@ export function VisitCheckoutModal({
   if (!isOpen) return null;
 
   const addServiceItem = (serviceId: string) => {
-    const service = services.find((item) => String(item.service_id) === serviceId);
+    const service = services.find(
+      (item) => String(item.service_id) === serviceId,
+    );
     if (!service) return;
     setItems((current) => [
       ...current,
@@ -270,7 +301,9 @@ export function VisitCheckoutModal({
   };
 
   const addInventoryItem = (itemId: string) => {
-    const inventoryItem = inventory.find((item) => String(item.item_id) === itemId);
+    const inventoryItem = inventory.find(
+      (item) => String(item.item_id) === itemId,
+    );
     if (!inventoryItem) return;
     setItems((current) => [
       ...current,
@@ -304,11 +337,19 @@ export function VisitCheckoutModal({
   };
 
   const updateItem = (localId: string, patch: Partial<CheckoutItem>) => {
-    setItems((current) => current.map((item) => item.localId === localId ? { ...item, ...patch } : item));
+    setItems((current) =>
+      current.map((item) =>
+        item.localId === localId ? { ...item, ...patch } : item,
+      ),
+    );
   };
 
   const removeItem = (localId: string) => {
-    setItems((current) => current.length <= 1 ? current : current.filter((item) => item.localId !== localId));
+    setItems((current) =>
+      current.length <= 1
+        ? current
+        : current.filter((item) => item.localId !== localId),
+    );
   };
 
   const saveCheckout = async (markPaid: boolean) => {
@@ -326,17 +367,19 @@ export function VisitCheckoutModal({
     try {
       const { data: payment, error: paymentError } = await supabase
         .from("payments")
-        .insert([{
-          owner_id: ownerId || null,
-          pet_id: patientId || null,
-          visit_id: visitId,
-          amount: total,
-          status: markPaid ? "paid" : "unpaid",
-          payment_method: "other",
-          paid_at: markPaid ? new Date().toISOString() : null,
-          notes: `חיוב עבור ביקור ${entryLabel}`,
-          created_at: new Date().toISOString(),
-        }])
+        .insert([
+          {
+            owner_id: ownerId || null,
+            pet_id: patientId || null,
+            visit_id: visitId,
+            amount: total,
+            status: markPaid ? "paid" : "unpaid",
+            payment_method: "other",
+            paid_at: markPaid ? new Date().toISOString() : null,
+            notes: `חיוב עבור ביקור ${entryLabel}`,
+            created_at: new Date().toISOString(),
+          },
+        ])
         .select("payment_id")
         .single();
 
@@ -357,10 +400,24 @@ export function VisitCheckoutModal({
         notes: item.notes || null,
       }));
 
-      const { error: itemsError } = await supabase.from("payment_items").insert(paymentItems);
+      const { error: itemsError } = await supabase
+        .from("payment_items")
+        .insert(paymentItems);
       if (itemsError) throw itemsError;
 
-      toast.success(markPaid ? "החיוב נשמר וסומן כשולם" : "החיוב נשמר לתשלום");
+      if (!markPaid && ownerId) {
+        await publishPaymentToOwner({
+          ownerId,
+          petId: patientId || null,
+          paymentId,
+          amount: total,
+          title: `חיוב עבור ${entryLabel}`,
+        });
+      }
+
+      toast.success(
+        markPaid ? "החיוב נשמר וסומן כשולם" : "החיוב נשמר לתשלום והופיע בפורטל",
+      );
       onSaved?.();
       onClose();
     } catch (saveError) {
@@ -372,37 +429,72 @@ export function VisitCheckoutModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[260] bg-black/50 flex items-center justify-center p-4" dir="rtl">
+    <div
+      className="fixed inset-0 z-[260] bg-black/50 flex items-center justify-center p-4"
+      dir="rtl"
+    >
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
         <header className="px-6 py-5 border-b border-gray-100 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-gray-900 text-[22px] font-bold flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[#1e40af]" /> חיוב ביקור
             </h2>
-            <p className="text-gray-500 text-[13px] mt-1">{petName} · {ownerName} · {entryLabel}</p>
+            <p className="text-gray-500 text-[13px] mt-1">
+              {petName} · {ownerName} · {entryLabel}
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"
+          >
             <X className="w-5 h-5" />
           </button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50/40 space-y-5">
-          {error && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-[13px] font-semibold">{error}</div>}
+          {error && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-[13px] font-semibold">
+              {error}
+            </div>
+          )}
 
           <section className="bg-white rounded-2xl border border-gray-100 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select onChange={(e) => { addServiceItem(e.target.value); e.currentTarget.value = ""; }} defaultValue="" className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-[14px]">
+            <select
+              onChange={(e) => {
+                addServiceItem(e.target.value);
+                e.currentTarget.value = "";
+              }}
+              defaultValue=""
+              className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-[14px]"
+            >
               <option value="">הוסף שירות מהמחירון</option>
               {services.map((service) => (
-                <option key={service.service_id} value={service.service_id}>{service.service_name} · {formatPrice(service.default_price)}</option>
+                <option key={service.service_id} value={service.service_id}>
+                  {service.service_name} · {formatPrice(service.default_price)}
+                </option>
               ))}
             </select>
-            <select onChange={(e) => { addInventoryItem(e.target.value); e.currentTarget.value = ""; }} defaultValue="" className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-[14px]">
+            <select
+              onChange={(e) => {
+                addInventoryItem(e.target.value);
+                e.currentTarget.value = "";
+              }}
+              defaultValue=""
+              className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-[14px]"
+            >
               <option value="">הוסף מוצר מהמלאי</option>
               {inventory.map((item) => (
-                <option key={item.item_id} value={item.item_id}>{item.item_name} · {formatPrice(toNumber(item.price))}</option>
+                <option key={item.item_id} value={item.item_id}>
+                  {item.item_name} · {formatPrice(toNumber(item.price))}
+                </option>
               ))}
             </select>
-            <button type="button" onClick={addManualItem} className="px-4 py-2.5 rounded-xl border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 text-[14px] font-bold flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={addManualItem}
+              className="px-4 py-2.5 rounded-xl border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 text-[14px] font-bold flex items-center justify-center gap-2"
+            >
               <Plus className="w-4 h-4" /> שורה ידנית
             </button>
           </section>
@@ -424,10 +516,15 @@ export function VisitCheckoutModal({
             ) : (
               <div className="divide-y divide-gray-100">
                 {items.map((item) => (
-                  <div key={item.localId} className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
+                  <div
+                    key={item.localId}
+                    className="grid grid-cols-12 gap-3 px-4 py-3 items-center"
+                  >
                     <input
                       value={item.itemName}
-                      onChange={(e) => updateItem(item.localId, { itemName: e.target.value })}
+                      onChange={(e) =>
+                        updateItem(item.localId, { itemName: e.target.value })
+                      }
                       className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 text-[14px]"
                       placeholder="שם פריט"
                     />
@@ -436,7 +533,11 @@ export function VisitCheckoutModal({
                       min="0.01"
                       step="0.01"
                       value={item.quantity}
-                      onChange={(e) => updateItem(item.localId, { quantity: Math.max(0, toNumber(e.target.value)) })}
+                      onChange={(e) =>
+                        updateItem(item.localId, {
+                          quantity: Math.max(0, toNumber(e.target.value)),
+                        })
+                      }
                       className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 text-[14px]"
                     />
                     <input
@@ -444,7 +545,11 @@ export function VisitCheckoutModal({
                       min="0"
                       step="0.01"
                       value={item.unitPrice}
-                      onChange={(e) => updateItem(item.localId, { unitPrice: Math.max(0, toNumber(e.target.value)) })}
+                      onChange={(e) =>
+                        updateItem(item.localId, {
+                          unitPrice: Math.max(0, toNumber(e.target.value)),
+                        })
+                      }
                       className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 text-[14px]"
                     />
                     <input
@@ -452,11 +557,21 @@ export function VisitCheckoutModal({
                       min="0"
                       step="0.01"
                       value={item.discount}
-                      onChange={(e) => updateItem(item.localId, { discount: Math.max(0, toNumber(e.target.value)) })}
+                      onChange={(e) =>
+                        updateItem(item.localId, {
+                          discount: Math.max(0, toNumber(e.target.value)),
+                        })
+                      }
                       className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 text-[14px]"
                     />
-                    <span className="col-span-1 text-gray-900 text-[13px] font-bold">{formatPrice(totalForItem(item))}</span>
-                    <button type="button" onClick={() => removeItem(item.localId)} className="col-span-1 w-9 h-9 rounded-xl hover:bg-red-50 text-red-500 flex items-center justify-center">
+                    <span className="col-span-1 text-gray-900 text-[13px] font-bold">
+                      {formatPrice(totalForItem(item))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.localId)}
+                      className="col-span-1 w-9 h-9 rounded-xl hover:bg-red-50 text-red-500 flex items-center justify-center"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -468,17 +583,40 @@ export function VisitCheckoutModal({
 
         <footer className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-4">
           <div>
-            <p className="text-gray-500 text-[12px] font-semibold">סה״כ לתשלום</p>
-            <p className="text-gray-900 text-[26px] font-bold">{formatPrice(total)}</p>
+            <p className="text-gray-500 text-[12px] font-semibold">
+              סה״כ לתשלום
+            </p>
+            <p className="text-gray-900 text-[26px] font-bold">
+              {formatPrice(total)}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-bold">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-bold"
+            >
               ביטול
             </button>
-            <button type="button" onClick={() => saveCheckout(false)} disabled={isSaving} className="px-5 py-2.5 rounded-xl bg-[#1e40af] text-white hover:bg-[#1e3a8a] disabled:bg-gray-300 text-[14px] font-bold flex items-center gap-2">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} שמור לתשלום
+            <button
+              type="button"
+              onClick={() => saveCheckout(false)}
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl bg-[#1e40af] text-white hover:bg-[#1e3a8a] disabled:bg-gray-300 text-[14px] font-bold flex items-center gap-2"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CreditCard className="w-4 h-4" />
+              )}{" "}
+              שמור לתשלום
             </button>
-            <button type="button" onClick={() => saveCheckout(true)} disabled={isSaving} className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 text-[14px] font-bold flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => saveCheckout(true)}
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 text-[14px] font-bold flex items-center gap-2"
+            >
               <CheckCircle2 className="w-4 h-4" /> סמן כשולם
             </button>
           </div>
