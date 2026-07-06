@@ -29,6 +29,7 @@ import {
 import { useLabStore } from "../data/LabStore";
 import { getStaffLabel } from "../data/staffAuth";
 import { supabase } from "../../services/supabaseClient";
+import { VisitPostSaveActionsModal } from "./VisitPostSaveActionsModal";
 
 interface TreatmentModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface TreatmentModalProps {
   petName: string;
   petSpecies: "dog" | "cat" | string;
   ownerName: string;
+  ownerId?: string;
   patientId?: number;
   onSave?: (data: any) => void;
 }
@@ -246,6 +248,7 @@ export function TreatmentModal({
   petName,
   petSpecies,
   ownerName,
+  ownerId,
   patientId,
   onSave,
 }: TreatmentModalProps) {
@@ -263,6 +266,15 @@ export function TreatmentModal({
   const [entryType, setEntryType] = useState<EntryType>("full_exam");
   const [visitDate, setVisitDate] = useState(todayInputValue());
   const [isSaved, setIsSaved] = useState(false);
+  const [savedVisitContext, setSavedVisitContext] = useState<null | {
+    visitId: number;
+    entryType: EntryType;
+    entryLabel: string;
+    visitDate: string;
+    ownerSummaryDraft: string;
+    prescriptions: PrescriptionDraft[];
+    labs: LabDraft[];
+  }>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -293,6 +305,7 @@ export function TreatmentModal({
     { diagnosisText: "", likelihood: "possible", notes: "" },
   ]);
 
+
   const PetIcon = petSpecies === "cat" ? Cat : Dog;
   const entryConfig = getEntryTypeConfig(entryType);
 
@@ -301,6 +314,7 @@ export function TreatmentModal({
     setEntryType("full_exam");
     setVisitDate(todayInputValue());
     setIsSaved(false);
+    setSavedVisitContext(null);
     setIsSubmitting(false);
     setErrors({});
     setChiefComplaint("");
@@ -329,6 +343,45 @@ export function TreatmentModal({
   const cleanPrescriptions = useMemo(() => prescriptions.filter((p) => nonEmpty(p.medication)), [prescriptions]);
   const cleanLabs = useMemo(() => labs.filter((l) => nonEmpty(l.testName)), [labs]);
   const cleanDifferentials = useMemo(() => differentials.filter((d) => nonEmpty(d.diagnosisText)), [differentials]);
+
+  const buildOwnerSummaryDraft = () => {
+    const lines: string[] = [];
+
+    if (entryType === "vaccination") {
+      if (nonEmpty(vaccineName)) lines.push(`בוצע חיסון: ${vaccineName.trim()}.`);
+      if (nonEmpty(nextDueDate)) lines.push(`מועד מומלץ לחיסון הבא: ${dateInputToUiDate(nextDueDate)}.`);
+    } else if (entryType === "weight_check") {
+      if (nonEmpty(weight)) lines.push(`נמדד משקל: ${weight.trim()} ק״ג.`);
+    } else if (entryType === "prescription_only") {
+      lines.push("הופק מרשם לפי הנחיית הצוות הרפואי.");
+    } else if (entryType === "lab") {
+      lines.push("נפתחה בקשה לבדיקת מעבדה.");
+    } else if (entryType === "follow_up") {
+      lines.push("בוצע מעקב רפואי קצר.");
+    } else if (entryType === "note") {
+      lines.push("נוספה הערה רפואית לתיק.");
+    } else {
+      if (nonEmpty(chiefComplaint)) lines.push(`סיבת הביקור: ${chiefComplaint.trim()}.`);
+      if (nonEmpty(treatmentText)) lines.push(`טיפול והנחיות: ${treatmentText.trim()}`);
+      if (nonEmpty(finalDiagnosis)) lines.push(`סיכום רפואי: ${finalDiagnosis.trim()}`);
+    }
+
+    if (cleanPrescriptions.length > 0) {
+      lines.push(`מרשמים: ${cleanPrescriptions.map((p) => [p.medication, p.dosage, p.frequency, p.duration].filter(nonEmpty).join(" · ")).join("; ")}.`);
+    }
+
+    if (cleanLabs.length > 0) {
+      lines.push(`בדיקות מעבדה: ${cleanLabs.map((lab) => lab.testName.trim()).join(", ")}.`);
+    }
+
+    if (followUpRequired) {
+      lines.push(`מעקב: ${followUpNotes.trim() || "נדרש מעקב בהתאם להנחיית הצוות."}`);
+    }
+
+    if (nonEmpty(notes)) lines.push(notes.trim());
+
+    return lines.filter(nonEmpty).join("\n\n") || `בוצעה ${entryConfig.label} ל${petName}.`;
+  };
 
   if (!isOpen) return null;
 
@@ -390,6 +443,7 @@ export function TreatmentModal({
         nextErrors.notes = "חובה להזין את ההערה הרפואית.";
       }
     }
+
 
     return nextErrors;
   };
@@ -673,6 +727,15 @@ export function TreatmentModal({
       }
 
       await loadMedicalData();
+      setSavedVisitContext({
+        visitId: savedVisit.id,
+        entryType,
+        entryLabel: entryConfig.label,
+        visitDate,
+        ownerSummaryDraft: buildOwnerSummaryDraft(),
+        prescriptions: cleanPrescriptions,
+        labs: cleanLabs,
+      });
       setIsSaved(true);
       onSave?.({
         visit: savedVisit,
@@ -683,7 +746,7 @@ export function TreatmentModal({
         prescriptions: cleanPrescriptions,
         labs: cleanLabs,
       });
-      toast.success("הרשומה הרפואית נשמרה בתיק החיה");
+      toast.success("הרשומה הרפואית נשמרה");
     } catch (error) {
       console.error("Failed saving medical entry", error);
       toast.error("אירעה שגיאה בשמירת הרשומה הרפואית");
@@ -1140,17 +1203,21 @@ export function TreatmentModal({
 
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50/40">
           <div className="max-w-5xl mx-auto space-y-5">
-            {isSaved ? (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm text-center py-14 px-6">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="w-9 h-9 text-emerald-600" />
-                </div>
-                <h3 className="text-gray-900 text-[22px] font-bold mb-2">הרשומה נשמרה בהצלחה</h3>
-                <p className="text-gray-500 text-[14px]">הרשומה נוספה להיסטוריה הרפואית של {petName}.</p>
-                <button type="button" onClick={onClose} className="mt-6 px-6 py-3 rounded-xl bg-[#1e40af] text-white font-bold hover:bg-[#1e3a8a]">
-                  סגור
-                </button>
-              </div>
+            {isSaved && savedVisitContext ? (
+              <VisitPostSaveActionsModal
+                petName={petName}
+                ownerName={ownerName}
+                ownerId={ownerId}
+                patientId={patientId}
+                visitId={savedVisitContext.visitId}
+                entryType={savedVisitContext.entryType}
+                entryLabel={savedVisitContext.entryLabel}
+                visitDate={savedVisitContext.visitDate}
+                ownerSummaryDraft={savedVisitContext.ownerSummaryDraft}
+                prescriptions={savedVisitContext.prescriptions}
+                labs={savedVisitContext.labs}
+                onClose={onClose}
+              />
             ) : (
               <>
                 {errors.patient && (
@@ -1169,7 +1236,7 @@ export function TreatmentModal({
           <footer className="border-t border-gray-100 px-6 py-4 bg-white flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-[13px] text-gray-500">
               <span className={`px-3 py-1.5 rounded-full border font-bold ${entryConfig.className}`}>{entryConfig.shortLabel}</span>
-              <span>שמירה אחת מוסיפה את הפעולה להיסטוריה הרפואית</span>
+              <span>הרשומה תישמר בתיק החיה</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -1183,7 +1250,7 @@ export function TreatmentModal({
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-[14px] font-bold"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {isSubmitting ? "שומר..." : "שמור רשומה"}
+                {isSubmitting ? "שומר..." : "שמור רשומה רפואית"}
               </button>
             </div>
           </footer>

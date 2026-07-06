@@ -1,6 +1,7 @@
 import { supabase } from "../../../services/supabaseClient";
 import { compactText } from "./aiSanitizer";
 import type { AiUserRole } from "./aiTypes";
+import { getAiActionContext } from "../../navigation/appActions";
 
 function todayRange() {
   const start = new Date();
@@ -53,6 +54,14 @@ function buildRoleFocus(role: AiUserRole) {
   return "עזרה לפי המסך הנוכחי";
 }
 
+function navigationContext(role: AiUserRole) {
+  return {
+    instruction: "כששואלים איך להגיע לפעולה, השתמש רק במפת הפעולות הזו. אל תמציא מסכים או כפתורים שלא מופיעים כאן.",
+    actions: getAiActionContext(role),
+  };
+}
+
+
 export async function buildDashboardContext(role: AiUserRole) {
   const { start, end } = todayRange();
   const week = nextDaysRange(7);
@@ -63,17 +72,28 @@ export async function buildDashboardContext(role: AiUserRole) {
     activeHospitalizations,
     urgentProblems,
     openLabOrders,
+    urgentLabOrders,
     billingFollowUps,
+    openPaymentsForTotal,
     openConversations,
+    highPriorityConversations,
+    lowStockInventory,
   ] = await Promise.all([
     supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", start).lt("start_time", end),
     supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", start).lt("start_time", week.end).eq("appointment_mode", "video"),
     supabase.from("hospitalizations").select("hospitalization_id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("medical_problems").select("problem_id", { count: "exact", head: true }).eq("status", "active").in("severity", ["serious", "critical"]),
     supabase.from("lab_orders").select("lab_order_id", { count: "exact", head: true }).not("status", "eq", "completed"),
+    supabase.from("lab_orders").select("lab_order_id", { count: "exact", head: true }).not("status", "eq", "completed").eq("is_urgent", true),
     supabase.from("payments").select("payment_id", { count: "exact", head: true }).in("status", ["unpaid", "partial"]),
+    supabase.from("payments").select("payment_id,amount,status").in("status", ["unpaid", "partial"]),
     supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).neq("status", "closed"),
+    supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).neq("status", "closed").in("priority", ["high", "urgent"]),
+    supabase.from("inventory").select("item_id", { count: "exact", head: true }).lte("stock_quantity", 10),
   ]);
+
+  const openPaymentRows = Array.isArray(openPaymentsForTotal.data) ? openPaymentsForTotal.data : [];
+  const openPaymentsAmount = openPaymentRows.reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0);
 
   return {
     screen: "dashboard",
@@ -86,10 +106,31 @@ export async function buildDashboardContext(role: AiUserRole) {
       activeHospitalizations: safeCount(activeHospitalizations),
       urgentCases: role === "secretary" ? 0 : safeCount(urgentProblems),
       openLabOrders: role === "secretary" ? 0 : safeCount(openLabOrders),
+      urgentLabOrders: role === "secretary" ? 0 : safeCount(urgentLabOrders),
       billingFollowUps: safeCount(billingFollowUps),
       openDigitalConversations: safeCount(openConversations),
+      highPriorityConversations: safeCount(highPriorityConversations),
+      lowStockInventory: safeCount(lowStockInventory),
     },
-    expectedAnswerStyle: "תשובה קצרה עם סדר עדיפויות ופעולות המשך ברורות",
+    reportInsights: {
+      billing: {
+        openPayments: safeCount(billingFollowUps),
+        openAmount: openPaymentsAmount,
+      },
+      inventory: {
+        lowStockItems: safeCount(lowStockInventory),
+      },
+      lab: {
+        openOrders: role === "secretary" ? 0 : safeCount(openLabOrders),
+        urgentOrders: role === "secretary" ? 0 : safeCount(urgentLabOrders),
+      },
+      digitalCare: {
+        openConversations: safeCount(openConversations),
+        highPriorityConversations: safeCount(highPriorityConversations),
+      },
+    },
+    navigation: navigationContext(role),
+    expectedAnswerStyle: "תשובה קצרה עם סדר עדיפויות, ואם שואלים איך להגיע לפעולה — ציין את הדרך המדויקת מתוך מפת הפעולות.",
   };
 }
 
@@ -132,6 +173,7 @@ export function buildScheduleContext({ appointments, viewMode, activeVet, role }
       appointmentMode: normalizeMode(appt.appointmentMode || appt.appointment_mode),
       type: appt.type,
     })),
+    navigation: navigationContext(role),
   };
 }
 
@@ -165,6 +207,7 @@ export function buildInventoryContext({ items, role }: { items: any[]; role: AiU
         price: item.price,
         lowStock: Boolean(item.lowStock),
       })),
+    navigation: navigationContext(role),
   };
 }
 
@@ -190,6 +233,7 @@ export function buildDigitalCareContext({ conversation, messages, attachments, r
       text: compactText(message.message_text || "", 500),
       createdAt: message.created_at,
     })),
+    navigation: navigationContext(role),
     expectedAnswerStyle: "טיוטה קצרה וברורה. לא לשלוח לבד.",
   };
 }
@@ -224,6 +268,7 @@ export function buildMedicalRecordContext({ patient, visits, activeHospitalizati
       hasFollowUp: Boolean(visit.followUpRequired),
       notes: compactText(visit.notes || "", 450),
     })),
+    navigation: navigationContext(role),
     expectedAnswerStyle: "סיכום מקצועי קצר לצוות. אין אבחון חדש ואין מינונים חדשים.",
   };
 }
@@ -245,6 +290,7 @@ export function buildPortalContext({ pets, appointments, notifications, digitalC
       hasVideoAppointment: appointments.some((appointment) => normalizeMode(appointment.appointment_mode || appointment.appointmentMode) === "video"),
     },
     availableActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "הצטרפות לשיחת וידאו"],
+    navigation: navigationContext("owner"),
     expectedAnswerStyle: "עזרה באתר בלבד. להפנות לצוות במקרה רפואי.",
   };
 }
@@ -267,5 +313,6 @@ export function buildClientsSummaryContext({ clients, role }: { clients: any[]; 
         return acc;
       }, {}),
     },
+    navigation: navigationContext(role),
   };
 }

@@ -16,9 +16,9 @@ function staffRole() {
 }
 
 const dashboardActions: AiQuickAction[] = [
-  { label: "מה לטפל קודם?", prompt: "תן לי סדר עדיפויות קצר להיום לפי מצב המרפאה." },
-  { label: "סכם את היום", prompt: "סכם את מצב המרפאה בשורה תחתונה ושלוש פעולות." },
-  { label: "מה דורש מעקב?", prompt: "מה הדברים שדורשים מעקב בהמשך היום?" },
+  { label: "מה לטפל קודם?", prompt: "תן לי סדר עדיפויות קצר להיום לפי מצב המרפאה, כולל כפתורים או מסכים שכדאי לפתוח." },
+  { label: "איך מגיעים ל...?", prompt: "הסבר לי איך להגיע לפעולות מרכזיות במערכת: תור חדש, תיק רפואי, גביית חוב, מחירון, מעבדה ואשפוזים." },
+  { label: "סכם תובנות", prompt: "סכם את מצב המרפאה, הגבייה, המלאי, המעבדה והפניות בשורה תחתונה ושלוש פעולות." },
 ];
 
 export function DashboardAssistant() {
@@ -29,11 +29,11 @@ export function DashboardAssistant() {
       mode="dashboard"
       title="עוזר דשבורד"
       compactTitle="עוזר יומי"
-      subtitle="עוזר להבין מה דורש טיפול עכשיו ומה כדאי לבדוק בהמשך היום."
+      subtitle="עוזר להבין מה דורש טיפול, איפה ללחוץ ומה כדאי לבדוק בהמשך היום."
       userRole={role}
       quickActions={dashboardActions}
       buildContext={() => buildDashboardContext(role)}
-      privacyNote="כאן אפשר לקבל סיכום קצר והמלצה לפעולה הבאה."
+      privacyNote="אפשר לשאול מה חשוב עכשיו או איך להגיע לכל פעולה במערכת."
     />
   );
 }
@@ -63,7 +63,7 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
 
 const inventoryActions: AiQuickAction[] = [
   { label: "מה צריך להזמין?", prompt: "אילו פריטים כדאי להזמין עכשיו ולמה?" },
-  { label: "מה קריטי?", prompt: "מה הפריטים הדחופים ביותר במלאי ומה הפעולה המומלצת?" },
+  { label: "איפה מעדכנים מחיר?", prompt: "הסבר איך מעדכנים מחיר מוצר במלאי ואיך פותחים את מחירון המרפאה לשירותים." },
   { label: "סכם מלאי", prompt: "סכם את מצב המלאי בכמה נקודות קצרות." },
 ];
 

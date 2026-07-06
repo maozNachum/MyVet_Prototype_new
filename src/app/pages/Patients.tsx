@@ -19,6 +19,7 @@ import { useSearchFilter } from "../hooks/useSearchFilter";
 import { VISIT_TYPES } from "../data/categoryConfig";
 import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
 import { PatientMedicalTimeline } from "../components/PatientMedicalTimeline";
+import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -816,6 +817,10 @@ export function Patients() {
                   <span className="text-red-700 text-[14px] font-semibold">אלרגיות: {pet.allergies}</span>
                 </div>
               )}
+
+              <div className="mt-4">
+                <OwnerDebtPanel ownerId={owner.id} ownerName={owner.name} />
+              </div>
             </div>
           </div>
 
@@ -1145,6 +1150,7 @@ export function Patients() {
           petName={pet.name}
           petSpecies={pet.speciesType}
           ownerName={owner.name}
+          ownerId={owner.id}
           patientId={selectedPatient.id}
         />
 

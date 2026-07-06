@@ -9,8 +9,10 @@ import {
   Loader2,
   Save,
   Package,
+  FileText,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { useSearchFilter } from "../hooks/useSearchFilter";
@@ -125,6 +127,7 @@ function validateForm(form: InventoryFormValues) {
 }
 
 export function Inventory() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -397,14 +400,26 @@ export function Inventory() {
             className="w-full pr-11 pl-10 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors text-[15px]"
           />
         </div>
-        <button
-          onClick={openCreateForm}
-          className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-6 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2 shrink-0"
-          style={{ fontWeight: 600 }}
-        >
-          <Plus className="w-5 h-5" />
-          הוסף פריט חדש
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate("/price-list")}
+            className="bg-white hover:bg-blue-50 text-[#1e40af] border border-blue-100 px-5 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2"
+            style={{ fontWeight: 600 }}
+          >
+            <FileText className="w-5 h-5" />
+            מחירון מרפאה
+          </button>
+          <button
+            type="button"
+            onClick={openCreateForm}
+            className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-6 py-3 rounded-xl transition-colors shadow-sm cursor-pointer text-[15px] flex items-center justify-center gap-2"
+            style={{ fontWeight: 600 }}
+          >
+            <Plus className="w-5 h-5" />
+            הוסף פריט חדש
+          </button>
+        </div>
       </div>
 
       {/* Category Filters */}

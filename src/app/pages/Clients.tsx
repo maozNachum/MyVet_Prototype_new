@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 
 type SpeciesType = "dog" | "cat" | "other";
 
@@ -298,7 +299,7 @@ export function Clients() {
       setClients(mappedClients);
     } catch (error) {
       console.error("Error loading clients:", error);
-      setErrorMessage("לא הצלחנו לטעון את רשימת הלקוחות. נסה לרענן את הדף.");
+      setErrorMessage("אירעה שגיאה בטעינת הלקוחות מ-Supabase");
       toast.error("שגיאה בטעינת לקוחות");
     } finally {
       setIsLoading(false);
@@ -575,10 +576,14 @@ export function Clients() {
           </div>
         </div>
 
+        <div className="mb-8">
+          <OwnerDebtPanel ownerId={selectedClient.owner_id} ownerName={selectedClient.fullName} />
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-gray-900 text-[20px] font-bold">החיות של הלקוח</h2>
-            <p className="text-gray-500 text-[14px]">כל המטופלים שמקושרים ל־owner_id של הלקוח</p>
+            <p className="text-gray-500 text-[14px]">כל החיות המשויכות ללקוח</p>
           </div>
           <button
             onClick={openAddPetModal}
@@ -670,7 +675,7 @@ export function Clients() {
               <div className="bg-[#1e40af] px-6 py-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-white text-[18px] font-bold">הוספת חיה ללקוח</h3>
-                  <p className="text-white/80 text-[13px] mt-0.5">החיה תקושר אוטומטית ל־{selectedClient.fullName}</p>
+                  <p className="text-white/80 text-[13px] mt-0.5">החיה תתווסף לרשימת החיות של {selectedClient.fullName}</p>
                 </div>
                 <button onClick={() => setIsAddPetOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                   <X className="w-5 h-5" />
@@ -908,7 +913,7 @@ export function Clients() {
                   </div>
                 ) : (
                   <div className="bg-gray-50 rounded-xl p-4 mb-5 text-gray-700 text-[14px] leading-6">
-                    פעולה זו תמחק את הלקוח מהמערכת. לא ניתן לבטל את הפעולה לאחר האישור.
+                    פעולה זו תמחק את הלקוח מטבלת owners. לא ניתן לבטל את הפעולה מתוך המערכת.
                   </div>
                 )}
 
