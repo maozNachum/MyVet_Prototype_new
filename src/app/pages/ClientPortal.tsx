@@ -17,7 +17,6 @@ import { ModalOverlay, ModalHeader } from "../components/shared/ModalOverlay";
 import { AVAILABLE_DATE_STRINGS, AVAILABLE_TIMES } from "../data/calendar-constants";
 import { exportOwnerMedicalRecord } from "../hooks/useExportOwnerRecord";
 import { MyVetLogo } from "../components/MyVetLogo";
-import { ClientPortalAssistant } from "../components/ai/PageAssistants";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { supabase } from "../../services/supabaseClient";
 
@@ -1480,7 +1479,6 @@ export function ClientPortal() {
             </h1>
             <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
           </div>
-          <ClientPortalAssistant pets={pets} appointments={appointments} notifications={portalNotifications} digitalConversations={digitalConversations} paymentsByPet={paymentsByPet} />
         </div>
 
         {isPortalLoading && (

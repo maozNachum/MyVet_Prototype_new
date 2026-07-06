@@ -1,6 +1,6 @@
 import {
   Calendar, X, Stethoscope, Trash2, CalendarClock,
-  Check, Pencil, ChevronDown, AlertTriangle, User,
+  Check, Pencil, ChevronDown, AlertTriangle, User, Video, Building2,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { ModalOverlay, ModalHeader } from "../shared/ModalOverlay";
@@ -13,7 +13,7 @@ import {
   addMinutes, type ActionMode, type DateOption,
 } from "../../data/calendar-constants";
 import { useStaffMembers, uniqueNames } from "../../data/staffDirectory";
-import type { CalendarAppointment } from "../../data/AppointmentStore";
+import { appointmentModeLabel, type AppointmentMode, type CalendarAppointment } from "../../data/AppointmentStore";
 
 // ─── Sub-components ─────────────────────────────────────────────────
 function ApptSummaryCard({ appt, bgColor }: { appt: CalendarAppointment; bgColor: string }) {
@@ -75,7 +75,7 @@ interface Props {
   rescheduleSuccess: boolean;
   onReschedule: () => void;
   // Edit
-  editForm: { type: string; department: string; vet: string; room: string; time: string; endTime: string; notes: string };
+  editForm: { type: string; department: string; vet: string; room: string; time: string; endTime: string; notes: string; appointmentMode: AppointmentMode };
   setEditForm: (f: any) => void;
   editSuccess: boolean;
   onEdit: () => void;
@@ -102,6 +102,35 @@ export function AppointmentActionModal({
 
   const datePills = AVAILABLE_DATES.map((d) => ({ key: d.label, label: d.label }));
   const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
+  const isVideo = appt.appointmentMode === "video";
+  const openDigitalCare = () => {
+    const params = new URLSearchParams();
+    params.set("appointment_id", String(appt.appointmentId || appt.id));
+    if (appt.petId) params.set("pet_id", String(appt.petId));
+    if (appt.ownerId) params.set("owner_id", appt.ownerId);
+    onClose();
+    navigate(`/digital-care?${params.toString()}`);
+  };
+
+  const handleActionButtonClick = (btnMode: ActionMode | "digital" | null) => {
+    if (btnMode === "digital") {
+      openDigitalCare();
+      return;
+    }
+
+    if (btnMode === "edit") {
+      openAction(appt, "edit");
+      return;
+    }
+
+    if (btnMode) {
+      setMode(btnMode);
+      return;
+    }
+
+    onClose();
+    navigate(`/patients?selected=${appt.petId || appt.id}`);
+  };
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -122,13 +151,18 @@ export function AppointmentActionModal({
               <div>
                 <h4 className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{appt.petName}</h4>
                 <p className="text-gray-500 text-[14px]">{appt.type}</p>
+                <span className={`inline-flex items-center gap-1 mt-2 rounded-full px-2.5 py-1 text-[12px] font-semibold ${isVideo ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
+                  {isVideo ? <Video className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                  {appointmentModeLabel(appt.appointmentMode)}
+                </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               {[
                 { label: "שעה", value: `${appt.time} - ${appt.endTime}`, big: true },
-                { label: "חדר", value: appt.room, big: true },
+                { label: "מיקום", value: isVideo ? "מרפאה דיגיטלית" : appt.room, big: true },
+                { label: "סוג תור", value: appointmentModeLabel(appt.appointmentMode), big: false },
                 { label: "בעלים", value: appt.ownerName, sub: `${appt.ownerPhone}${appt.ownerEmail ? ` · ${appt.ownerEmail}` : ""}` },
                 { label: "רופא / מחלקה", value: appt.vet, sub: appt.department },
               ].map((item, i) => (
@@ -148,8 +182,9 @@ export function AppointmentActionModal({
               <p className="text-gray-700 text-[14px]">{appt.notes}</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className={`grid ${isVideo ? "grid-cols-5" : "grid-cols-4"} gap-2 mb-4`}>
               {([
+                ...(isVideo ? [{ mode: "digital" as const, icon: Video, label: "דיגיטל", cls: "border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-600" }] : []),
                 { mode: "reschedule" as ActionMode, icon: CalendarClock, label: "הזז תור", cls: "border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600" },
                 { mode: "edit" as ActionMode, icon: Pencil, label: "ערוך", cls: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-600" },
                 { mode: "delete" as ActionMode, icon: Trash2, label: "מחק", cls: "border-red-200 bg-red-50 hover:bg-red-100 text-red-500" },
@@ -159,7 +194,7 @@ export function AppointmentActionModal({
                 return (
                   <button
                     key={btn.label}
-                    onClick={() => btn.mode ? (btn.mode === "edit" ? openAction(appt, "edit") : setMode(btn.mode)) : (() => { onClose(); navigate(`/patients?selected=${appt.petId || appt.id}`); })()}
+                    onClick={() => handleActionButtonClick(btn.mode)}
                     className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border ${btn.cls} transition-colors cursor-pointer`}
                   >
                     <BtnIcon className="w-5 h-5" />
@@ -233,9 +268,35 @@ export function AppointmentActionModal({
                   <label className="block text-gray-600 text-[12px] mb-1.5" style={{ fontWeight: 500 }}>סוג טיפול</label>
                   <input type="text" value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} className={INPUT_CLS} />
                 </div>
+                <div>
+                  <label className="block text-gray-600 text-[12px] mb-1.5" style={{ fontWeight: 500 }}>סוג תור</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, appointmentMode: "physical", room: editForm.room === "דיגיטל" ? "חדר 1" : editForm.room })}
+                      className={`rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors ${editForm.appointmentMode === "physical" ? "border-blue-200 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}
+                    >
+                      פיזי
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, appointmentMode: "video", room: "דיגיטל" })}
+                      className={`rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors ${editForm.appointmentMode === "video" ? "border-purple-200 bg-purple-50 text-purple-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}
+                    >
+                      וידאו
+                    </button>
+                  </div>
+                </div>
                 <SelectField label="מחלקה" value={editForm.department} options={DEPARTMENTS} onChange={(v) => setEditForm({ ...editForm, department: v })} />
                 <SelectField label="רופא/ה" value={editForm.vet} options={vetOptions} onChange={(v) => setEditForm({ ...editForm, vet: v })} />
-                <SelectField label="חדר" value={editForm.room} options={ROOMS} onChange={(v) => setEditForm({ ...editForm, room: v })} />
+                {editForm.appointmentMode === "video" ? (
+                  <div>
+                    <label className="block text-gray-600 text-[12px] mb-1.5" style={{ fontWeight: 500 }}>מיקום</label>
+                    <input type="text" value="דיגיטל" readOnly className={`${INPUT_CLS} bg-gray-100 text-gray-600`} />
+                  </div>
+                ) : (
+                  <SelectField label="חדר" value={editForm.room} options={ROOMS} onChange={(v) => setEditForm({ ...editForm, room: v })} />
+                )}
                 <SelectField
                   label="שעת התחלה" value={editForm.time} options={AVAILABLE_TIMES}
                   onChange={(v) => setEditForm({ ...editForm, time: v, endTime: addMinutes(v, 30) })}

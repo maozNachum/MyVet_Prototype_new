@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, X, Check, Dog, Cat, PawPrint, Loader2, AlertCircle } from "lucide-react";
+import { Calendar, Clock, X, Check, Dog, Cat, PawPrint, Loader2, AlertCircle, Building2, Video } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
 import { supabase } from "../../services/supabaseClient";
@@ -40,8 +40,14 @@ type AppointmentRow = {
   end_time: string | null;
 };
 
+type AppointmentMode = "physical" | "video";
+
 const treatmentTypes = BOOKING_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const APPOINTMENT_MODE_OPTIONS: Array<{ value: AppointmentMode; title: string; subtitle: string; icon: typeof Building2 }> = [
+  { value: "physical", title: "תור פיזי", subtitle: "הגעה למרפאה", icon: Building2 },
+  { value: "video", title: "תור וידאו", subtitle: "המשך טיפול במרפאה הדיגיטלית", icon: Video },
+];
 
 function pad(num: number) {
   return String(num).padStart(2, "0");
@@ -133,6 +139,7 @@ export function OwnerBookAppointment({
   const [step, setStep] = useState(1);
   const [selectedPet, setSelectedPet] = useState<number | null>(null);
   const [selectedTreatment, setSelectedTreatment] = useState<string | null>(null);
+  const [selectedAppointmentMode, setSelectedAppointmentMode] = useState<AppointmentMode>("physical");
   const [selectedDay, setSelectedDay] = useState<number>(0);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -178,6 +185,7 @@ export function OwnerBookAppointment({
     setStep(1);
     setSelectedPet(null);
     setSelectedTreatment(null);
+    setSelectedAppointmentMode("physical");
     setSelectedDay(0);
     setSelectedTime(null);
     setNotes("");
@@ -217,6 +225,7 @@ export function OwnerBookAppointment({
         ownerName ? `בעלים: ${ownerName}` : "",
         ownerPhone ? `טלפון: ${ownerPhone}` : "",
         ownerEmail ? `אימייל: ${ownerEmail}` : "",
+        `סוג תור: ${selectedAppointmentMode === "video" ? "וידאו" : "פיזי"}`,
         "נקבע דרך פורטל לקוחות",
       ]
         .filter(Boolean)
@@ -229,8 +238,9 @@ export function OwnerBookAppointment({
           end_time: endDate.toISOString(),
           department: "כללי",
           vet_name: "טרם שובץ",
-          room: "טרם שובץ",
+          room: selectedAppointmentMode === "video" ? "דיגיטל" : "טרם שובץ",
           appointment_type: selectedTreatmentData?.label || selectedTreatment,
+          appointment_mode: selectedAppointmentMode,
           color: "blue",
           notes: notesToSave || null,
         },
@@ -319,6 +329,32 @@ export function OwnerBookAppointment({
                       })}
                     </div>
                   </div>
+
+                  <div>
+                    <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>סוג תור</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {APPOINTMENT_MODE_OPTIONS.map((mode) => {
+                        const selected = selectedAppointmentMode === mode.value;
+                        const Icon = mode.icon;
+                        return (
+                          <button
+                            key={mode.value}
+                            type="button"
+                            onClick={() => setSelectedAppointmentMode(mode.value)}
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-right ${selected ? "border-[#1e40af] bg-blue-50/50 shadow-sm" : "border-gray-100 hover:border-gray-200 bg-white"}`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Icon className={`w-4.5 h-4.5 ${selected ? "text-[#1e40af]" : "text-gray-500"}`} />
+                              <div>
+                                <span className="block text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>{mode.title}</span>
+                                <span className="block text-gray-500 text-[11.5px] mt-0.5">{mode.subtitle}</span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -359,6 +395,7 @@ export function OwnerBookAppointment({
                     <div className="space-y-1 text-[14px] text-blue-900/80">
                       <p>חיה: <strong>{selectedPetData?.name}</strong></p>
                       <p>סיבה: <strong>{selectedTreatmentData?.label}</strong></p>
+                      <p>סוג תור: <strong>{selectedAppointmentMode === "video" ? "וידאו" : "פיזי"}</strong></p>
                       <p>מועד: <strong>{week[selectedDay]?.date} בשעה {selectedTime}</strong></p>
                     </div>
                   </div>

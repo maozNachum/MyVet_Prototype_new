@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 
 export type PetSpecies = "dog" | "cat" | "other";
+export type AppointmentMode = "physical" | "video";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface CalendarAppointment {
@@ -24,6 +25,7 @@ export interface CalendarAppointment {
   vet: string;
   room: string;
   type: string;
+  appointmentMode: AppointmentMode;
   color: string;
   notes: string;
 }
@@ -70,6 +72,14 @@ function normalizeSpecies(species?: string | null): PetSpecies {
   if (value === "cat" || value === "חתול") return "cat";
   if (value === "dog" || value === "כלב") return "dog";
   return "other";
+}
+
+function normalizeAppointmentMode(value?: string | null): AppointmentMode {
+  return value === "video" ? "video" : "physical";
+}
+
+export function appointmentModeLabel(mode?: AppointmentMode | string | null) {
+  return mode === "video" ? "תור וידאו" : "תור פיזי";
 }
 
 function formatTime(value?: string | null) {
@@ -121,7 +131,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     try {
       const { data: appointmentRows, error: appointmentsError } = await supabase
         .from("appointments")
-        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
+        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes")
         .order("start_time", { ascending: true });
 
       if (appointmentsError) throw appointmentsError;
@@ -166,6 +176,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         const end = new Date(row.end_time || row.start_time);
         const pet = petById.get(Number(row.pet_id));
         const owner = pet?.owner_id ? ownerById.get(String(pet.owner_id)) : undefined;
+        const appointmentMode = normalizeAppointmentMode(row.appointment_mode);
 
         return {
           id: Number(row.appointment_id),
@@ -184,8 +195,9 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           ownerEmail: owner?.email || "",
           department: row.department || "כללי",
           vet: row.vet_name || "טרם שובץ",
-          room: row.room || "—",
+          room: row.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
           type: row.appointment_type || "ביקור",
+          appointmentMode,
           color: row.color || "blue",
           notes: row.notes || "",
         };
@@ -230,6 +242,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
 
         const startDate = buildDateTime(appt.year, appt.month, appt.day, appt.time);
         const endDate = buildDateTime(appt.year, appt.month, appt.day, appt.endTime || appt.time);
+        const appointmentMode = normalizeAppointmentMode(appt.appointmentMode);
 
         const { error: insertError } = await supabase.from("appointments").insert([
           {
@@ -238,8 +251,9 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
             end_time: endDate.toISOString(),
             department: appt.department || "כללי",
             vet_name: appt.vet || "טרם שובץ",
-            room: appt.room || "—",
+            room: appt.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
             appointment_type: appt.type || "ביקור",
+            appointment_mode: appointmentMode,
             color: appt.color || "blue",
             notes: appt.notes || null,
           },
@@ -360,6 +374,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         if (updates.room !== undefined) patch.room = updates.room;
         if (updates.notes !== undefined) patch.notes = updates.notes || null;
         if (updates.color !== undefined) patch.color = updates.color;
+        if (updates.appointmentMode !== undefined) patch.appointment_mode = normalizeAppointmentMode(updates.appointmentMode);
 
         if (updates.time !== undefined) {
           const startDate = buildDateTime(current.year, current.month, current.day, updates.time);

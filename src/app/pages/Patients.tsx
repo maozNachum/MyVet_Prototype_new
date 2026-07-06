@@ -4,7 +4,7 @@ import {
   Users, UserPlus, Eye, Search, Cat, Dog, AlertTriangle,
   Calendar, AlertCircle, CalendarCheck, ChevronLeft, Stethoscope,
   ArrowRight, Phone, CreditCard, Download, Mail, Pencil, Trash2, X,
-  ClipboardList, Activity, CheckCircle2, Pill, FileText,
+  ClipboardList, Activity, CheckCircle2, Pill, FileText, Video,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { TreatmentModal } from "../components/TreatmentModal";
@@ -291,6 +291,11 @@ function getVisitDisplayConfig(visitType?: string | null) {
       label: "הערה רפואית",
       icon: FileText,
       color: "bg-gray-50 text-gray-600 border-gray-200",
+    },
+    video_consultation: {
+      label: "סיכום שיחת וידאו",
+      icon: Video,
+      color: "bg-indigo-50 text-indigo-600 border-indigo-200",
     },
     hospitalization: {
       label: "אשפוז",

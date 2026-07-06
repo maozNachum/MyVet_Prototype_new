@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useCalendarNav } from "../hooks/useCalendarNav";
 import { useAppointmentActions } from "../hooks/useAppointmentActions";
-import { useAppointmentStore } from "../data/AppointmentStore";
+import { useAppointmentStore, type CalendarAppointment } from "../data/AppointmentStore";
 import { CalendarHeader } from "../components/schedule/CalendarHeader";
 import { MonthlyView } from "../components/schedule/MonthlyView";
 import { WeeklyView } from "../components/schedule/WeeklyView";
@@ -56,6 +56,39 @@ export function AppointmentSchedule() {
     return ["all", ...uniqueNames([...staffNames, ...fromAppointments])];
   }, [vetCounts, vetStaff]);
 
+  const openDigitalCareForAppointment = useCallback(
+    (appt: CalendarAppointment) => {
+      const params = new URLSearchParams();
+      params.set("appointment_id", String(appt.appointmentId || appt.id));
+      if (appt.petId) params.set("pet_id", String(appt.petId));
+      if (appt.ownerId) params.set("owner_id", appt.ownerId);
+      navigate(`/digital-care?${params.toString()}`);
+    },
+    [navigate]
+  );
+
+  const handleAppointmentClick = useCallback(
+    (appt: CalendarAppointment) => {
+      if (appt.appointmentMode === "video") {
+        openDigitalCareForAppointment(appt);
+        return;
+      }
+      actions.openAction(appt, "view");
+    },
+    [actions, openDigitalCareForAppointment]
+  );
+
+  const handleAppointmentAction = useCallback(
+    (appt: CalendarAppointment, mode: any) => {
+      if (mode === "view" && appt.appointmentMode === "video") {
+        openDigitalCareForAppointment(appt);
+        return;
+      }
+      actions.openAction(appt, mode);
+    },
+    [actions, openDigitalCareForAppointment]
+  );
+
   const openNewAppointmentAt = useCallback(
     (date: Date, time = "09:00") => {
       const year = date.getFullYear();
@@ -96,7 +129,8 @@ export function AppointmentSchedule() {
             a.ownerName.toLowerCase().includes(q) ||
             a.type.toLowerCase().includes(q) ||
             a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q)
+            a.department.toLowerCase().includes(q) ||
+            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
         );
       }
 
@@ -122,7 +156,8 @@ export function AppointmentSchedule() {
                 a.ownerName.toLowerCase().includes(q) ||
                 a.type.toLowerCase().includes(q) ||
                 a.vet.toLowerCase().includes(q) ||
-                a.department.toLowerCase().includes(q)
+                a.department.toLowerCase().includes(q) ||
+                (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
               );
             })();
           return deptOk && vetOk && searchOk;
@@ -141,7 +176,8 @@ export function AppointmentSchedule() {
             a.ownerName.toLowerCase().includes(q) ||
             a.type.toLowerCase().includes(q) ||
             a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q)
+            a.department.toLowerCase().includes(q) ||
+            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
           );
         })();
       return deptOk && vetOk && searchOk;
@@ -161,7 +197,8 @@ export function AppointmentSchedule() {
             a.ownerName.toLowerCase().includes(q) ||
             a.type.toLowerCase().includes(q) ||
             a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q)
+            a.department.toLowerCase().includes(q) ||
+            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
           );
         })();
       return deptOk && vetOk && searchOk;
@@ -234,7 +271,7 @@ export function AppointmentSchedule() {
             <WeeklyView
               weekDays={nav.weekDays}
               getAppointments={filteredGetAppointments}
-              onApptClick={(appt) => actions.openAction(appt, "view")}
+              onApptClick={handleAppointmentClick}
               onSlotClick={(date, hour) =>
                 openNewAppointmentAt(date, `${String(hour).padStart(2, "0")}:00`)
               }
@@ -244,7 +281,7 @@ export function AppointmentSchedule() {
             <DailyView
               dailyDate={nav.dailyDate}
               getAppointments={filteredGetAppointments}
-              onApptClick={(appt) => actions.openAction(appt, "view")}
+              onApptClick={handleAppointmentClick}
               onSlotClick={(date, hour) =>
                 openNewAppointmentAt(date, `${String(hour).padStart(2, "0")}:00`)
               }
@@ -328,7 +365,7 @@ export function AppointmentSchedule() {
                 currentYear={nav.currentYear}
                 appointments={filteredSidebarAppointments}
                 onClose={() => nav.setSidebarOpen(false)}
-                onApptAction={actions.openAction}
+                onApptAction={handleAppointmentAction}
               />
             )}
 

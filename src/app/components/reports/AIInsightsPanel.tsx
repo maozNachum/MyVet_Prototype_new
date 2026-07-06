@@ -834,7 +834,7 @@ export function AIInsightsPanel({
     {
       id: "welcome",
       role: "agent",
-      text: "אני כאן כמו עוזר ניהולי למרפאה: אפשר לשאול אותי מה דחוף, איפה יש סיכון, למי לפנות ומה כדאי לעשות עכשיו. אני אתבסס על התובנות והנתונים שסוכמו מהמערכת, ואנסה לתת תשובה עם סדר עדיפויות ופעולות מעשיות.",
+      text: "אני כאן כדי לעזור להבין את הדוחות: מה דורש טיפול, איפה יש חריגה ומה הפעולה הבאה שכדאי לבצע.",
       createdAt: new Date().toLocaleTimeString("he-IL", {
         hour: "2-digit",
         minute: "2-digit",
@@ -1056,7 +1056,7 @@ export function AIInsightsPanel({
         {
           id: `agent-error-${Date.now()}`,
           role: "system",
-          text: "לא הצלחתי לפנות כרגע ל-AI. אפשר להמשיך להשתמש בתובנות החכמות שמבוססות על הנתונים המקומיים.",
+          text: "לא הצלחתי לקבל תשובה כרגע. אפשר לנסות שוב עוד רגע, ובינתיים להמשיך לפי התובנות שמופיעות בדוח.",
           createdAt: new Date().toLocaleTimeString("he-IL", {
             hour: "2-digit",
             minute: "2-digit",

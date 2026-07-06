@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Video } from "lucide-react";
 import {
   HEBREW_DAYS,
   TIMELINE_HOURS,
@@ -54,9 +54,17 @@ function WeeklyApptCard({
         <p className="text-[10.5px] text-gray-600 leading-tight truncate" style={{ fontWeight: 500 }}>
           {appt.ownerName}
         </p>
-        <p className="text-[10px] text-gray-500 leading-tight truncate" style={{ fontWeight: 400 }}>
-          {appt.type}
-        </p>
+        <div className="flex items-center gap-1 truncate">
+          <p className="text-[10px] text-gray-500 leading-tight truncate" style={{ fontWeight: 400 }}>
+            {appt.type}
+          </p>
+          {appt.appointmentMode === "video" && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-50 px-1 py-0.5 text-[9px] font-semibold text-purple-700 border border-purple-100">
+              <Video className="w-2 h-2" />
+              וידאו
+            </span>
+          )}
+        </div>
         <p className="text-[10px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
           {appt.vet}
         </p>

@@ -6,31 +6,56 @@ export function getStaffType(): StaffType {
   return "vet";
 }
 
+/**
+ * הרשאת עריכת תיק רפואי:
+ * וטרינר ואחות בלבד.
+ * מזכירה יכולה לנהל תורים/לקוחות/שירות, אבל לא לערוך רשומות רפואיות.
+ */
 export function canEditMedicalRecords(): boolean {
   const st = getStaffType();
-  return st === "vet" || st === "nurse" || st === "secretary";
+  return st === "vet" || st === "nurse";
 }
 
+/**
+ * הרשאת ביצוע טיפול / פתיחת רשומה רפואית:
+ * וטרינר ואחות בלבד.
+ */
 export function canPerformTreatment(): boolean {
   const st = getStaffType();
   return st === "vet" || st === "nurse";
 }
 
+/**
+ * צ׳אט פנימי/תפעולי בלבד:
+ * אחות ומזכירה.
+ */
 export function isInternalChatOnly(): boolean {
   const st = getStaffType();
   return st === "nurse" || st === "secretary";
 }
 
+/**
+ * גישה לדוחות:
+ * וטרינר ומזכירה.
+ */
 export function canAccessReportsPage(): boolean {
   const st = getStaffType();
   return st === "vet" || st === "secretary";
 }
 
+/**
+ * דוחות כספיים:
+ * וטרינר בלבד.
+ */
 export function canViewFinancialReports(): boolean {
   const st = getStaffType();
   return st === "vet";
 }
 
+/**
+ * דוחות תפעוליים:
+ * וטרינר ומזכירה.
+ */
 export function canViewOperationalReports(): boolean {
   const st = getStaffType();
   return st === "vet" || st === "secretary";

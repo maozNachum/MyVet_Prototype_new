@@ -1,13 +1,28 @@
 import { useState, useCallback } from "react";
-import { useAppointmentStore, type CalendarAppointment } from "../data/AppointmentStore";
+import { useAppointmentStore, type CalendarAppointment, type AppointmentMode } from "../data/AppointmentStore";
 import { addMinutes, type ActionMode, type DateOption } from "../data/calendar-constants";
 
 interface EditFormState {
-  type: string; department: string; vet: string;
-  room: string; time: string; endTime: string; notes: string;
+  type: string;
+  department: string;
+  vet: string;
+  room: string;
+  time: string;
+  endTime: string;
+  notes: string;
+  appointmentMode: AppointmentMode;
 }
 
-const EMPTY_EDIT: EditFormState = { type: "", department: "", vet: "", room: "", time: "", endTime: "", notes: "" };
+const EMPTY_EDIT: EditFormState = {
+  type: "",
+  department: "",
+  vet: "",
+  room: "",
+  time: "",
+  endTime: "",
+  notes: "",
+  appointmentMode: "physical",
+};
 
 /** Manages the appointment action modal (view/reschedule/edit/delete). */
 export function useAppointmentActions() {
@@ -43,8 +58,14 @@ export function useAppointmentActions() {
     setDeleteSuccess(false);
     if (mode === "edit") {
       setEditForm({
-        type: appt.type, department: appt.department, vet: appt.vet,
-        room: appt.room, time: appt.time, endTime: appt.endTime, notes: appt.notes,
+        type: appt.type,
+        department: appt.department,
+        vet: appt.vet,
+        room: appt.room,
+        time: appt.time,
+        endTime: appt.endTime,
+        notes: appt.notes,
+        appointmentMode: appt.appointmentMode || "physical",
       });
     }
   }, []);

@@ -130,7 +130,7 @@ export function StaffUtilization({ dateRange }: StaffUtilizationProps) {
         <div className="p-5 border-b border-gray-100 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
           <div>
             <h3 className="font-bold text-gray-900 text-[17px]">עומס ופעילות צוות</h3>
-            <p className="text-gray-500 text-[12px] font-medium">מבוסס על appointments ו־medical_visits</p>
+            <p className="text-gray-500 text-[12px] font-medium">מבוסס על פעילות התורים והביקורים</p>
           </div>
           <div className="relative w-full lg:w-80">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

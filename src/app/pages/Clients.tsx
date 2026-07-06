@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
-import { ClientsAssistant } from "../components/ai/PageAssistants";
 
 type SpeciesType = "dog" | "cat" | "other";
 
@@ -950,7 +949,6 @@ export function Clients() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <ClientsAssistant clients={clients} />
           <button
             onClick={openCreateClientModal}
             className="flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold w-fit shadow-sm"

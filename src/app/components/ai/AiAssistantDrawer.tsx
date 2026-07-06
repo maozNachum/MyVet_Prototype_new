@@ -65,7 +65,7 @@ export function AiAssistantDrawer({
   quickActions,
   buildContext,
   userRole = "unknown",
-  privacyNote = "העוזר מקבל רק מידע מצומצם ומנוקה מפרטים מזהים.",
+  privacyNote = "כאן אפשר לשאול שאלות קצרות ולקבל עזרה לפי המסך הנוכחי.",
 }: Props) {
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -75,12 +75,12 @@ export function AiAssistantDrawer({
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const intro = useMemo(() => {
-    if (mode === "portal") return "אני יכול לעזור בניווט בפורטל, קביעת תור, פתיחת פנייה וצירוף מסמכים. אני לא מחליף וטרינר.";
-    if (mode === "medical-record") return "אני יכול לעזור לסכם, לנסח ולהבליט שדות חסרים. החלטה רפואית נשארת אצל הצוות.";
-    if (mode === "digital-care") return "אני יכול לסכם שיחה, להציע תשובה ולזהות דחיפות — בלי לשלוח הודעה לבד.";
+    if (mode === "portal") return "אני יכול לעזור לך למצוא פעולות בפורטל: קביעת תור, פתיחת פנייה, צירוף מסמכים והצטרפות לשיחת וידאו.";
+    if (mode === "medical-record") return "אני יכול לעזור לסכם ביקור, לנסח הנחיות ולבדוק אם חסרים פרטים ברשומה.";
+    if (mode === "digital-care") return "אני יכול לסכם שיחה, להציע טיוטת תשובה ולעזור להבין מה הפעולה הבאה.";
     if (mode === "inventory") return "אני יכול לעזור לזהות חוסרים, פריטים קריטיים וסדר עדיפויות להזמנה.";
-    if (mode === "schedule") return "אני יכול לבדוק עומסים, חלונות פנויים והתנגשויות ביומן.";
-    return "אני כאן כדי לתת תובנות קצרות ופעולות מומלצות בלי להשתלט על המסך.";
+    if (mode === "schedule") return "אני יכול לעזור לזהות עומסים, חלונות פנויים ותורים שכדאי לתאם.";
+    return "אני כאן כדי לעזור לסכם את המצב ולהציע את הפעולה הבאה.";
   }, [mode]);
 
   useEffect(() => {
@@ -203,7 +203,7 @@ export function AiAssistantDrawer({
             {isThinking && (
               <div className="flex justify-end">
                 <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 py-3 text-[13px] text-gray-500 shadow-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" /> חושב ומסנן מידע רגיש...
+                  <Loader2 className="h-4 w-4 animate-spin" /> מכין תשובה...
                 </div>
               </div>
             )}

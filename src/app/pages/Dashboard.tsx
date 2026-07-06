@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { KpiCards } from "../components/KpiCards";
 import { DashboardAssistant } from "../components/ai/PageAssistants";
 import { AppointmentsTable } from "../components/AppointmentsTable";
-import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, Check, Loader2, AlertCircle } from "lucide-react";
+import { Zap, Search, Dog, Cat, Phone, X, UserPlus, ArrowRight, PawPrint, Check, Loader2, AlertCircle, CalendarPlus } from "lucide-react";
 import { TreatmentModal } from "../components/TreatmentModal";
-import { getStaffName, canEditMedicalRecords } from "../data/staffAuth";
+import { getStaffName, getStaffType, canEditMedicalRecords } from "../data/staffAuth";
 import { supabase } from "../../services/supabaseClient";
 
 type SpeciesType = "dog" | "cat" | "bird" | "rabbit" | "hamster" | "other";
@@ -154,7 +155,18 @@ export function Dashboard() {
   const [treatmentPatient, setTreatmentPatient] = useState<{ id: number; petName: string; petSpecies: string; ownerName: string } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
+  const navigate = useNavigate();
+  const staffType = getStaffType();
+  const isSecretary = staffType === "secretary";
   const canTreat = canEditMedicalRecords();
+
+  const dashboardSubtitle = isSecretary
+    ? "דשבורד תפעולי: תורים, פניות, גבייה ומעקב שירות"
+    : staffType === "nurse"
+      ? "דשבורד סיעודי: תורים, אשפוזים, מקרים דחופים וקליטת מטופלים"
+      : "סקירה כללית של פעילות המרפאה היום";
+
+  const walkInButtonLabel = staffType === "nurse" ? "קליטת מטופל ללא תור" : "טיפול ללא תור";
 
   const filteredPatients = useMemo(
     () => patients.filter((patient) => matchesPatient(patient, walkInSearch)).slice(0, 50),
@@ -352,19 +364,30 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-gray-900 text-[26px] font-bold">ברוך הבא, {getStaffName()}</h1>
-          <p className="text-gray-500 mt-1 text-[15px]">סקירה כללית של פעילות המרפאה היום</p>
+          <p className="text-gray-500 mt-1 text-[15px]">{dashboardSubtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DashboardAssistant />
-          <button
-            onClick={() => {
-              setShowWalkInPicker(true);
-              loadPatients();
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all text-[14px] font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white cursor-pointer shadow-md shadow-orange-500/20"
-          >
-            <Zap className="w-4 h-4" /> טיפול ללא תור
-          </button>
+          {isSecretary ? (
+            <button
+              type="button"
+              onClick={() => navigate("/appointments/new")}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all text-[14px] font-semibold bg-[#1e40af] hover:bg-[#1e3a8a] text-white cursor-pointer shadow-md shadow-blue-500/20"
+            >
+              <CalendarPlus className="w-4 h-4" /> קבע תור חדש
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setShowWalkInPicker(true);
+                loadPatients();
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all text-[14px] font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white cursor-pointer shadow-md shadow-orange-500/20"
+            >
+              <Zap className="w-4 h-4" /> {walkInButtonLabel}
+            </button>
+          )}
         </div>
       </div>
       <KpiCards />
@@ -474,7 +497,7 @@ export function Dashboard() {
                 <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-1">
                   <button onClick={validateAndSave} disabled={isSavingPatient} className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white transition-colors cursor-pointer text-[14px] font-semibold flex items-center justify-center gap-2">
                     {isSavingPatient ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    שמור והתחל רשומה רפואית
+                    {staffType === "nurse" ? "שמור ופתח תיעוד סיעודי" : "שמור והתחל רשומה רפואית"}
                   </button>
                   <button onClick={() => setModalView("list")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] font-medium">חזרה</button>
                 </div>

@@ -1,4 +1,4 @@
-import { Calendar, Clock, X, MapPin, CalendarClock, Pencil, Trash2 } from "lucide-react";
+import { Calendar, Clock, X, MapPin, CalendarClock, Pencil, Trash2, Video } from "lucide-react";
 import { HEBREW_MONTHS, getHebrewDayName, getDeptConfig, getApptStatus } from "../../data/calendar-constants";
 import { PetIcon } from "../shared/PetIcon";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
@@ -105,7 +105,15 @@ export function CalendarSidebar({
                           {appt.ownerName}
                         </p>
                         {/* Line 3 */}
-                        <p className="text-[13px] text-gray-500 truncate">{appt.type}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[13px] text-gray-500 truncate">{appt.type}</p>
+                          {appt.appointmentMode === "video" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-100">
+                              <Video className="w-2.5 h-2.5" />
+                              וידאו
+                            </span>
+                          )}
+                        </div>
                         {/* Line 4 */}
                         <p className="text-[10.5px] text-gray-500 font-medium truncate">{appt.vet}</p>
                       </div>

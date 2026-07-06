@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Calendar, Plus } from "lucide-react";
+import { Calendar, Plus, Video } from "lucide-react";
 import {
   HEBREW_MONTHS,
   TIMELINE_HOURS,
@@ -119,7 +119,15 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         <p className="text-gray-600 text-[12.5px] mt-0.5" style={{ fontWeight: 500 }}>
                           {appt.ownerName}
                         </p>
-                        <p className="text-gray-500 text-[12px]">{appt.type}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-gray-500 text-[12px]">{appt.type}</p>
+                          {appt.appointmentMode === "video" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-100">
+                              <Video className="w-2.5 h-2.5" />
+                              וידאו
+                            </span>
+                          )}
+                        </div>
                         <p className="text-gray-500 font-medium text-[11.5px]">{appt.vet}</p>
                       </div>
 
@@ -130,7 +138,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         >
                           {appt.department}
                         </span>
-                        <span className="text-gray-500 font-medium text-[13px]">{appt.room}</span>
+                        <span className="text-gray-500 font-medium text-[13px]">{appt.appointmentMode === "video" ? "דיגיטל" : appt.room}</span>
                         <span className={`w-2 h-2 rounded-full ${status.dotColor}`} title={status.label} />
                       </div>
                     </button>

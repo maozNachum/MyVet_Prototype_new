@@ -18,10 +18,14 @@ import {
   User,
   Video,
   ExternalLink,
+  Save,
+  CheckCircle2,
   X,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
 import { DigitalCareAssistant } from "../components/ai/PageAssistants";
+import { getStaffName } from "../data/staffAuth";
+import { toast } from "sonner";
 
 const CHAT_BUCKET = "chat-attachments";
 const DEFAULT_STAFF_NAME = "צוות המרפאה";
@@ -31,6 +35,7 @@ type ConversationPriority = "low" | "normal" | "high" | "urgent";
 type SenderType = "owner" | "staff" | "system";
 type MessageType = "text" | "file" | "image" | "video_link" | "system";
 type VideoStatus = "scheduled" | "active" | "completed" | "cancelled";
+type ValidationErrors = Record<string, string>;
 
 interface OwnerRow {
   owner_id: string;
@@ -206,6 +211,29 @@ function sortConversations(list: ConversationVM[]) {
   });
 }
 
+function createEmptyVideoSummary() {
+  return {
+    summary: "",
+    recommendations: "",
+    followUpRequired: false,
+    followUpNotes: "",
+  };
+}
+
+function hasError(errors: ValidationErrors, field: string) {
+  return Boolean(errors[field]);
+}
+
+function errorClass(errors: ValidationErrors, field: string) {
+  return hasError(errors, field) ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/10" : "border-gray-200 focus:border-blue-400 focus:ring-blue-500/10";
+}
+
+function ErrorText({ errors, field }: { errors: ValidationErrors; field: string }) {
+  if (!errors[field]) return null;
+  return <p className="text-red-500 text-[12px] font-semibold mt-2">{errors[field]}</p>;
+}
+
+
 export function DigitalCare() {
   const navigate = useNavigate();
   const [owners, setOwners] = useState<OwnerRow[]>([]);
@@ -228,6 +256,10 @@ export function DigitalCare() {
   const [isMeetLinkModalOpen, setIsMeetLinkModalOpen] = useState(false);
   const [meetLinkInput, setMeetLinkInput] = useState("");
   const [meetLinkError, setMeetLinkError] = useState<string | null>(null);
+  const [summaryModalSession, setSummaryModalSession] = useState<VideoSessionRow | null>(null);
+  const [videoSummary, setVideoSummary] = useState(createEmptyVideoSummary());
+  const [videoSummaryErrors, setVideoSummaryErrors] = useState<ValidationErrors>({});
+  const [savingSummary, setSavingSummary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -694,6 +726,137 @@ export function DigitalCare() {
     }
   }
 
+
+  function openVideoSummaryModal(session: VideoSessionRow) {
+    setVideoModal(null);
+    setSummaryModalSession(session);
+    setVideoSummary(createEmptyVideoSummary());
+    setVideoSummaryErrors({});
+  }
+
+  function validateVideoSummary() {
+    const errors: ValidationErrors = {};
+
+    if (!selectedConversation) errors.conversation = "יש לבחור שיחה לפני שמירת סיכום";
+    if (!selectedPet?.pet_id) errors.pet = "אי אפשר לשמור לתיק רפואי בלי חיה משויכת לשיחה";
+    if (!videoSummary.summary.trim()) errors.summary = "חובה לכתוב סיכום קצר של שיחת הווידאו";
+    if (videoSummary.summary.trim().length < 8) errors.summary = "הסיכום קצר מדי. כתוב לפחות משפט אחד ברור";
+    if (videoSummary.followUpRequired && !videoSummary.followUpNotes.trim()) {
+      errors.followUpNotes = "סימנת שנדרש מעקב, לכן חובה לציין מה צריך לעשות בהמשך";
+    }
+
+    setVideoSummaryErrors(errors);
+    return errors;
+  }
+
+  async function saveVideoSummaryToMedicalRecord() {
+    if (!summaryModalSession || !selectedConversation) return;
+
+    const errors = validateVideoSummary();
+    if (Object.keys(errors).length > 0) {
+      toast.error("חסר מידע לשמירת סיכום שיחת הווידאו");
+      return;
+    }
+
+    setSavingSummary(true);
+    setError(null);
+
+    try {
+      const now = new Date().toISOString();
+      const staffName = getStaffName();
+      const summaryText = videoSummary.summary.trim();
+      const recommendationsText = videoSummary.recommendations.trim();
+      const followUpText = videoSummary.followUpNotes.trim();
+
+      const notes = [
+        `סיכום שיחת וידאו מתוך המרפאה הדיגיטלית.`,
+        `מספר שיחה דיגיטלית: ${selectedConversation.conversation_id}`,
+        `מספר סשן וידאו: ${summaryModalSession.session_id}`,
+        recommendationsText ? `הנחיות / המלצות שנמסרו: ${recommendationsText}` : "",
+        followUpText ? `מעקב נדרש: ${followUpText}` : "",
+      ].filter(Boolean).join("\n");
+
+      const { data, error: visitError } = await supabase
+        .from("medical_visits")
+        .insert({
+          appointment_id: null,
+          pet_id: selectedPet!.pet_id,
+          visit_date: now,
+          vet_name: staffName || DEFAULT_STAFF_NAME,
+          reason: selectedConversation.subject || "שיחת וידאו",
+          diagnosis: null,
+          treatment: summaryText,
+          notes,
+          attachments: "0",
+          visit_type: "video_consultation",
+          urgency_level: selectedConversation.priority === "urgent" ? "serious" : "normal",
+          chief_complaint: selectedConversation.subject || "שיחת וידאו",
+          final_diagnosis: null,
+          follow_up_required: Boolean(videoSummary.followUpRequired),
+          follow_up_notes: followUpText || null,
+          entry_data: {
+            entryType: "video_consultation",
+            label: "סיכום שיחת וידאו",
+            source: "digital-care",
+            conversationId: selectedConversation.conversation_id,
+            videoSessionId: summaryModalSession.session_id,
+            summary: summaryText,
+            recommendations: recommendationsText || null,
+            followUpRequired: Boolean(videoSummary.followUpRequired),
+            followUpNotes: followUpText || null,
+            savedAt: now,
+          },
+        })
+        .select("visit_id")
+        .single();
+
+      if (visitError) throw visitError;
+
+      await supabase
+        .from("video_sessions")
+        .update({
+          status: "completed",
+          ended_at: summaryModalSession.ended_at || now,
+          notes: summaryText,
+        })
+        .eq("session_id", summaryModalSession.session_id);
+
+      await supabase.from("messages").insert({
+        conversation_id: selectedConversation.conversation_id,
+        sender_type: "system",
+        sender_name: "מערכת MyVet",
+        message_text: `סיכום שיחת וידאו נשמר בתיק הרפואי. מספר רשומה: ${data?.visit_id ?? "חדש"}`,
+        message_type: "system",
+        is_read_by_owner: false,
+        is_read_by_staff: true,
+      });
+
+      await supabase
+        .from("conversations")
+        .update({ updated_at: now, last_message_at: now })
+        .eq("conversation_id", selectedConversation.conversation_id);
+
+      setVideoSessions((prev) => prev.map((session) => (
+        session.session_id === summaryModalSession.session_id
+          ? { ...session, status: "completed", ended_at: summaryModalSession.ended_at || now, notes: summaryText }
+          : session
+      )));
+
+      setSummaryModalSession(null);
+      setVideoSummary(createEmptyVideoSummary());
+      setVideoSummaryErrors({});
+      toast.success("סיכום שיחת הווידאו נשמר בתיק הרפואי");
+      await loadConversationDetails(selectedConversation.conversation_id);
+      await loadData();
+    } catch (err) {
+      console.error("Failed saving video summary to medical record", err);
+      setError("שמירת סיכום שיחת הווידאו לתיק הרפואי נכשלה");
+      toast.error("לא הצלחנו לשמור את הסיכום לתיק הרפואי");
+    } finally {
+      setSavingSummary(false);
+    }
+  }
+
   const attachmentsByMessage = useMemo(() => {
     const map = new Map<number, AttachmentRow[]>();
     attachments.forEach((attachment) => {
@@ -857,6 +1020,14 @@ export function DigitalCare() {
                     <button onClick={startVideoSession} className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl px-3 py-2 text-[12px] font-semibold cursor-pointer">
                       <Video className="w-4 h-4" /> וידאו
                     </button>
+                    {videoSessions.length > 0 && (
+                      <button
+                        onClick={() => openVideoSummaryModal(videoSessions[0])}
+                        className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-[12px] font-semibold cursor-pointer"
+                      >
+                        <Save className="w-4 h-4" /> סכם לתיק
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1020,10 +1191,22 @@ export function DigitalCare() {
                   ) : (
                     <div className="space-y-2">
                       {videoSessions.slice(0, 3).map((session) => (
-                        <button key={session.session_id} onClick={() => setVideoModal(session)} className="w-full text-right rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 hover:bg-emerald-100 cursor-pointer">
-                          <p className="text-emerald-800 text-[13px] font-bold">Google Meet #{session.session_id}</p>
-                          <p className="text-emerald-600 text-[12px]">{session.status} · {formatDateTime(session.created_at)}</p>
-                        </button>
+                        <div key={session.session_id} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 space-y-2">
+                          <button onClick={() => setVideoModal(session)} className="w-full text-right hover:bg-emerald-100 rounded-xl px-2 py-1 cursor-pointer">
+                            <p className="text-emerald-800 text-[13px] font-bold">Google Meet #{session.session_id}</p>
+                            <p className="text-emerald-600 text-[12px]">{session.status} · {formatDateTime(session.created_at)}</p>
+                          </button>
+                          {selectedPet?.pet_id ? (
+                            <button
+                              onClick={() => openVideoSummaryModal(session)}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-3 py-2 text-[12px] font-bold cursor-pointer"
+                            >
+                              <Save className="w-3.5 h-3.5" /> סכם לתיק הרפואי
+                            </button>
+                          ) : (
+                            <p className="text-amber-600 text-[11px] font-semibold px-2">כדי לשמור סיכום לתיק יש לשייך חיה לשיחה</p>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1160,6 +1343,141 @@ export function DigitalCare() {
         </div>
       )}
 
+
+      {summaryModalSession && (
+        <div className="fixed inset-0 z-[1000] bg-black/45 flex items-center justify-center px-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100">
+            <div className="px-6 py-5 flex items-start justify-between gap-4 border-b border-gray-100">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 rounded-full text-[12px] font-bold mb-3">
+                  <FileText className="w-3.5 h-3.5" /> תיק רפואי
+                </div>
+                <h3 className="text-gray-900 text-[20px] font-bold">סיכום שיחת וידאו לתיק הרפואי</h3>
+                <p className="text-gray-500 text-[13px] mt-1">{ownerDisplayName(selectedOwner)} · {petDisplayName(selectedPet)} · Google Meet #{summaryModalSession.session_id}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSummaryModalSession(null);
+                  setVideoSummaryErrors({});
+                }}
+                className="w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {videoSummaryErrors.conversation && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-[13px] font-semibold">
+                  {videoSummaryErrors.conversation}
+                </div>
+              )}
+
+              {videoSummaryErrors.pet && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-[13px] font-semibold">
+                  {videoSummaryErrors.pet}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <p className="text-gray-400 text-[11px] font-bold mb-1">לקוח</p>
+                  <p className="text-gray-800 text-[13px] font-bold truncate">{ownerDisplayName(selectedOwner)}</p>
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <p className="text-gray-400 text-[11px] font-bold mb-1">חיה</p>
+                  <p className="text-gray-800 text-[13px] font-bold truncate">{petDisplayName(selectedPet)}</p>
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <p className="text-gray-400 text-[11px] font-bold mb-1">נושא השיחה</p>
+                  <p className="text-gray-800 text-[13px] font-bold truncate">{selectedConversation?.subject || "שיחת וידאו"}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-[13px] font-bold mb-2">סיכום השיחה *</label>
+                <textarea
+                  value={videoSummary.summary}
+                  onChange={(event) => {
+                    setVideoSummary((prev) => ({ ...prev, summary: event.target.value }));
+                    if (videoSummaryErrors.summary) setVideoSummaryErrors((prev) => ({ ...prev, summary: "" }));
+                  }}
+                  placeholder="כתוב בקצרה מה עלה בשיחת הווידאו, מה הוסבר ללקוח ומה סוכם."
+                  rows={5}
+                  className={`w-full border rounded-2xl px-4 py-3 text-[14px] outline-none focus:ring-2 resize-none ${errorClass(videoSummaryErrors, "summary")}`}
+                />
+                <ErrorText errors={videoSummaryErrors} field="summary" />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-[13px] font-bold mb-2">הנחיות / המלצות שנמסרו</label>
+                <textarea
+                  value={videoSummary.recommendations}
+                  onChange={(event) => setVideoSummary((prev) => ({ ...prev, recommendations: event.target.value }))}
+                  placeholder="לדוגמה: המשך מעקב, קביעת ביקורת, הבאת מסמכים, תיאום בדיקה במרפאה."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 resize-none"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 space-y-3">
+                <label className="flex items-center gap-2 text-gray-800 text-[13px] font-bold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={videoSummary.followUpRequired}
+                    onChange={(event) => {
+                      setVideoSummary((prev) => ({ ...prev, followUpRequired: event.target.checked }));
+                      if (!event.target.checked && videoSummaryErrors.followUpNotes) setVideoSummaryErrors((prev) => ({ ...prev, followUpNotes: "" }));
+                    }}
+                    className="w-4 h-4 accent-blue-700"
+                  />
+                  נדרש מעקב אחרי השיחה
+                </label>
+                {videoSummary.followUpRequired && (
+                  <div>
+                    <textarea
+                      value={videoSummary.followUpNotes}
+                      onChange={(event) => {
+                        setVideoSummary((prev) => ({ ...prev, followUpNotes: event.target.value }));
+                        if (videoSummaryErrors.followUpNotes) setVideoSummaryErrors((prev) => ({ ...prev, followUpNotes: "" }));
+                      }}
+                      placeholder="מה צריך לעשות בהמשך? מי צריך לחזור ללקוח? האם לקבוע ביקורת?"
+                      rows={3}
+                      className={`w-full border rounded-2xl px-4 py-3 text-[14px] outline-none focus:ring-2 resize-none ${errorClass(videoSummaryErrors, "followUpNotes")}`}
+                    />
+                    <ErrorText errors={videoSummaryErrors} field="followUpNotes" />
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-blue-800 text-[13px] leading-6">
+                הסיכום יישמר בתיק הרפואי של החיה ויופיע בהיסטוריית הביקורים. ניתן לערוך את הטקסט לפני השמירה ולהוסיף מעקב במקרה הצורך.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={saveVideoSummaryToMedicalRecord}
+                disabled={savingSummary}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer"
+              >
+                {savingSummary ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                שמור לתיק הרפואי
+              </button>
+              <button
+                onClick={() => {
+                  setSummaryModalSession(null);
+                  setVideoSummaryErrors({});
+                }}
+                className="px-5 py-3 border border-gray-200 rounded-2xl text-gray-600 font-semibold cursor-pointer hover:bg-white"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {videoModal && (
         <div className="fixed inset-0 z-[1000] bg-black/45 flex items-center justify-center px-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100">
@@ -1192,6 +1510,9 @@ export function DigitalCare() {
                   className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer"
                 >
                   <ExternalLink className="w-4 h-4" /> הצטרף לשיחת Google Meet
+                </button>
+                <button onClick={() => openVideoSummaryModal(videoModal)} className="px-6 py-3 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 font-bold cursor-pointer">
+                  סכם לתיק רפואי
                 </button>
                 <button onClick={endVideoSession} className="px-6 py-3 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 font-bold cursor-pointer">
                   סמן כשיחה הסתיימה

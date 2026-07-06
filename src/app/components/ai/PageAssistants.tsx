@@ -28,7 +28,7 @@ export function DashboardAssistant() {
       mode="dashboard"
       title="עוזר דשבורד"
       compactTitle="עוזר תפעולי יומי"
-      subtitle="מסכם עומסים, תורים, מקרים דחופים ואשפוזים בלי לשלוח פרטים מזהים של לקוחות או חיות."
+      subtitle="עוזר לך להבין במה כדאי לטפל קודם היום: תורים, עומסים, אשפוזים ומשימות דחופות."
       userRole={staffRole()}
       quickActions={dashboardActions}
       buildContext={async () => {
@@ -48,7 +48,7 @@ export function DashboardAssistant() {
           urgentActiveProblems: urgentProblems.count ?? 0,
           openLabOrders: openLabs.count ?? 0,
           openPayments: payments.count ?? 0,
-          notes: "הנתונים הם אגרגטיביים בלבד וללא שמות, טלפונים, כתובות או מזהים.",
+          notes: "סיכום יומי לצוות.",
         };
       }}
     />
@@ -67,7 +67,7 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
       mode="schedule"
       title="עוזר יומן תורים"
       compactTitle="עוזר שיבוץ"
-      subtitle="בודק עומסים וחלונות פנויים לפי שעות, מחלקות ורופאים — ללא שמות לקוחות או פרטי קשר."
+      subtitle="עוזר לזהות עומסים ביומן, חלונות פנויים ותורים שכדאי להזיז או לתאם."
       userRole={staffRole()}
       quickActions={scheduleActions}
       buildContext={() => ({
@@ -100,7 +100,7 @@ export function InventoryAssistant({ items }: { items: any[] }) {
       mode="inventory"
       title="עוזר מלאי"
       compactTitle="עוזר ניהול מלאי"
-      subtitle="מזהה חוסרים, פריטים קריטיים ועלויות משוערות. זהו אזור ללא מידע אישי ולכן מתאים במיוחד ל-AI."
+      subtitle="עוזר לזהות חוסרים, פריטים שדורשים הזמנה וסדר עדיפויות למלאי."
       userRole={staffRole()}
       quickActions={inventoryActions}
       buildContext={() => ({
@@ -133,7 +133,7 @@ export function DigitalCareAssistant({ conversation, messages, attachments }: { 
       mode="digital-care"
       title="עוזר מרפאה דיגיטלית"
       compactTitle="עוזר שיחה"
-      subtitle="מסכם שיחות, מציע טיוטת תשובה ומזהה דחיפות. ההודעה לא נשלחת אוטומטית."
+      subtitle="עוזר לסכם פניות, להכין תשובה לצוות ולזהות מה דורש טיפול מהיר."
       userRole={staffRole()}
       disabledReason={!conversation ? "בחר שיחה כדי להפעיל את העוזר." : null}
       quickActions={digitalActions}
@@ -156,7 +156,7 @@ export function DigitalCareAssistant({ conversation, messages, attachments }: { 
           createdAt: message.created_at,
         })),
       })}
-      privacyNote="נשלחות רק ההודעות האחרונות לאחר ניקוי פרטים מזהים. העוזר מציע טיוטה בלבד והצוות מחליט אם לשלוח."
+      privacyNote="העוזר מכין טיוטה בלבד. אפשר לערוך אותה לפני שליחה ללקוח."
     />
   );
 }
@@ -169,14 +169,14 @@ const medicalActions: AiQuickAction[] = [
 
 export function MedicalRecordAssistant({ patient, visits, activeHospitalization }: { patient: any; visits: any[]; activeHospitalization?: any }) {
   const role = staffRole();
-  const disabledReason = role === "secretary" ? "מזכירה לא מקבלת עוזר AI רפואי לפי ברירת המחדל שהגדרנו." : null;
+  const disabledReason = role === "secretary" ? "העוזר הרפואי זמין לצוות רפואי בלבד." : null;
 
   return (
     <AiAssistantCard
       mode="medical-record"
       title="עוזר תיק רפואי"
       compactTitle="עוזר כתיבה רפואית"
-      subtitle="עוזר לסכם ולנסח. הוא לא מאבחן, לא קובע מינונים ולא מחליף החלטה של וטרינר."
+      subtitle="עוזר לסכם ביקורים, לנסח הנחיות ולבדוק אם חסרים פרטים ברשומה."
       userRole={role}
       disabledReason={disabledReason}
       quickActions={medicalActions}
@@ -205,7 +205,7 @@ export function MedicalRecordAssistant({ patient, visits, activeHospitalization 
           notes: compactText(visit.notes || "", 450),
         })),
       })}
-      privacyNote="העוזר מקבל רק מידע רפואי מצומצם על החיה והרשומות האחרונות, ללא פרטי בעלים, טלפון, תעודת זהות או כתובת."
+      privacyNote="מיועד לסיוע בתיעוד בלבד. החלטות רפואיות נשארות אצל הצוות המטפל."
     />
   );
 }
@@ -213,7 +213,7 @@ export function MedicalRecordAssistant({ patient, visits, activeHospitalization 
 const clientsActions: AiQuickAction[] = [
   { label: "מי דורש מעקב?", prompt: "לפי סיכום הלקוחות, אילו קבוצות דורשות מעקב שירותי?" },
   { label: "הצע פעולות שירות", prompt: "הצע פעולות שירות קצרות למזכירות או לצוות." },
-  { label: "סכם מצב לקוחות", prompt: "סכם את מצב הלקוחות בלי להתייחס לפרטים מזהים." },
+  { label: "סכם מצב לקוחות", prompt: "סכם את מצב הלקוחות ברמת שירות ומעקב." },
 ];
 
 export function ClientsAssistant({ clients }: { clients: any[] }) {
@@ -222,7 +222,7 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
       mode="clients"
       title="עוזר לקוחות"
       compactTitle="עוזר שירות לקוחות"
-      subtitle="מנתח רק נתונים אגרגטיביים על לקוחות וחיות, בלי שמות, טלפונים, מיילים או כתובות."
+      subtitle="עוזר לזהות לקוחות שדורשים מעקב, תזכורות או פעולות שירות."
       userRole={staffRole()}
       quickActions={clientsActions}
       buildContext={() => ({
@@ -243,19 +243,20 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
 }
 
 const portalActions: AiQuickAction[] = [
-  { label: "איך קובעים תור?", prompt: "הסבר לי איך לקבוע תור דרך הפורטל." },
+  { label: "איך קובעים תור?", prompt: "הסבר לי איך לקבוע תור דרך הפורטל, צעד אחר צעד." },
   { label: "איך פותחים פנייה?", prompt: "הסבר לי איך לפתוח פנייה לצוות במרפאה הדיגיטלית." },
-  { label: "עזור לנסח הודעה", prompt: "עזור לי לנסח הודעה קצרה לצוות המרפאה. אל תיתן אבחנה רפואית." },
+  { label: "איך מצטרפים לשיחת וידאו?", prompt: "הסבר לי איך מצטרפים לשיחת וידאו אם הצוות שלח קישור." },
   { label: "איפה המסמכים?", prompt: "הסבר איפה לראות ולהעלות מסמכים בפורטל." },
+  { label: "עזור לנסח הודעה", prompt: "עזור לי לנסח הודעה קצרה לצוות המרפאה. אל תיתן אבחנה, טיפול או מינון." },
 ];
 
 export function ClientPortalAssistant({ pets, appointments, notifications, digitalConversations, paymentsByPet }: { pets: any[]; appointments: any[]; notifications: any[]; digitalConversations: any[]; paymentsByPet: Record<string | number, any[]> }) {
   return (
     <AiAssistantCard
       mode="portal"
-      title="עוזר פורטל לקוחות"
-      compactTitle="עוזר שירות"
-      subtitle="עוזר בניווט, קביעת תורים, פתיחת פנייה וצירוף מסמכים. לא נותן אבחון רפואי."
+      title="עזרה באתר"
+      compactTitle="עזרה באתר"
+      subtitle="עוזר לך למצוא פעולות בפורטל: קביעת תור, פתיחת פנייה, העלאת מסמכים והצטרפות לשיחת וידאו."
       userRole="owner"
       quickActions={portalActions}
       buildContext={() => ({
@@ -266,7 +267,7 @@ export function ClientPortalAssistant({ pets, appointments, notifications, digit
         unpaidPaymentsCount: Object.values(paymentsByPet || {}).flat().filter((payment: any) => payment.status !== "paid").length,
         availablePortalActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "תשלום דמו"],
       })}
-      privacyNote="העוזר בפורטל הוא עוזר שירות בלבד. הוא לא מקבל תיק רפואי מלא ולא נותן אבחנה או הנחיה רפואית במקום וטרינר."
+      privacyNote="לעזרה טכנית ושירותית בפורטל. לשאלה רפואית יש לפתוח פנייה לצוות או לקבוע תור."
     />
   );
 }

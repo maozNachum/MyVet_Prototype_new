@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, Video } from "lucide-react";
 import { HEBREW_DAYS, getDeptConfig, getApptStatus } from "../../data/calendar-constants";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
 
@@ -40,9 +40,12 @@ function MonthlyApptCard({ appt }: { appt: CalendarAppointment }) {
         <p className="text-[9.5px] text-gray-500 leading-tight truncate mt-0.5" style={{ fontWeight: 500 }}>
           {appt.ownerName}
         </p>
-        <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
-          {appt.type}
-        </p>
+        <div className="flex items-center gap-1 truncate">
+          <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
+            {appt.type}
+          </p>
+          {appt.appointmentMode === "video" && <Video className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
+        </div>
         <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
           {appt.vet}
         </p>
