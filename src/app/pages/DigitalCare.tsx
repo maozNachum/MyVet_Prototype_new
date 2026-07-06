@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -120,6 +120,7 @@ interface ConversationVM extends ConversationRow {
   pet?: PetRow;
   lastMessage?: MessageRow;
   unreadStaff: number;
+  hasOpenVideo?: boolean;
 }
 
 const statusMeta: Record<ConversationStatus, { label: string; className: string }> = {
@@ -236,6 +237,9 @@ function ErrorText({ errors, field }: { errors: ValidationErrors; field: string 
 
 export function DigitalCare() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const routeFilter = searchParams.get("filter");
+  const routePriority = searchParams.get("priority");
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [pets, setPets] = useState<PetRow[]>([]);
   const [conversations, setConversations] = useState<ConversationVM[]>([]);
@@ -267,6 +271,9 @@ export function DigitalCare() {
   const selectedOwner = selectedConversation?.owner;
   const selectedPet = selectedConversation?.pet;
   const ownerPets = selectedOwner ? pets.filter((p) => p.owner_id === selectedOwner.owner_id) : [];
+  const showOpenOnly = routeFilter === "open";
+  const showVideoOnly = routeFilter === "video";
+  const showUrgentOnly = routeFilter === "urgent" || routePriority === "urgent";
 
   const metrics = useMemo(() => {
     const open = conversations.filter((c) => c.status !== "closed").length;
@@ -279,6 +286,9 @@ export function DigitalCare() {
   const filteredConversations = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortConversations(conversations).filter((conversation) => {
+      if (showOpenOnly && conversation.status === "closed") return false;
+      if (showVideoOnly && !conversation.hasOpenVideo) return false;
+      if (showUrgentOnly && !(conversation.priority === "urgent" || conversation.priority === "high")) return false;
       if (statusFilter !== "all" && conversation.status !== statusFilter) return false;
       if (!q) return true;
       const haystack = [
@@ -291,7 +301,7 @@ export function DigitalCare() {
       ].join(" ").toLowerCase();
       return haystack.includes(q);
     });
-  }, [conversations, search, statusFilter]);
+  }, [conversations, search, statusFilter, showOpenOnly, showVideoOnly, showUrgentOnly]);
 
   async function loadData() {
     setLoading(true);
@@ -313,6 +323,7 @@ export function DigitalCare() {
 
       const conversationIds = conversationsData.map((c) => c.conversation_id);
       let messagesData: MessageRow[] = [];
+      let allVideoSessions: VideoSessionRow[] = [];
       if (conversationIds.length > 0) {
         const { data, error: messagesError } = await supabase
           .from("messages")
@@ -321,6 +332,13 @@ export function DigitalCare() {
           .order("created_at", { ascending: true });
         if (messagesError) throw messagesError;
         messagesData = (data || []) as MessageRow[];
+
+        const { data: videoRows, error: videoError } = await supabase
+          .from("video_sessions")
+          .select("*")
+          .in("conversation_id", conversationIds);
+        if (videoError) throw videoError;
+        allVideoSessions = (videoRows || []) as VideoSessionRow[];
       }
 
       const ownerMap = new Map(ownersData.map((owner) => [owner.owner_id, owner]));
@@ -329,19 +347,32 @@ export function DigitalCare() {
         const convMessages = messagesData.filter((msg) => msg.conversation_id === conversation.conversation_id);
         const lastMessage = convMessages[convMessages.length - 1];
         const unreadStaff = convMessages.filter((msg) => msg.sender_type === "owner" && !msg.is_read_by_staff).length;
+        const hasOpenVideo = allVideoSessions.some((session) =>
+          session.conversation_id === conversation.conversation_id &&
+          session.status !== "completed" &&
+          session.status !== "cancelled"
+        );
         return {
           ...conversation,
           owner: ownerMap.get(conversation.owner_id),
           pet: conversation.pet_id ? petMap.get(Number(conversation.pet_id)) : undefined,
           lastMessage,
           unreadStaff,
+          hasOpenVideo,
         } as ConversationVM;
       });
 
       setOwners(ownersData);
       setPets(petsData);
       setConversations(vm);
-      if (!selectedId && vm.length > 0) setSelectedId(sortConversations(vm)[0].conversation_id);
+      const sorted = sortConversations(vm);
+      const preferredConversation = sorted.find((conversation) => {
+        if (routeFilter === "open") return conversation.status !== "closed";
+        if (routeFilter === "video") return Boolean(conversation.hasOpenVideo);
+        if (routeFilter === "urgent" || routePriority === "urgent") return conversation.status !== "closed" && (conversation.priority === "urgent" || conversation.priority === "high");
+        return true;
+      });
+      if (!selectedId || routeFilter || routePriority) setSelectedId(preferredConversation?.conversation_id || sorted[0]?.conversation_id || null);
     } catch (err) {
       console.error("Failed loading digital care data", err);
       setError("לא הצלחנו לטעון את נתוני המרפאה הדיגיטלית");
@@ -384,10 +415,8 @@ export function DigitalCare() {
   }
 
   useEffect(() => {
-    loadData();
-    const interval = window.setInterval(loadData, 30000);
-    return () => window.clearInterval(interval);
-  }, []);
+    void loadData();
+  }, [routeFilter, routePriority]);
 
   useEffect(() => {
     if (selectedId) loadConversationDetails(selectedId);
@@ -411,10 +440,7 @@ export function DigitalCare() {
   async function sendMessage(text?: string, type: MessageType = "text") {
     if (!selectedConversation) return;
     const content = (text ?? messageText).trim();
-    if (!content) {
-      toast.error("כתבו הודעה לפני השליחה.");
-      return;
-    }
+    if (!content) return;
     setSending(true);
     setError(null);
     try {
@@ -522,7 +548,7 @@ export function DigitalCare() {
       )));
     } catch (err) {
       console.error("Failed uploading chat attachment", err);
-      setError("לא הצלחנו להעלות את הקובץ לשיחה. נסה שוב או פנה למנהל המערכת.");
+      setError("העלאת הקובץ לשיחה נכשלה. בדוק הרשאות Storage או שם Bucket");
     } finally {
       setSending(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1127,7 +1153,7 @@ export function DigitalCare() {
                     />
                     <button
                       onClick={() => sendMessage()}
-                      disabled={sending}
+                      disabled={sending || !messageText.trim()}
                       className="w-11 h-11 rounded-2xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
                     >
                       {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
@@ -1284,7 +1310,7 @@ export function DigitalCare() {
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-              <button onClick={createConversation} disabled={sending} className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
+              <button onClick={createConversation} disabled={sending || !newConversation.owner_id} className="flex-1 bg-[#1e40af] hover:bg-[#1e3a8a] disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
                 פתח שיחה
               </button>
               <button onClick={() => setIsNewModalOpen(false)} className="px-5 py-3 border border-gray-200 rounded-2xl text-gray-600 font-semibold cursor-pointer hover:bg-white">
@@ -1331,11 +1357,11 @@ export function DigitalCare() {
                 {meetLinkError && <p className="text-red-500 text-[12px] font-semibold mt-2">{meetLinkError}</p>}
               </div>
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-blue-800 text-[13px] leading-6">
-                צור קישור Google Meet והדבק אותו כאן. אותו קישור יופיע גם אצל הלקוח בפורטל.
+                טיפ: בפרויקט הדמו אנחנו לא יוצרים קישור אוטומטית דרך Google API. הצוות יוצר את הקישור, והמערכת שומרת אותו כך ששני הצדדים ייכנסו לאותה שיחה.
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-              <button onClick={createMeetVideoSession} disabled={sending} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
+              <button onClick={createMeetVideoSession} disabled={sending || !meetLinkInput.trim()} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer">
                 שמור ושלח ללקוח
               </button>
               <button onClick={() => setIsMeetLinkModalOpen(false)} className="px-5 py-3 border border-gray-200 rounded-2xl text-gray-600 font-semibold cursor-pointer hover:bg-white">
@@ -1454,7 +1480,7 @@ export function DigitalCare() {
               </div>
 
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-blue-800 text-[13px] leading-6">
-                הסיכום יישמר בתיק הרפואי של החיה ויופיע בהיסטוריית הביקורים. ניתן לערוך את הטקסט לפני השמירה ולהוסיף מעקב במקרה הצורך.
+                השמירה תיצור רשומה חדשה בתוך <b>medical_visits</b> עם סוג רשומה <b>video_consultation</b>. זה לא שולח אבחנה אוטומטית ולא מחליף תיעוד רפואי של וטרינר.
               </div>
             </div>
 

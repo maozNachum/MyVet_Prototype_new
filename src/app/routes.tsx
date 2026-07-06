@@ -10,6 +10,8 @@ import { Inventory } from "./pages/Inventory";
 import { ClientPortal } from "./pages/ClientPortal";
 import { Reports } from "./pages/Reports";
 import { DigitalCare } from "./pages/DigitalCare";
+import { Hospitalizations } from "./pages/Hospitalizations";
+import { LabOrders } from "./pages/LabOrders";
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +34,8 @@ export const router = createBrowserRouter([
       { path: "inventory", Component: Inventory },
       { path: "reports", Component: Reports },
       { path: "digital-care", Component: DigitalCare },
+      { path: "hospitalizations", Component: Hospitalizations },
+      { path: "lab-orders", Component: LabOrders },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
