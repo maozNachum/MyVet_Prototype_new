@@ -265,7 +265,7 @@ export function DigitalCare() {
   const [videoSummaryErrors, setVideoSummaryErrors] = useState<ValidationErrors>({});
   const [savingSummary, setSavingSummary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   const selectedConversation = conversations.find((c) => c.conversation_id === selectedId) || null;
   const selectedOwner = selectedConversation?.owner;
@@ -277,10 +277,10 @@ export function DigitalCare() {
 
   const metrics = useMemo(() => {
     const open = conversations.filter((c) => c.status !== "closed").length;
-    const urgent = conversations.filter((c) => c.priority === "urgent" && c.status !== "closed").length;
     const waitingStaff = conversations.filter((c) => c.status === "waiting_staff").length;
     const unread = conversations.reduce((sum, c) => sum + c.unreadStaff, 0);
-    return { open, urgent, waitingStaff, unread };
+    const video = conversations.filter((c) => c.hasOpenVideo && c.status !== "closed").length;
+    return { open, waitingStaff, unread, video };
   }, [conversations]);
 
   const filteredConversations = useMemo(() => {
@@ -423,7 +423,12 @@ export function DigitalCare() {
   }, [selectedId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesScrollRef.current;
+    if (!container) return;
+
+    window.requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    });
   }, [messages.length, selectedId]);
 
   async function updateConversation(conversationId: number, patch: Partial<ConversationRow>) {
@@ -931,11 +936,37 @@ export function DigitalCare() {
           </div>
         )}
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard icon={<MessageCircle className="w-5 h-5" />} title="שיחות פתוחות" value={metrics.open} tone="blue" />
-          
-          <MetricCard icon={<Clock className="w-5 h-5" />} title="ממתינות לצוות" value={metrics.waitingStaff} tone="amber" />
-          <MetricCard icon={<Circle className="w-5 h-5" />} title="הודעות שלא נקראו" value={metrics.unread} tone="emerald" />
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.25fr)_repeat(3,minmax(180px,1fr))] gap-4">
+          <DigitalCareCommandCard
+            open={metrics.open}
+            waitingStaff={metrics.waitingStaff}
+            unread={metrics.unread}
+            video={metrics.video}
+            onShowWaiting={() => setStatusFilter("waiting_staff")}
+            onShowVideo={() => navigate("/digital-care?filter=video")}
+            onNewConversation={() => setIsNewModalOpen(true)}
+          />
+          <MetricCard
+            icon={<MessageCircle className="w-5 h-5" />}
+            title="שיחות פתוחות"
+            value={metrics.open}
+            tone="blue"
+            subtitle="שיחות שעדיין בטיפול"
+          />
+          <MetricCard
+            icon={<Clock className="w-5 h-5" />}
+            title="ממתינות לצוות"
+            value={metrics.waitingStaff}
+            tone="amber"
+            subtitle="כדאי להתחיל מהן"
+          />
+          <MetricCard
+            icon={<Circle className="w-5 h-5" />}
+            title="הודעות שלא נקראו"
+            value={metrics.unread}
+            tone="emerald"
+            subtitle="הודעות חדשות מלקוחות"
+          />
         </section>
 
         <section className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)_330px] gap-5 items-start">
@@ -1060,7 +1091,7 @@ export function DigitalCare() {
                   </div>
                 </div>
 
-                <div className="flex-1 bg-[#f8fafc] px-5 py-5 overflow-y-auto max-h-[520px] space-y-4">
+                <div ref={messagesScrollRef} className="flex-1 bg-[#f8fafc] px-5 py-5 overflow-y-auto max-h-[520px] space-y-4 overscroll-contain">
                   {messagesLoading ? (
                     <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
                       <Loader2 className="w-5 h-5 animate-spin" /> טוען הודעות...
@@ -1117,7 +1148,7 @@ export function DigitalCare() {
                       );
                     })
                   )}
-                  <div ref={messagesEndRef} />
+                  <div />
                 </div>
 
                 <div className="border-t border-gray-100 bg-white p-4">
@@ -1555,19 +1586,102 @@ export function DigitalCare() {
   );
 }
 
-function MetricCard({ icon, title, value, tone }: { icon: ReactNode; title: string; value: number; tone: "blue" | "red" | "amber" | "emerald" }) {
+function DigitalCareCommandCard({
+  open,
+  waitingStaff,
+  unread,
+  video,
+  onShowWaiting,
+  onShowVideo,
+  onNewConversation,
+}: {
+  open: number;
+  waitingStaff: number;
+  unread: number;
+  video: number;
+  onShowWaiting: () => void;
+  onShowVideo: () => void;
+  onNewConversation: () => void;
+}) {
+  return (
+    <div className="md:col-span-2 xl:col-span-1 relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-[#1e40af] via-[#2563eb] to-[#0f766e] p-5 text-white shadow-lg shadow-blue-500/15">
+      <div className="absolute -left-12 -top-12 w-32 h-32 rounded-full bg-white/10" />
+      <div className="absolute left-6 bottom-6 w-16 h-16 rounded-full bg-white/10" />
+
+      <div className="relative z-10 flex flex-col h-full min-h-[128px] justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[12px] font-bold mb-3">
+            <MessageCircle className="w-3.5 h-3.5" /> מרכז עבודה דיגיטלי
+          </div>
+          <h2 className="text-[20px] font-extrabold leading-tight mb-1">
+            מענה לפניות, וידאו ותיעוד במקום אחד
+          </h2>
+          <p className="text-blue-50/90 text-[13px] leading-6 font-medium max-w-md">
+            מתחילים משיחות שממתינות לצוות, ממשיכים לווידאו כשצריך, ובסוף שומרים סיכום לתיק הרפואי.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onShowWaiting}
+            className="rounded-2xl bg-white text-[#1e40af] hover:bg-blue-50 px-3.5 py-2 text-[12px] font-extrabold transition-colors cursor-pointer"
+          >
+            {waitingStaff > 0 ? `${waitingStaff} ממתינות לצוות` : "אין המתנה לצוות"}
+          </button>
+          <button
+            type="button"
+            onClick={onShowVideo}
+            className="rounded-2xl bg-white/12 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-[12px] font-bold transition-colors cursor-pointer"
+          >
+            {video > 0 ? `${video} שיחות וידאו פתוחות` : "וידאו"}
+          </button>
+          <button
+            type="button"
+            onClick={onNewConversation}
+            className="rounded-2xl bg-white/12 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-[12px] font-bold transition-colors cursor-pointer"
+          >
+            פנייה חדשה
+          </button>
+        </div>
+      </div>
+
+      <div className="absolute left-5 top-5 hidden 2xl:flex items-center gap-2 text-white/80 text-[12px] font-bold">
+        <span>{open} פתוחות</span>
+        <span className="w-1 h-1 rounded-full bg-white/60" />
+        <span>{unread} חדשות</span>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  icon,
+  title,
+  value,
+  tone,
+  subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  value: number;
+  tone: "blue" | "red" | "amber" | "emerald";
+  subtitle?: string;
+}) {
   const tones = {
     blue: "bg-blue-50 text-blue-700 border-blue-100",
     red: "bg-red-50 text-red-700 border-red-100",
     amber: "bg-amber-50 text-amber-700 border-amber-100",
     emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
   };
+
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex items-center gap-4">
+    <div className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex items-center gap-4 min-h-[138px] hover:shadow-md hover:-translate-y-0.5 transition-all">
       <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${tones[tone]}`}>{icon}</div>
-      <div>
+      <div className="min-w-0">
         <p className="text-gray-500 text-[13px] font-semibold">{title}</p>
-        <p className="text-gray-900 text-[26px] font-bold leading-tight">{value}</p>
+        <p className="text-gray-900 text-[28px] font-extrabold leading-tight mt-1">{value}</p>
+        {subtitle && <p className="text-gray-400 text-[11px] font-semibold mt-1 truncate">{subtitle}</p>}
       </div>
     </div>
   );

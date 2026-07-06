@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type ComponentType } from "react";
 import {
-  LogOut, Dog, Cat, Calendar,
+  LogOut, Dog, Cat, Calendar, Menu, Home,
   AlertTriangle, Info, FileText, ChevronLeft, ChevronDown,
   Syringe, Stethoscope, Scissors, Heart, User,
   CalendarPlus, Clock, MapPin, Trash2, CalendarClock, Bell, X,
@@ -292,6 +292,22 @@ const NOTIF_STYLE = {
 const datePills = AVAILABLE_DATE_STRINGS.map((d) => ({ key: d.value, label: d.label }));
 const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
 
+type PortalView = "home" | "appointments" | "digital" | "pets" | "documents" | "payments" | "profile";
+
+const PORTAL_NAV_ITEMS: Array<{ key: PortalView; label: string; description: string; icon: ComponentType<{ className?: string }> }> = [
+  { key: "home", label: "בית", description: "מה חשוב עכשיו", icon: Home },
+  { key: "appointments", label: "תורים", description: "קביעה, הזזה וביטול", icon: CalendarClock },
+  { key: "digital", label: "מרפאה דיגיטלית", description: "פניות, הודעות ווידאו", icon: MessageCircle },
+  { key: "pets", label: "החיות שלי", description: "תיקים רפואיים וסיכומי ביקור", icon: Heart },
+  { key: "documents", label: "מסמכים", description: "העלאה וצפייה בקבצים", icon: Paperclip },
+  { key: "payments", label: "תשלומים", description: "חיובים פתוחים והיסטוריה", icon: Receipt },
+  { key: "profile", label: "תיק אישי", description: "פרטים אישיים", icon: User },
+];
+
+function portalViewLabel(view: PortalView) {
+  return PORTAL_NAV_ITEMS.find((item) => item.key === view)?.label || "בית";
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 export function ClientPortal() {
   const navigate = useNavigate();
@@ -300,6 +316,8 @@ export function ClientPortal() {
 
   const [expandedPet, setExpandedPet] = useState<number | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [activePortalView, setActivePortalView] = useState<PortalView>("home");
+  const [isPortalMenuOpen, setIsPortalMenuOpen] = useState(false);
 
   // Section accordion state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -311,6 +329,20 @@ export function ClientPortal() {
   });
   const toggleSection = (key: string) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const goToPortalView = useCallback((view: PortalView) => {
+    setActivePortalView(view);
+    setIsPortalMenuOpen(false);
+    setOpenSections((prev) => ({
+      ...prev,
+      notifications: view === "home" ? true : prev.notifications,
+      appointments: view === "home" || view === "appointments" ? true : prev.appointments,
+      digital: view === "digital" ? true : prev.digital,
+      pets: view === "pets" ? true : prev.pets,
+      documents: view === "documents" ? true : prev.documents,
+    }));
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
@@ -348,6 +380,7 @@ export function ClientPortal() {
   const [uploadingChatFile, setUploadingChatFile] = useState(false);
   const [startingVideo, setStartingVideo] = useState(false);
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
+  const chatMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const refreshPortalData = useCallback(async (ownerIdOverride?: string | null) => {
@@ -839,7 +872,9 @@ export function ClientPortal() {
   }, [selectedConversationId, loadDigitalMessages]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = chatMessagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [digitalMessages.length, selectedConversationId]);
 
   const refreshDigitalModule = async () => {
@@ -1403,101 +1438,187 @@ export function ClientPortal() {
     }
   };
 
+  const allPayments = Object.values(paymentsByPet).flat() as PaymentSummary[];
+  const openPayments = allPayments.filter((payment) => isOpenPayment(payment.status));
+  const openPaymentsTotal = openPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const unreadNotificationsCount = portalNotifications.filter((notification) => !notification.isRead).length;
+  const nextAppointment = appointments[0] || null;
+  const activeDigitalCount = digitalConversations.filter((conversation) => conversation.status !== "closed").length;
+  const latestNotifications = portalNotifications.slice(0, 3);
+  const upcomingAppointmentsPreview = appointments.slice(0, 2);
+  const latestOpenConversation = digitalConversations.find((conversation) => conversation.status !== "closed") || null;
+  const mainPet = pets[0] || null;
+
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f8f9fb] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
+    <div dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#ffffff_100%)] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
       
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50 w-full">
-        <div className="w-full px-6 h-16 flex items-center justify-between">
-          
-          {/* ─── צד ימין: לוגו ותגית ─── */}
-          <div className="flex items-center gap-5">
-            <div className="flex items-center shrink-0 mr-2 cursor-pointer hover:opacity-90 transition-opacity">
-              <MyVetLogo color="#1e40af" showTagline={false} className="h-14 w-auto" />
-            </div>
+      <header className="bg-white/92 backdrop-blur-xl border-b border-blue-100/70 shadow-sm sticky top-0 z-50 w-full">
+        <div className="w-full max-w-[560px] mx-auto px-4 h-16 grid grid-cols-[48px_1fr_48px] items-center gap-2">
+          <button
+            onClick={() => setIsPortalMenuOpen(true)}
+            className="w-11 h-11 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center cursor-pointer shadow-sm justify-self-start"
+            aria-label="פתיחת תפריט"
+          >
+            <Menu className="w-5 h-5 text-gray-700" />
+          </button>
 
-            <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+          <button
+            type="button"
+            onClick={() => goToPortalView("home")}
+            className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity justify-self-center"
+            title="חזרה לבית"
+          >
+            <MyVetLogo color="#1e40af" showTagline={false} className="h-11 w-auto" />
+          </button>
 
-            <span className="bg-blue-50 text-[#1e40af] text-[12px] px-3 py-1 rounded-full border border-blue-200 font-medium shadow-sm">
-              אזור אישי
-            </span>
-          </div>
-
-          {/* ─── צד שמאל: התראות, פעולות ומשתמש ─── */}
-          <div className="flex items-center gap-4">
-            
-            <button
-              onClick={() => setOpenSections((prev) => ({ ...prev, notifications: true }))}
-              className="relative w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
-              title="התראות ותזכורות"
-            >
-              <Bell className="w-5 h-5 text-gray-500" />
-              {portalNotifications.filter((n) => !n.isRead).length > 0 && (
-                <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-                  {portalNotifications.filter((n) => !n.isRead).length}
-                </span>
-              )}
-            </button>
-
-            <button 
-              onClick={() => setIsBookingOpen(true)} 
-              className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 font-medium shadow-sm"
-            >
-              <CalendarPlus className="w-4 h-4 shrink-0" /> 
-              <span className="hidden sm:inline">קביעת תור</span>
-            </button>
-
-            <button
-              onClick={() => setOpenSections((prev) => ({ ...prev, digital: true }))}
-              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#1e40af] px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-blue-200 font-medium shadow-sm"
-              title="מרפאה דיגיטלית"
-            >
-              <MessageCircle className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">דיגיטל</span>
-            </button>
-
-            <div className="hidden lg:block w-px h-6 bg-gray-200"></div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-1.5 border border-gray-200 shadow-inner">
-                <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                  <User className="w-3.5 h-3.5 text-[#1e40af]" />
-                </div>
-                <span className="text-gray-700 text-[13px] font-medium whitespace-nowrap">{ownerDisplayName}</span>
-              </div>
-              
-              <button 
-                onClick={() => navigate("/login")} 
-                className="flex items-center gap-2 text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
-              >
-                <span className="hidden sm:inline">התנתקות</span>
-                <LogOut className="w-4 h-4 shrink-0" />
-              </button>
-            </div>
-
-          </div>
+          <button
+            onClick={() => goToPortalView("home")}
+            className="relative w-11 h-11 rounded-2xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer shadow-sm justify-self-end"
+            title="התראות ותזכורות"
+          >
+            <Bell className="w-5 h-5 text-gray-500" />
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
+      {isPortalMenuOpen && (
+        <div className="fixed inset-0 z-[900] bg-black/35" onClick={() => setIsPortalMenuOpen(false)}>
+          <aside
+            onClick={(event) => event.stopPropagation()}
+            className="absolute top-0 right-0 h-full w-[88vw] max-w-[360px] bg-white shadow-2xl border-l border-gray-100 flex flex-col"
+          >
+            <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-gray-900 text-[17px] font-bold">האזור האישי</p>
+                <p className="text-gray-500 text-[12px] mt-0.5">{ownerDisplayName}</p>
+              </div>
+              <button
+                onClick={() => setIsPortalMenuOpen(false)}
+                className="w-10 h-10 rounded-2xl hover:bg-gray-100 flex items-center justify-center cursor-pointer"
+                aria-label="סגירת תפריט"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+              {PORTAL_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = activePortalView === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => goToPortalView(item.key)}
+                    className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-right transition-all cursor-pointer border ${
+                      isActive
+                        ? "bg-blue-50 border-blue-200 text-[#1e40af]"
+                        : "bg-white border-transparent hover:bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isActive ? "bg-white text-[#1e40af]" : "bg-gray-50 text-gray-500"}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold">{item.label}</p>
+                      <p className="text-[12px] opacity-70 truncate">{item.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 text-[14px] font-bold cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" /> התנתקות
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
-        <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
-            <h1 className="text-gray-900 text-[26px] mb-1" style={{ fontWeight: 700 }}>
-              שלום, {ownerDisplayName}<span className="inline-block mr-2">👋</span>
-            </h1>
-            <p className="text-gray-500 font-medium text-[15px]">כאן תוכלו לצפות בחיות שלכם, בתזכורות ובתיקים הרפואיים</p>
+      <main className="flex-1 max-w-[560px] mx-auto px-4 py-5 sm:py-7 w-full">
+        <div className="mb-6 sm:mb-8 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[12px] font-bold mb-3">
+                <Home className="w-3.5 h-3.5" /> {portalViewLabel(activePortalView)}
+              </div>
+              <h1 className="text-gray-900 text-[25px] sm:text-[28px] mb-1" style={{ fontWeight: 900 }}>
+                שלום, {ownerDisplayName.split(" ")[0] || ownerDisplayName}<span className="inline-block mr-2">👋</span>
+              </h1>
+              <p className="text-gray-500 font-medium text-[13px] sm:text-[14px] leading-6">
+                {activePortalView === "home"
+                  ? "כל מה שחשוב עכשיו במקום אחד, בלי עומס."
+                  : "בחרו פעולה מהתפריט או חזרו לבית לצפייה מהירה."}
+              </p>
+            </div>
+
+
           </div>
 
-          <div className="flex items-center gap-2">
-            <ClientPortalAssistant
-              pets={pets}
-              appointments={appointments}
-              notifications={portalNotifications}
-              digitalConversations={digitalConversations}
-              paymentsByPet={paymentsByPet}
-            />
-          </div>
+          {false && activePortalView === "home" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                onClick={() => goToPortalView("appointments")}
+                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-gray-500 text-[12px] font-bold">התור הבא</p>
+                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{nextAppointment ? nextAppointment.petName : "אין תור קרוב"}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                    <CalendarClock className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-gray-500 text-[13px] font-medium">
+                  {nextAppointment ? `${nextAppointment.date} · ${nextAppointment.time} · ${nextAppointment.type}` : "אפשר לקבוע תור חדש בלחיצה אחת."}
+                </p>
+              </button>
+
+              <button
+                onClick={() => goToPortalView("home")}
+                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-gray-500 text-[12px] font-bold">התראות חדשות</p>
+                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{unreadNotificationsCount}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-gray-500 text-[13px] font-medium">מרכז ההתראות מופיע בדף הבית.</p>
+              </button>
+
+              <button
+                onClick={() => openPayments.length > 0 ? goToPortalView("payments") : setIsBookingOpen(true)}
+                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-gray-500 text-[12px] font-bold">פעולה מהירה</p>
+                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{openPayments.length > 0 ? `₪${openPaymentsTotal.toLocaleString()}` : "קביעת תור"}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                    {openPayments.length > 0 ? <AlertCircle className="w-5 h-5" /> : <CalendarPlus className="w-5 h-5" />}
+                  </div>
+                </div>
+                <p className="text-gray-500 text-[13px] font-medium">{openPayments.length > 0 ? "יש יתרה פתוחה לתשלום." : "קבעו תור חדש במהירות."}</p>
+              </button>
+            </div>
+          )}
         </div>
 
         {isPortalLoading && (
@@ -1512,9 +1633,202 @@ export function ClientPortal() {
           </div>
         )}
 
-        {/* ── Accordion Sections ── */}
+
+        {activePortalView === "home" && (
+          <div className="space-y-4">
+            <section className="relative overflow-hidden rounded-[32px] border border-blue-100 bg-gradient-to-br from-[#1e40af] via-[#2563eb] to-[#60a5fa] text-white shadow-xl shadow-blue-500/20">
+              <div className="absolute -top-16 -left-16 w-44 h-44 rounded-full bg-white/15 blur-2xl" />
+              <div className="absolute -bottom-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <p className="text-blue-100 text-[13px] font-bold mb-1">האזור האישי שלכם</p>
+                    <h2 className="text-[25px] leading-tight font-black">ברוך הבא</h2>
+                    <p className="text-blue-50/90 text-[13px] leading-6 mt-2">
+                      {nextAppointment
+                        ? `התור הקרוב: ${nextAppointment.petName} · ${nextAppointment.date}`
+                        : openPayments.length > 0
+                          ? `יש יתרה פתוחה לתשלום: ₪${openPaymentsTotal.toLocaleString()}`
+                          : "אין תור קרוב. אפשר לקבוע תור חדש במהירות."}
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 rounded-[22px] bg-white/18 border border-white/20 flex items-center justify-center shrink-0">
+                    {nextAppointment ? <CalendarClock className="w-7 h-7" /> : openPayments.length > 0 ? <AlertCircle className="w-7 h-7" /> : <Heart className="w-7 h-7" />}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 mb-5">
+                  <button
+                    onClick={() => setIsBookingOpen(true)}
+                    className="min-h-[58px] rounded-2xl bg-white text-[#1e40af] px-4 py-3 flex items-center justify-center gap-2 text-[14px] font-black shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+                  >
+                    <CalendarPlus className="w-4 h-4" /> קביעת תור
+                  </button>
+                  <button
+                    onClick={() => goToPortalView(openPayments.length > 0 ? "payments" : "digital")}
+                    className="min-h-[58px] rounded-2xl bg-white/15 hover:bg-white/20 border border-white/20 px-4 py-3 flex items-center justify-center gap-2 text-[14px] font-black cursor-pointer active:scale-[0.98] transition-transform"
+                  >
+                    {openPayments.length > 0 ? <CreditCard className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+                    {openPayments.length > 0 ? "לתשלום" : "פנייה למרפאה"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5 text-center">
+                  <button onClick={() => goToPortalView("appointments")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
+                    <p className="text-[20px] font-black leading-none">{appointments.length}</p>
+                    <p className="text-[11px] text-blue-50 mt-1 font-bold">תורים</p>
+                  </button>
+                  <button onClick={() => goToPortalView("home")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
+                    <p className="text-[20px] font-black leading-none">{unreadNotificationsCount}</p>
+                    <p className="text-[11px] text-blue-50 mt-1 font-bold">חדשות</p>
+                  </button>
+                  <button onClick={() => goToPortalView("digital")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
+                    <p className="text-[20px] font-black leading-none">{activeDigitalCount}</p>
+                    <p className="text-[11px] text-blue-50 mt-1 font-bold">שיחות</p>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+                    <CalendarClock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-gray-900 text-[16px] font-black">תורים עתידיים</h3>
+                    <p className="text-gray-500 text-[12px] font-semibold">{appointments.length} תורים קבועים</p>
+                  </div>
+                </div>
+                <button onClick={() => goToPortalView("appointments")} className="text-[#1e40af] text-[12px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
+                  הכל
+                </button>
+              </div>
+
+              {upcomingAppointmentsPreview.length === 0 ? (
+                <div className="p-5">
+                  <div className="rounded-[24px] bg-gray-50 border border-gray-100 p-5 text-center">
+                    <Calendar className="w-9 h-9 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-900 text-[14px] font-black">אין תור קרוב</p>
+                    <p className="text-gray-500 text-[12px] leading-5 mt-1">אפשר לקבוע תור חדש בלחיצה אחת.</p>
+                    <button onClick={() => setIsBookingOpen(true)} className="mt-4 w-full rounded-2xl bg-[#1e40af] text-white py-3 text-[13px] font-black cursor-pointer">
+                      קביעת תור
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {upcomingAppointmentsPreview.map((appt) => (
+                    <div key={appt.id} className="p-4 flex items-center gap-3">
+                      <img src={appt.petImage} alt={appt.petName} className="w-12 h-12 rounded-2xl object-cover shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 text-[14px] font-black truncate">{appt.petName} · {appt.type}</p>
+                        <p className="text-gray-500 text-[12px] font-semibold mt-1">{appt.date} · {appt.time}</p>
+                      </div>
+                      <button onClick={() => goToPortalView("appointments")} className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-500 cursor-pointer">
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+
+            <section className="grid grid-cols-2 gap-3">
+              <button onClick={() => goToPortalView("pets")} className="rounded-[26px] bg-white border border-gray-100 p-4 text-right shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-3">
+                  <Heart className="w-5 h-5" />
+                </div>
+                <p className="text-gray-900 text-[14px] font-black">החיות שלי</p>
+                <p className="text-gray-500 text-[12px] font-semibold mt-1">{pets.length} חיות רשומות</p>
+              </button>
+              <button onClick={() => goToPortalView("documents")} className="rounded-[26px] bg-white border border-gray-100 p-4 text-right shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600 mb-3">
+                  <Paperclip className="w-5 h-5" />
+                </div>
+                <p className="text-gray-900 text-[14px] font-black">מסמכים</p>
+                <p className="text-gray-500 text-[12px] font-semibold mt-1">{uploadedFiles.length} קבצים</p>
+              </button>
+            </section>
+
+            <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-gray-900 text-[16px] font-black">מרכז התראות</h3>
+                    <p className="text-gray-500 text-[12px] font-semibold">{portalNotifications.length} התראות / תזכורות</p>
+                  </div>
+                </div>
+              </div>
+
+              {latestNotifications.length === 0 ? (
+                <div className="p-5 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-gray-900 text-[14px] font-black">הכול מעודכן</p>
+                  <p className="text-gray-500 text-[12px] leading-5 mt-1">אין כרגע התראות או תזכורות.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {latestNotifications.map((notif) => {
+                    const s = NOTIF_STYLE[notif.type];
+                    return (
+                      <div key={notif.id} className="p-4 flex items-start gap-3">
+                        <div className={`w-11 h-11 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 border border-gray-100`}>
+                          <s.Icon className={`w-5 h-5 ${s.iconColor}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-gray-900 text-[14px] font-black truncate">{notif.title}</p>
+                            {!notif.isRead && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
+                          </div>
+                          <p className="text-gray-500 text-[12px] font-semibold">{notif.petName} · {notif.date}</p>
+                          <p className="text-gray-600 text-[12px] leading-5 mt-1">{notif.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {(openPayments.length > 0 || latestOpenConversation || mainPet) && (
+              <section className="rounded-[30px] border border-gray-100 bg-white shadow-sm p-4 space-y-2">
+                <p className="text-gray-900 text-[15px] font-black px-1">פעולות מהירות</p>
+                {openPayments.length > 0 && (
+                  <button onClick={() => goToPortalView("payments")} className="w-full rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer">
+                    <span className="flex items-center gap-2 text-amber-800 text-[13px] font-black"><Receipt className="w-4 h-4" /> יתרה לתשלום</span>
+                    <span className="text-amber-900 text-[14px] font-black">₪{openPaymentsTotal.toLocaleString()}</span>
+                  </button>
+                )}
+                {latestOpenConversation && (
+                  <button onClick={() => goToPortalView("digital")} className="w-full rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer">
+                    <span className="flex items-center gap-2 text-[#1e40af] text-[13px] font-black"><MessageCircle className="w-4 h-4" /> המשך שיחה</span>
+                    <ChevronLeft className="w-4 h-4 text-[#1e40af]" />
+                  </button>
+                )}
+                {mainPet && (
+                  <button onClick={() => { setExpandedPet(mainPet.id); goToPortalView("pets"); }} className="w-full rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer">
+                    <span className="flex items-center gap-2 text-emerald-800 text-[13px] font-black"><Heart className="w-4 h-4" /> תיק רפואי</span>
+                    <span className="text-emerald-900 text-[13px] font-black truncate max-w-[130px]">{mainPet.name}</span>
+                  </button>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* ── Portal Sections ── */}
         <div className="space-y-5">
 
+{false && activePortalView === "home" && (
+          <>
           {/* ═══ 1. Notifications ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -1531,7 +1845,7 @@ export function ClientPortal() {
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.notifications ? "rotate-180" : ""}`} />
             </button>
 
-            {openSections.notifications && (
+            {(activePortalView === "home" || openSections.notifications) && (
               <div className="border-t border-gray-100 p-4 space-y-3">
                 {portalNotifications.length === 0 && (
                   <div className="text-center py-8 text-gray-500 font-medium text-[14px]">אין כרגע התראות או תזכורות במסד הנתונים</div>
@@ -1566,6 +1880,12 @@ export function ClientPortal() {
             )}
           </div>
 
+
+          </>
+          )}
+
+{activePortalView === "digital" && (
+          <>
           {/* ═══ 2. Digital Clinic ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -1604,7 +1924,7 @@ export function ClientPortal() {
               </div>
             </button>
 
-            {openSections.digital && (
+            {(activePortalView === "digital" || openSections.digital) && (
               <div className="border-t border-gray-100 bg-gradient-to-b from-blue-50/40 to-white p-4">
                 {digitalError && (
                   <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-[13px] font-medium">
@@ -1746,7 +2066,7 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        <div className="flex-1 bg-[#f8fafc] p-4 overflow-y-auto max-h-[430px] space-y-3">
+                        <div ref={chatMessagesContainerRef} className="flex-1 bg-[#f8fafc] p-4 overflow-y-auto max-h-[430px] space-y-3">
                           {digitalMessages.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-center text-gray-500 text-[13px] font-medium">
                               אין עדיין הודעות בשיחה הזאת.
@@ -1856,6 +2176,12 @@ export function ClientPortal() {
             )}
           </div>
 
+
+          </>
+          )}
+
+{activePortalView === "appointments" && (
+          <>
           {/* ═══ 3. Future Appointments ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -1881,7 +2207,7 @@ export function ClientPortal() {
               </div>
             </button>
 
-            {openSections.appointments && (
+            {activePortalView === "appointments" && (
               <div className="border-t border-gray-100 p-4 space-y-3">
                 {appointments.length === 0 ? (
                   <div className="text-center py-10 text-gray-500 font-medium">
@@ -1928,6 +2254,12 @@ export function ClientPortal() {
             )}
           </div>
 
+
+          </>
+          )}
+
+{activePortalView === "pets" && (
+          <>
           {/* ═══ 3. My Pets – Medical Record ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -1944,7 +2276,7 @@ export function ClientPortal() {
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.pets ? "rotate-180" : ""}`} />
             </button>
 
-            {openSections.pets && (
+            {(activePortalView === "pets" || openSections.pets) && (
               <div className="border-t border-gray-100 p-4 space-y-4">
                 {pets.map((pet) => {
                   const isExpanded = expandedPet === pet.id;
@@ -2165,6 +2497,12 @@ export function ClientPortal() {
             )}
           </div>
 
+
+          </>
+          )}
+
+{activePortalView === "documents" && (
+          <>
           {/* ═══ 4. Documents & File Upload ═══ */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -2181,7 +2519,7 @@ export function ClientPortal() {
               <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.documents ? "rotate-180" : ""}`} />
             </button>
 
-            {openSections.documents && (
+            {(activePortalView === "documents" || openSections.documents) && (
               <div className="border-t border-gray-100 p-5">
                 {/* Upload controls */}
                 <div className="flex flex-wrap gap-3 mb-4">
@@ -2313,6 +2651,102 @@ export function ClientPortal() {
               </div>
             )}
           </div>
+
+          </>
+          )}
+
+          {activePortalView === "payments" && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-50 rounded-xl p-2.5"><Receipt className="w-5 h-5 text-emerald-600" /></div>
+                  <div className="text-right">
+                    <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 700 }}>תשלומים וחיובים</h2>
+                    <p className="text-gray-500 font-medium text-[12px]">{openPayments.length} חיובים פתוחים · ₪{openPaymentsTotal.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-3">
+                {allPayments.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500 font-medium text-[14px]">
+                    <Receipt className="w-9 h-9 mx-auto mb-2 text-gray-300" />
+                    אין חיובים שמורים כרגע.
+                  </div>
+                ) : (
+                  allPayments.map((payment) => {
+                    const pet = pets.find((item) => item.id === payment.petId);
+                    const open = isOpenPayment(payment.status);
+                    return (
+                      <div key={payment.id} className={`rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${open ? "bg-red-50/30 border-red-100" : "bg-white border-gray-100"}`}>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-gray-900 text-[14px] font-bold truncate">{payment.title}</p>
+                            <span className={`inline-flex items-center gap-1 border text-[11px] px-2 py-0.5 rounded-full font-bold ${open ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                              {open ? <AlertCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                              {getPaymentStatusLabel(payment.status)}
+                            </span>
+                          </div>
+                          <p className="text-gray-500 text-[12px] font-medium">
+                            {pet?.name || "כללי"} · ₪{payment.amount.toLocaleString()} · {payment.dueDate ? `לתשלום עד ${payment.dueDate}` : payment.date}
+                          </p>
+                        </div>
+                        {open && (
+                          <button
+                            onClick={() => openDemoPayment(payment)}
+                            disabled={payingPaymentId === payment.id}
+                            className={`flex items-center justify-center gap-1.5 text-white text-[12px] px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/15 ${payingPaymentId === payment.id ? "bg-gray-300 cursor-not-allowed" : "bg-[#1e40af] hover:bg-[#1e3a8a] cursor-pointer"}`}
+                            style={{ fontWeight: 700 }}
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            {payingPaymentId === payment.id ? "מעבד תשלום..." : "שלם עכשיו"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {activePortalView === "profile" && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+                <div className="bg-blue-50 rounded-xl p-2.5"><User className="w-5 h-5 text-[#1e40af]" /></div>
+                <div>
+                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 700 }}>תיק אישי</h2>
+                  <p className="text-gray-500 font-medium text-[12px]">פרטי בעלים וכניסה מהירה לאזור האישי</p>
+                </div>
+              </div>
+              <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-4">
+                  <p className="text-gray-400 text-[12px] font-bold mb-1">שם</p>
+                  <p className="text-gray-900 text-[15px] font-bold">{ownerDisplayName}</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-4">
+                  <p className="text-gray-400 text-[12px] font-bold mb-1">טלפון</p>
+                  <p className="text-gray-900 text-[15px] font-bold">{ownerProfile?.phone || "לא הוזן"}</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-4">
+                  <p className="text-gray-400 text-[12px] font-bold mb-1">אימייל</p>
+                  <p className="text-gray-900 text-[15px] font-bold">{ownerProfile?.email || "לא הוזן"}</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-4">
+                  <p className="text-gray-400 text-[12px] font-bold mb-1">כתובת</p>
+                  <p className="text-gray-900 text-[15px] font-bold">{ownerProfile?.address || "לא הוזן"}</p>
+                </div>
+              </div>
+              <div className="px-5 pb-5">
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 px-5 py-3 text-[14px] font-bold cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" /> התנתקות
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -2569,6 +3003,47 @@ export function ClientPortal() {
         </ModalOverlay>
       )}
 
+      <div className="portal-floating-ai fixed bottom-5 left-4 z-[240]">
+        <ClientPortalAssistant
+          pets={pets}
+          appointments={appointments}
+          notifications={portalNotifications}
+          digitalConversations={digitalConversations}
+          paymentsByPet={paymentsByPet}
+        />
+      </div>
+
+      <style>{`
+        .portal-floating-ai > div > button {
+          width: 58px;
+          height: 58px;
+          border-radius: 22px;
+          padding: 0;
+          border: 1px solid rgba(191, 219, 254, 0.9);
+          background: linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #7c3aed 100%);
+          color: white;
+          box-shadow: 0 18px 40px rgba(37, 99, 235, 0.28);
+        }
+        .portal-floating-ai > div > button:hover {
+          background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 52%, #6d28d9 100%);
+          transform: translateY(-1px);
+        }
+        .portal-floating-ai > div > button > span:first-of-type {
+          width: 30px;
+          height: 30px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.18);
+          box-shadow: none;
+        }
+        .portal-floating-ai > div > button > span:first-of-type svg {
+          width: 18px;
+          height: 18px;
+        }
+        .portal-floating-ai > div > button > span:nth-of-type(2),
+        .portal-floating-ai > div > button > svg {
+          display: none;
+        }
+      `}</style>
       <Footer />
     </div>
   );
