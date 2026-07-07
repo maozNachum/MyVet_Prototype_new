@@ -27,7 +27,7 @@ export function DashboardAssistant() {
   return (
     <AiAssistantCard
       mode="dashboard"
-      title="עוזר דשבורד"
+      title="VetBot"
       compactTitle="עוזר יומי"
       subtitle="עוזר להבין מה דורש טיפול, איפה ללחוץ ומה כדאי לבדוק בהמשך היום."
       userRole={role}

@@ -1156,7 +1156,7 @@ export function DigitalCare() {
               <MessageCircle className="w-3.5 h-3.5" /> מרפאה דיגיטלית
             </div>
             <h1 className="text-gray-900 text-[30px] font-bold mb-1">
-              תקשורת עם לקוחות
+              מרפאה דיגיטלית
             </h1>
             <p className="text-gray-500 text-[15px] font-medium">
               צ׳אט, קבצים, שיחות וידאו וקישור מהיר לתיקי החיות.
@@ -2170,7 +2170,7 @@ function DigitalCareCommandCard({
       <div className="relative z-10 flex flex-col h-full min-h-[128px] justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[12px] font-bold mb-3">
-            <MessageCircle className="w-3.5 h-3.5" /> מרכז עבודה דיגיטלי
+            <MessageCircle className="w-3.5 h-3.5" /> MyVet Online
           </div>
           <h2 className="text-[20px] font-extrabold leading-tight mb-1">
             מענה לפניות, וידאו ותיעוד במקום אחד
