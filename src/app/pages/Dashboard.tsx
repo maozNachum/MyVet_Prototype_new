@@ -8,6 +8,7 @@ import {
   Bed,
   CalendarCheck,
   CalendarPlus,
+  ClipboardPlus,
   Cat,
   Check,
   Clock,
@@ -25,7 +26,6 @@ import {
   Video,
   WalletCards,
   X,
-  Zap,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
 import { DashboardAssistant } from "../components/ai/PageAssistants";
@@ -80,6 +80,7 @@ type AppointmentItem = {
   room: string;
   department: string;
   notes: string;
+  color: string;
 };
 
 type DashboardData = {
@@ -100,6 +101,17 @@ type WorkItem = {
   path: string;
   action: string;
   priority: number;
+};
+
+type StatusTileTone = "neutral" | "schedule" | "communication" | "pending" | "clinical" | "warning" | "danger";
+
+type StatusTile = {
+  label: string;
+  value: number;
+  status: string;
+  icon: any;
+  tone: StatusTileTone;
+  path: string;
 };
 
 type NewPatientForm = {
@@ -207,6 +219,42 @@ function isLowInventoryItem(item: any) {
   return quantity <= threshold;
 }
 
+function hasPrioritySignal(value?: string | null) {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return false;
+  const priorityTerms = [
+    "חירום",
+    "דחוף",
+    "דחופה",
+    "דחופים",
+    "עדיפות גבוהה",
+    "גבוהה",
+    "קריטי",
+    "קריטית",
+    "urgent",
+    "emergency",
+    "critical",
+    "high priority",
+    "high",
+  ];
+  return priorityTerms.some((term) => text.includes(term));
+}
+
+function isRedLikeColor(value?: string | null) {
+  const color = String(value || "").trim().toLowerCase();
+  if (!color) return false;
+  return ["red", "rose", "danger", "urgent", "#ef4444", "#dc2626", "#f43f5e", "#e11d48"].some((term) => color.includes(term));
+}
+
+function isPriorityAppointment(appointment: AppointmentItem) {
+  return (
+    hasPrioritySignal(appointment.type) ||
+    hasPrioritySignal(appointment.department) ||
+    hasPrioritySignal(appointment.notes) ||
+    isRedLikeColor(appointment.color)
+  );
+}
+
 function toneClasses(tone: WorkItem["tone"]) {
   const map = {
     red: "border-red-100 bg-red-50 text-red-700",
@@ -217,6 +265,61 @@ function toneClasses(tone: WorkItem["tone"]) {
     slate: "border-slate-100 bg-slate-50 text-slate-700",
   };
   return map[tone];
+}
+
+function statusTileSkin(tone: StatusTileTone) {
+  const skins: Record<StatusTileTone, { card: string; icon: string; bar: string; value: string; status: string }> = {
+    neutral: {
+      card: "border-slate-100 bg-white hover:border-slate-200",
+      icon: "bg-slate-50 text-slate-500 ring-slate-100",
+      bar: "bg-slate-200",
+      value: "text-slate-900",
+      status: "text-slate-500",
+    },
+    schedule: {
+      card: "border-blue-100/80 bg-gradient-to-br from-white to-blue-50/45 hover:border-blue-200",
+      icon: "bg-blue-50 text-blue-700 ring-blue-100",
+      bar: "bg-blue-300",
+      value: "text-blue-950",
+      status: "text-blue-700",
+    },
+    communication: {
+      card: "border-indigo-100/80 bg-gradient-to-br from-white to-indigo-50/45 hover:border-indigo-200",
+      icon: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+      bar: "bg-indigo-300",
+      value: "text-indigo-950",
+      status: "text-indigo-700",
+    },
+    pending: {
+      card: "border-amber-100/80 bg-gradient-to-br from-white to-amber-50/45 hover:border-amber-200",
+      icon: "bg-amber-50 text-amber-700 ring-amber-100",
+      bar: "bg-amber-300",
+      value: "text-amber-950",
+      status: "text-amber-700",
+    },
+    clinical: {
+      card: "border-teal-100/80 bg-gradient-to-br from-white to-teal-50/45 hover:border-teal-200",
+      icon: "bg-teal-50 text-teal-700 ring-teal-100",
+      bar: "bg-teal-300",
+      value: "text-teal-950",
+      status: "text-teal-700",
+    },
+    warning: {
+      card: "border-orange-100/80 bg-gradient-to-br from-white to-orange-50/45 hover:border-orange-200",
+      icon: "bg-orange-50 text-orange-700 ring-orange-100",
+      bar: "bg-orange-300",
+      value: "text-orange-950",
+      status: "text-orange-700",
+    },
+    danger: {
+      card: "border-amber-100/80 bg-gradient-to-br from-white to-amber-50/35 hover:border-amber-200",
+      icon: "bg-amber-50 text-amber-700 ring-amber-100",
+      bar: "bg-amber-300",
+      value: "text-slate-950",
+      status: "text-amber-700",
+    },
+  };
+  return skins[tone];
 }
 
 function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
@@ -233,7 +336,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
   const lowInventory = data.inventory.filter(isLowInventoryItem);
   const items: WorkItem[] = [];
 
-  if (urgentConversations.length > 0) items.push({ id: "urgent-conversations", title: `${urgentConversations.length} פניות בעדיפות גבוהה`, detail: "לטיפול לפני פניות רגילות", icon: MessageCircle, tone: "red", path: "/digital-care?filter=urgent", action: "פתח", priority: 1 });
+  if (urgentConversations.length > 0) items.push({ id: "urgent-conversations", title: `${urgentConversations.length} פניות בעדיפות גבוהה`, detail: "לטיפול לפני פניות רגילות", icon: MessageCircle, tone: "amber", path: "/digital-care?filter=urgent", action: "פתח", priority: 1 });
   if (videoAppointments.length > 0) items.push({ id: "video-appointments", title: `${videoAppointments.length} תורי וידאו להיום`, detail: "בדוק קישור לפני התור", icon: Video, tone: "blue", path: "/digital-care?filter=video", action: "פתח", priority: 2 });
   if (missingVet.length > 0) items.push({ id: "missing-vet", title: `${missingVet.length} תורים בלי רופא`, detail: "להשלים שיבוץ", icon: CalendarCheck, tone: "amber", path: "/appointments", action: "פתח", priority: 3 });
   if (missingRoom.length > 0) items.push({ id: "missing-room", title: `${missingRoom.length} תורים בלי חדר`, detail: "להשלים מיקום", icon: LayoutDashboard, tone: "amber", path: "/appointments", action: "פתח", priority: 4 });
@@ -242,7 +345,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
     title: `${urgentLabs.length} בדיקות דחופות`,
     detail: "בדוק תוצאות",
     icon: FlaskConical,
-    tone: "red",
+    tone: "amber",
     path: "/lab-orders?filter=urgent",
     action: "פתח",
     priority: 5,
@@ -255,7 +358,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
     title: `${criticalHospitalizations.length} אשפוזים חמורים`,
     detail: "בדוק סטטוס",
     icon: Bed,
-    tone: "red",
+    tone: "amber",
     path: "/hospitalizations?filter=critical",
     action: "פתח",
     priority: 6,
@@ -271,7 +374,7 @@ function buildWorkItems(data: DashboardData, staffType: string): WorkItem[] {
     priority: 7,
   });
   if (isSecretary && openPayments.length > 0) items.push({ id: "payments", title: `${openPayments.length} תשלומים למעקב`, detail: "בדוק חיובים", icon: WalletCards, tone: "emerald", path: "/reports", action: "פתח", priority: 7 });
-  if (lowInventory.length > 0) items.push({ id: "inventory", title: `${lowInventory.length} פריטי מלאי נמוכים`, detail: "בדוק הזמנה", icon: Package, tone: "slate", path: "/inventory?filter=low-stock", action: "פתח", priority: 8 });
+  if (lowInventory.length > 0) items.push({ id: "inventory", title: `${lowInventory.length} פריטי מלאי נמוכים`, detail: "בדוק הזמנה", icon: Package, tone: "amber", path: "/inventory?filter=low-stock", action: "פתח", priority: 8 });
 
   return items.sort((a, b) => a.priority - b.priority).slice(0, 4);
 }
@@ -326,14 +429,68 @@ export function Dashboard() {
   const videoAppointmentsCount = useMemo(() => dashboardData.appointments.filter((appointment) => appointment.mode === "video").length, [dashboardData.appointments]);
   const physicalAppointmentsCount = dashboardData.appointments.length - videoAppointmentsCount;
   const expectedDischarges = useMemo(() => dashboardData.hospitalizations.filter((item) => Boolean(item.expected_discharge_at)), [dashboardData.hospitalizations]);
+  const openConversations = useMemo(() => dashboardData.conversations.filter((conversation: any) => conversation.status === "open"), [dashboardData.conversations]);
+  const urgentOpenConversationsCount = useMemo(
+    () => openConversations.filter((conversation: any) => ["urgent", "high"].includes(String(conversation.priority || "").toLowerCase())).length,
+    [openConversations]
+  );
 
-  const statusTiles = useMemo(() => [
-    { label: "תורים להיום", value: dashboardData.appointments.length, icon: CalendarCheck, tone: "bg-blue-50 text-blue-700", path: "/appointments" },
-    { label: "פניות פתוחות", value: dashboardData.conversations.length, icon: MessageCircle, tone: "bg-rose-50 text-rose-700", path: "/digital-care?filter=open" },
-    { label: isSecretary ? "גבייה למעקב" : "בדיקות ממתינות", value: isSecretary ? dashboardData.payments.length : dashboardData.labs.length, icon: isSecretary ? WalletCards : FlaskConical, tone: "bg-amber-50 text-amber-700", path: isSecretary ? "/reports" : "/lab-orders?filter=open" },
-    { label: "אשפוזים פעילים", value: dashboardData.hospitalizations.length, icon: Bed, tone: "bg-emerald-50 text-emerald-700", path: "/hospitalizations?filter=active" },
-    { label: "מלאי נמוך", value: dashboardData.inventory.length, icon: Package, tone: "bg-slate-50 text-slate-700", path: "/inventory?filter=low-stock" },
-  ], [dashboardData, isSecretary]);
+  const urgentConversationsCount = useMemo(() => dashboardData.conversations.filter((conversation: any) => ["urgent", "high"].includes(String(conversation.priority || "").toLowerCase())).length, [dashboardData.conversations]);
+  const urgentLabsCount = useMemo(() => dashboardData.labs.filter((lab: any) => lab.is_urgent === true).length, [dashboardData.labs]);
+  const severeHospitalizationsCount = useMemo(() => dashboardData.hospitalizations.filter((item: any) => ["critical", "serious"].includes(String(item.severity || "").toLowerCase())).length, [dashboardData.hospitalizations]);
+  const outOfStockCount = useMemo(() => dashboardData.inventory.filter((item: any) => Number(item.stock_quantity ?? 0) <= 0).length, [dashboardData.inventory]);
+
+  const statusTiles = useMemo<StatusTile[]>(() => {
+    const hasAppointments = dashboardData.appointments.length > 0;
+    const hasOpenConversations = openConversations.length > 0;
+    const labCount = isSecretary ? dashboardData.payments.length : dashboardData.labs.length;
+    const hasLabsOrPayments = labCount > 0;
+    const hasHospitalizations = dashboardData.hospitalizations.length > 0;
+    const hasLowInventory = dashboardData.inventory.length > 0;
+
+    return [
+      {
+        label: "תורים להיום",
+        value: dashboardData.appointments.length,
+        status: hasAppointments ? `${videoAppointmentsCount} וידאו · ${physicalAppointmentsCount} במרפאה` : "אין תורים להיום",
+        icon: CalendarCheck,
+        tone: "schedule",
+        path: "/appointments",
+      },
+      {
+        label: "פניות פתוחות",
+        value: openConversations.length,
+        status: urgentOpenConversationsCount > 0 ? `${urgentOpenConversationsCount} בעדיפות גבוהה` : hasOpenConversations ? "ממתין לטיפול" : "אין פניות פתוחות",
+        icon: MessageCircle,
+        tone: "communication",
+        path: "/digital-care?filter=open",
+      },
+      {
+        label: isSecretary ? "גבייה למעקב" : "בדיקות ממתינות",
+        value: labCount,
+        status: isSecretary ? (hasLabsOrPayments ? "חיובים פתוחים" : "אין חיובים פתוחים") : urgentLabsCount > 0 ? `${urgentLabsCount} דחופות` : hasLabsOrPayments ? "ממתין לתוצאה" : "אין בדיקות פתוחות",
+        icon: isSecretary ? WalletCards : FlaskConical,
+        tone: isSecretary ? "warning" : "pending",
+        path: isSecretary ? "/reports" : "/lab-orders?filter=open",
+      },
+      {
+        label: "אשפוזים פעילים",
+        value: dashboardData.hospitalizations.length,
+        status: severeHospitalizationsCount > 0 ? `${severeHospitalizationsCount} במעקב צמוד` : hasHospitalizations ? "במעקב מחלקה" : "אין אשפוזים פעילים",
+        icon: Bed,
+        tone: "clinical",
+        path: "/hospitalizations?filter=active",
+      },
+      {
+        label: "מלאי נמוך",
+        value: dashboardData.inventory.length,
+        status: outOfStockCount > 0 ? `${outOfStockCount} חסרים לגמרי` : hasLowInventory ? "להזמנה" : "המלאי תקין",
+        icon: Package,
+        tone: "warning",
+        path: "/inventory?filter=low-stock",
+      },
+    ];
+  }, [dashboardData, isSecretary, openConversations, urgentOpenConversationsCount, urgentLabsCount, severeHospitalizationsCount, outOfStockCount, videoAppointmentsCount, physicalAppointmentsCount]);
 
   async function loadPatients() {
     setIsLoadingPatients(true);
@@ -378,7 +535,7 @@ export function Dashboard() {
     try {
       const { start, end } = todayRange();
       const [appointmentsResult, conversationsResult, labsResult, hospitalizationsResult, paymentsResult, inventoryResult] = await Promise.allSettled([
-        supabase.from("appointments").select("appointment_id, pet_id, start_time, appointment_type, department, vet_name, room, notes, appointment_mode").gte("start_time", start.toISOString()).lt("start_time", end.toISOString()).order("start_time", { ascending: true }),
+        supabase.from("appointments").select("appointment_id, pet_id, start_time, appointment_type, department, vet_name, room, notes, appointment_mode, color").gte("start_time", start.toISOString()).lt("start_time", end.toISOString()).order("start_time", { ascending: true }),
         supabase.from("conversations").select("conversation_id, subject, status, priority, last_message_at").in("status", ["open", "waiting_staff", "waiting_owner"]),
         supabase.from("lab_orders").select("lab_order_id, test_name, status, is_urgent, ordered_date, test_date, pet_id").neq("status", "completed"),
         supabase.from("hospitalizations").select("hospitalization_id, pet_id, department, status, severity, admitted_at, expected_discharge_at").eq("status", "active"),
@@ -424,6 +581,7 @@ export function Dashboard() {
           room: row.room || "",
           department: row.department || "",
           notes: row.notes || "",
+          color: row.color || "",
         } as AppointmentItem;
       });
 
@@ -570,7 +728,8 @@ export function Dashboard() {
   const openConversationTarget = () => navigate("/digital-care?filter=open");
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-5 min-h-[calc(100vh-84px)] relative" dir="rtl">
+    <main className="max-w-[1500px] mx-auto px-5 py-5 min-h-[calc(100vh-84px)] relative" dir="rtl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[280px] rounded-b-[48px] bg-gradient-to-b from-blue-50/80 via-emerald-50/35 to-transparent" />
       {showSuccessToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-500" />
@@ -578,44 +737,49 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="space-y-5">
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-4">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between rounded-[28px] border border-blue-100/70 bg-gradient-to-l from-white via-blue-50/55 to-emerald-50/35 px-5 py-4 shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
           <div className="min-w-0">
             <p className="text-gray-500 text-[13px] font-medium">ברוך הבא, {getStaffName()}</p>
             <h1 className="text-gray-950 text-[28px] font-extrabold leading-tight">{dashboardTitle(staffType)}</h1>
-            <p className="text-gray-500 text-[13px] mt-1">תצוגה יומית רגועה: קודם חריגים, אחר כך תורים, ואז כניסה למסכי העבודה.</p>
+            <p className="text-gray-500 text-[13px] mt-1">כל מה שחשוב לצוות היום, במקום אחד.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <span className="text-gray-400 text-[12px] px-2">עודכן {lastUpdated || "--:--"}</span>
-            <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors">
+            <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors">
               <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
             </button>
             <DashboardAssistant />
             {isSecretary ? (
-              <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors">
+              <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-2xl bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-[0_10px_20px_rgba(30,64,175,0.16)] transition-colors">
                 <CalendarPlus className="w-4 h-4" /> קבע תור
               </button>
             ) : (
-              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-10 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors">
-                <Zap className="w-4 h-4" /> {walkInButtonLabel}
+              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-10 px-4 rounded-2xl bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-[0_10px_20px_rgba(30,64,175,0.16)] transition-colors">
+                <ClipboardPlus className="w-4 h-4" /> {walkInButtonLabel}
               </button>
             )}
           </div>
         </header>
 
-        <section className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {statusTiles.map((tile) => {
             const Icon = tile.icon;
+            const tileSkin = statusTileSkin(tile.tone);
             return (
-              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className="group bg-white border border-gray-100 rounded-2xl px-4 py-3 text-right hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer">
-                <div className="flex items-center justify-between gap-3">
+              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className={`group relative min-h-[78px] overflow-hidden border rounded-[22px] px-4 py-3 text-right hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition-all cursor-pointer ${tileSkin.card}`}>
+                <span className={`absolute right-0 top-4 bottom-4 w-1 rounded-l-full ${tileSkin.bar}`} />
+                <div className="flex items-center justify-between gap-3 pr-1">
                   <div className="min-w-0">
-                    <p className="text-gray-500 text-[12px] font-semibold truncate">{tile.label}</p>
-                    <p className="text-gray-950 text-[24px] font-extrabold leading-none mt-1">{tile.value}</p>
+                    <p className="text-slate-600 text-[12px] font-semibold truncate">{tile.label}</p>
+                    <div className="mt-1 flex items-end gap-2">
+                      <p className={`text-[23px] font-extrabold leading-none ${tileSkin.value}`}>{tile.value}</p>
+                      <p className={`text-[11px] font-semibold leading-none pb-0.5 truncate ${tileSkin.status}`}>{tile.status}</p>
+                    </div>
                   </div>
-                  <div className="w-9 h-9 rounded-xl bg-gray-50 text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-700 flex items-center justify-center transition-colors">
-                    <Icon className="w-4.5 h-4.5" />
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ring-1 ${tileSkin.icon}`}>
+                    <Icon className="w-4 h-4" />
                   </div>
                 </div>
               </button>
@@ -623,189 +787,207 @@ export function Dashboard() {
           })}
         </section>
 
-        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
-          <div className="xl:col-span-7 space-y-4">
-            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-gray-950 text-[18px] font-extrabold">מה דורש טיפול עכשיו</h2>
-                  <p className="text-gray-500 text-[12px] mt-1">רשימה אחת מסודרת לפי דחיפות, בלי כרטיסים צועקים.</p>
-                </div>
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 items-start">
+          <section className="xl:col-span-5 bg-gradient-to-b from-amber-50/25 via-white to-white rounded-[30px] border border-amber-100/60 shadow-[0_18px_45px_rgba(15,23,42,0.05)] overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-gray-950 text-[18px] font-extrabold">מה דורש טיפול עכשיו</h2>
+                <p className="text-slate-500 text-[12px] mt-1">מה שצריך לקבל קדימות בצוות.</p>
               </div>
+              <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 ring-1 ring-amber-100">
+                <AlertTriangle className="w-[18px] h-[18px]" />
+              </div>
+            </div>
 
-              <div className="p-3">
-                {workItems.length === 0 ? (
-                  <div className="min-h-[170px] flex flex-col items-center justify-center text-center text-gray-500">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
-                      <Check className="w-5 h-5" />
-                    </div>
-                    <p className="text-[15px] font-bold text-gray-800">אין חריגים פתוחים כרגע</p>
-                    <p className="text-[13px] mt-1">אפשר להמשיך לתורים או לפתוח מסכי עבודה לפי צורך.</p>
+            <div className="p-3">
+              {workItems.length === 0 ? (
+                <div className="min-h-[120px] flex flex-col items-center justify-center text-center text-gray-500">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                    <Check className="w-5 h-5" />
                   </div>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {workItems.map((item) => {
-                      const Icon = item.icon;
-                      const accent = item.tone === "red" ? "bg-red-500" : item.tone === "amber" ? "bg-amber-500" : item.tone === "blue" ? "bg-blue-500" : item.tone === "emerald" ? "bg-emerald-500" : item.tone === "purple" ? "bg-purple-500" : "bg-slate-400";
-                      const soft = item.tone === "red" ? "bg-red-50 text-red-700" : item.tone === "amber" ? "bg-amber-50 text-amber-700" : item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-slate-50 text-slate-700";
-                      return (
-                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="w-full px-2 py-3.5 text-right hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer">
-                          <div className="flex items-center gap-3">
-                            <span className={`w-1.5 h-10 rounded-full ${accent}`} />
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${soft}`}>
-                              <Icon className="w-5 h-5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-gray-950 text-[14px] font-extrabold truncate">{item.title}</p>
-                              <p className="text-gray-500 text-[12px] mt-0.5 truncate">{item.detail}</p>
-                            </div>
-                            <div className="hidden sm:flex items-center gap-1 text-blue-700 text-[12px] font-bold shrink-0">
-                              {item.action} <ArrowLeft className="w-4 h-4" />
-                            </div>
+                  <p className="text-[15px] font-bold text-gray-800">אין חריגים פתוחים כרגע</p>
+                  <p className="text-[13px] mt-1">אפשר להמשיך לתורים או לבדוק אזורים נוספים במערכת.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {workItems.map((item) => {
+                    const Icon = item.icon;
+                    const accent = item.tone === "red" ? "bg-amber-400" : item.tone === "amber" ? "bg-amber-400" : item.tone === "blue" ? "bg-blue-500" : item.tone === "emerald" ? "bg-emerald-500" : item.tone === "purple" ? "bg-purple-500" : "bg-slate-400";
+                    const soft = item.tone === "red" ? "bg-amber-50 text-amber-700" : item.tone === "amber" ? "bg-amber-50 text-amber-700" : item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-slate-50 text-slate-700";
+                    return (
+                      <button key={item.id} type="button" onClick={() => navigate(item.path)} className="group w-full px-3 py-2.5 text-right hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-1 h-8 rounded-full ${accent}`} />
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${soft}`}>
+                            <Icon className="w-4 h-4" />
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-gray-950 text-[18px] font-extrabold">מעקב מרפאה</h2>
-                  <p className="text-gray-500 text-[12px] mt-1">אותו מידע, אבל במצב סיכום. פירוט מלא נמצא במסך העבודה.</p>
-                </div>
-                <LayoutDashboard className="w-5 h-5 text-gray-400" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
-                <button type="button" onClick={openConversationTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-gray-950 text-[15px] font-extrabold">פניות פתוחות</p>
-                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.conversations.length === 0 ? "אין פניות פתוחות" : `${dashboardData.conversations.length} פניות מחכות לטיפול`}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center"><MessageCircle className="w-5 h-5" /></div>
-                  </div>
-                  {dashboardData.conversations[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">אחרונה: {dashboardData.conversations[0].subject || "פנייה פתוחה"}</p>}
-                </button>
-
-                <button type="button" onClick={openLabTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-gray-950 text-[15px] font-extrabold">מעבדה</p>
-                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.labs.length === 0 ? "אין בדיקות פתוחות" : `${dashboardData.labs.length} בדיקות ממתינות`}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center"><FlaskConical className="w-5 h-5" /></div>
-                  </div>
-                  {dashboardData.labs[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">אחרונה: {dashboardData.labs[0].test_name || "בדיקה"}</p>}
-                </button>
-
-                <button type="button" onClick={openHospitalizationTarget} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-gray-950 text-[15px] font-extrabold">אשפוזים</p>
-                      <p className="text-gray-500 text-[12px] mt-1">{expectedDischarges.length === 0 ? `${dashboardData.hospitalizations.length} פעילים` : `${expectedDischarges.length} שחרורים צפויים`}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Bed className="w-5 h-5" /></div>
-                  </div>
-                  {expectedDischarges[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">לשחרור: {expectedDischarges[0].department || "אשפוז"}</p>}
-                </button>
-
-                <button type="button" onClick={() => navigate("/inventory?filter=low-stock")} className="rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 p-4 text-right transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-gray-950 text-[15px] font-extrabold">מלאי נמוך</p>
-                      <p className="text-gray-500 text-[12px] mt-1">{dashboardData.inventory.length === 0 ? "אין חריגות מלאי" : `${dashboardData.inventory.length} פריטים לבדיקה`}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                  </div>
-                  {dashboardData.inventory[0] && <p className="mt-3 text-[12px] text-gray-600 truncate">נמוך: {dashboardData.inventory[0].item_name || "פריט"}</p>}
-                </button>
-              </div>
-            </section>
-          </div>
-
-          <aside className="xl:col-span-5 space-y-4">
-            <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-gray-950 text-[18px] font-extrabold">תורים להיום</h2>
-                  <p className="text-gray-500 text-[12px] mt-1">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
-                </div>
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-50/70 border-b border-gray-100">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl bg-white border border-gray-100 p-3">
-                    <p className="text-gray-500 text-[11px] font-bold">התור הבא</p>
-                    <p className="text-gray-950 text-[14px] font-extrabold mt-1 truncate">{nextAppointment ? nextAppointment.timeLabel : "אין"}</p>
-                  </div>
-                  <button type="button" onClick={() => navigate("/digital-care?filter=video")} className="rounded-2xl bg-white border border-gray-100 p-3 text-right hover:border-blue-200 transition-colors cursor-pointer">
-                    <p className="text-gray-500 text-[11px] font-bold">וידאו</p>
-                    <p className="text-gray-950 text-[14px] font-extrabold mt-1">{videoAppointmentsCount}</p>
-                  </button>
-                  <button type="button" onClick={() => navigate("/appointments")} className="rounded-2xl bg-white border border-gray-100 p-3 text-right hover:border-blue-200 transition-colors cursor-pointer">
-                    <p className="text-gray-500 text-[11px] font-bold">במרפאה</p>
-                    <p className="text-gray-950 text-[14px] font-extrabold mt-1">{physicalAppointmentsCount}</p>
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3">
-                {todaysAppointments.length === 0 ? (
-                  <div className="min-h-[220px] flex flex-col items-center justify-center text-center text-gray-500">
-                    <CalendarCheck className="w-9 h-9 text-gray-300 mb-2" />
-                    <p className="text-[14px] font-bold text-gray-700">אין תורים להיום</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {todaysAppointments.map((appointment) => {
-                      const appointmentTime = new Date(appointment.startTime).getTime();
-                      const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
-                      const isNext = nextAppointment?.id === appointment.id;
-                      return (
-                        <button key={appointment.id} type="button" onClick={() => appointment.mode === "video" ? navigate("/digital-care?filter=video") : navigate("/appointments")} className={`w-full rounded-2xl px-3 py-3 text-right cursor-pointer transition-colors ${isNext ? "bg-blue-50 border border-blue-100" : "hover:bg-gray-50 border border-transparent"}`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-14 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0 ${isNext ? "bg-blue-600 text-white" : isPast ? "bg-gray-100 text-gray-500" : "bg-gray-50 text-gray-900"}`}>
-                              <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
-                              <span className="text-[10px] opacity-75 mt-1">{isNext ? "הבא" : isPast ? "עבר" : "היום"}</span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-gray-950 text-[14px] font-extrabold truncate">{appointment.type || "ביקור"}</p>
-                                {appointment.mode === "video" && <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold">וידאו</span>}
-                              </div>
-                              <p className="text-gray-600 text-[12px] truncate mt-0.5">{appointment.petName} · {appointment.ownerName}</p>
-                              <p className="text-gray-400 text-[11px] truncate">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
-                            </div>
-                            <ArrowLeft className="w-4 h-4 text-gray-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-gray-950 text-[13.5px] font-extrabold truncate">{item.title}</p>
+                            <p className="text-gray-600 text-[11.5px] mt-0.5 truncate">{item.detail}</p>
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                          <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-blue-700 transition-colors shrink-0" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
 
-              <div className="p-3 border-t border-gray-100 flex items-center gap-2">
-                <button type="button" onClick={() => navigate("/appointments")} className="flex-1 h-10 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                  פתח יומן <ArrowLeft className="w-4 h-4" />
+          <section className="xl:col-span-4 bg-gradient-to-b from-blue-50/25 via-white to-white rounded-[30px] border border-blue-100/60 shadow-[0_18px_45px_rgba(15,23,42,0.05)] overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-gray-950 text-[18px] font-extrabold">תורים להיום</h2>
+                <p className="text-slate-500 text-[12px] mt-1">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
+              </div>
+              <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 ring-1 ring-blue-100">
+                <Clock className="w-[18px] h-[18px]" />
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50/70 border-b border-slate-100">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-white border border-slate-100 p-2.5">
+                  <p className="text-gray-600 text-[11px] font-bold">התור הבא</p>
+                  <p className="text-gray-950 text-[14px] font-extrabold mt-1 truncate">{nextAppointment ? nextAppointment.timeLabel : "אין תור קרוב"}</p>
+                </div>
+                <button type="button" onClick={() => navigate("/digital-care?filter=video")} className="rounded-2xl bg-white border border-slate-100 p-2.5 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer">
+                  <p className="text-gray-600 text-[11px] font-bold">וידאו</p>
+                  <p className="text-gray-950 text-[14px] font-extrabold mt-1">{videoAppointmentsCount}</p>
                 </button>
-                <button type="button" onClick={() => navigate("/appointments/new")} className="flex-1 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                  קבע תור <CalendarPlus className="w-4 h-4" />
+                <button type="button" onClick={() => navigate("/appointments")} className="rounded-2xl bg-white border border-slate-100 p-2.5 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer">
+                  <p className="text-gray-600 text-[11px] font-bold">במרפאה</p>
+                  <p className="text-gray-950 text-[14px] font-extrabold mt-1">{physicalAppointmentsCount}</p>
                 </button>
               </div>
-            </section>
-          </aside>
+            </div>
+
+            <div className="p-3">
+              {todaysAppointments.length === 0 ? (
+                <div className="min-h-[120px] flex flex-col items-center justify-center text-center text-gray-500">
+                  <CalendarCheck className="w-9 h-9 text-gray-300 mb-2" />
+                  <p className="text-[14px] font-bold text-gray-700">אין תורים להיום</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {todaysAppointments.slice(0, 4).map((appointment) => {
+                    const appointmentTime = new Date(appointment.startTime).getTime();
+                    const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
+                    const isNext = nextAppointment?.id === appointment.id;
+                    const isPriority = isPriorityAppointment(appointment);
+                    const appointmentClass = isPriority
+                      ? "bg-rose-50/55 border border-rose-100 hover:bg-rose-50/70 shadow-[0_10px_22px_rgba(225,29,72,0.035)]"
+                      : isNext
+                        ? "bg-blue-50 border border-blue-100 hover:bg-blue-50/80"
+                        : "hover:bg-slate-50 border border-transparent";
+                    const timeClass = isPriority
+                      ? "bg-white text-rose-700 ring-1 ring-rose-100"
+                      : isNext
+                        ? "bg-blue-600 text-white"
+                        : isPast
+                          ? "bg-gray-100 text-gray-500"
+                          : "bg-gray-50 text-gray-900";
+                    return (
+                      <button key={appointment.id} type="button" onClick={() => appointment.mode === "video" ? navigate("/digital-care?filter=video") : navigate("/appointments")} className={`w-full rounded-[22px] px-3 py-2.5 text-right cursor-pointer transition-colors ${appointmentClass}`}>
+                        <div className="flex items-center gap-3">
+                          {isPriority && <span className="w-1 h-11 rounded-full bg-rose-300 shrink-0" />}
+                          <div className={`w-14 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0 ${timeClass}`}>
+                            <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
+                            <span className="text-[10px] opacity-75 mt-1">{isPriority ? "דחוף" : isNext ? "הבא" : isPast ? "עבר" : "היום"}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={`${isPriority ? "text-rose-950" : "text-gray-950"} text-[14px] font-extrabold truncate`}>{appointment.type || "ביקור"}</p>
+                              {isPriority && <span className="px-2 py-0.5 rounded-full bg-white/80 border border-rose-100 text-rose-600 text-[10px] font-bold">עדיפות גבוהה</span>}
+                              {appointment.mode === "video" && <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold">וידאו</span>}
+                            </div>
+                            <p className="text-gray-700 text-[12px] truncate mt-0.5">{appointment.petName} · {appointment.ownerName}</p>
+                            <p className="text-gray-500 text-[11px] truncate">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
+                          </div>
+                          <ArrowLeft className={`w-4 h-4 ${isPriority ? "text-rose-400" : "text-gray-400"} shrink-0`} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {todaysAppointments.length > 4 && (
+                    <button type="button" onClick={() => navigate("/appointments")} className="w-full h-9 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 text-[12px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                      עוד {todaysAppointments.length - 4} תורים ביומן <ArrowLeft className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 border-t border-slate-100 flex items-center gap-2">
+              <button type="button" onClick={() => navigate("/appointments")} className="flex-1 h-10 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                פתח יומן <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button type="button" onClick={() => navigate("/appointments/new")} className="flex-1 h-10 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                קבע תור <CalendarPlus className="w-4 h-4" />
+              </button>
+            </div>
+          </section>
+
+          <section className="xl:col-span-3 bg-gradient-to-b from-emerald-50/20 via-white to-white rounded-[30px] border border-emerald-100/60 shadow-[0_18px_45px_rgba(15,23,42,0.05)] overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-gray-950 text-[18px] font-extrabold">מעקב מרפאה</h2>
+                <p className="text-slate-500 text-[12px] mt-1">סטטוס קצר של אזורי העבודה.</p>
+              </div>
+              <div className="w-9 h-9 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center shrink-0 ring-1 ring-slate-100">
+                <LayoutDashboard className="w-[18px] h-[18px]" />
+              </div>
+            </div>
+
+            <div className="p-2">
+              <div className="divide-y divide-gray-100">
+                <button type="button" onClick={openConversationTarget} className="group w-full px-2.5 py-2.5 text-right hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 ring-1 ring-indigo-100"><MessageCircle className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-950 text-[12.5px] font-extrabold truncate">פניות פתוחות</p>
+                      <p className="text-gray-600 text-[11px] mt-0.5 truncate">{openConversations[0]?.subject ? `אחרונה: ${openConversations[0].subject}` : "אין פניות פתוחות"}</p>
+                    </div>
+                    <span className="min-w-7 h-7 px-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-800 text-[13px] font-extrabold flex items-center justify-center shrink-0">{openConversations.length}</span>
+                  </div>
+                </button>
+
+                <button type="button" onClick={openLabTarget} className="group w-full px-2.5 py-2.5 text-right hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 ring-1 ring-amber-100"><FlaskConical className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-950 text-[12.5px] font-extrabold truncate">מעבדה</p>
+                      <p className="text-gray-600 text-[11px] mt-0.5 truncate">{dashboardData.labs[0]?.test_name ? `אחרונה: ${dashboardData.labs[0].test_name}` : "אין בדיקות פתוחות"}</p>
+                    </div>
+                    <span className="min-w-7 h-7 px-2 rounded-full bg-amber-50 border border-amber-100 text-amber-800 text-[13px] font-extrabold flex items-center justify-center shrink-0">{dashboardData.labs.length}</span>
+                  </div>
+                </button>
+
+                <button type="button" onClick={openHospitalizationTarget} className="group w-full px-2.5 py-2.5 text-right hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 ring-1 ring-emerald-100"><Bed className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-950 text-[12.5px] font-extrabold truncate">אשפוזים</p>
+                      <p className="text-gray-600 text-[11px] mt-0.5 truncate">{expectedDischarges.length === 0 ? "אין שחרורים צפויים" : `${expectedDischarges.length} שחרורים צפויים`}</p>
+                    </div>
+                    <span className="min-w-7 h-7 px-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[13px] font-extrabold flex items-center justify-center shrink-0">{dashboardData.hospitalizations.length}</span>
+                  </div>
+                </button>
+
+                <button type="button" onClick={() => navigate("/inventory?filter=low-stock")} className="group w-full px-2.5 py-2.5 text-right hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center shrink-0 ring-1 ring-slate-100"><Package className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-950 text-[12.5px] font-extrabold truncate">מלאי נמוך</p>
+                      <p className="text-gray-600 text-[11px] mt-0.5 truncate">{dashboardData.inventory[0]?.item_name ? `נמוך: ${dashboardData.inventory[0].item_name}` : "אין חריגות מלאי"}</p>
+                    </div>
+                    <span className="min-w-7 h-7 px-2 rounded-full bg-orange-50 border border-orange-100 text-orange-800 text-[13px] font-extrabold flex items-center justify-center shrink-0">{dashboardData.inventory.length}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </section>
         </section>
       </div>
 
@@ -814,7 +996,7 @@ export function Dashboard() {
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="bg-gradient-to-l from-orange-500 to-amber-500 px-6 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                {modalView === "new-patient" ? <button onClick={() => { setModalView("list"); setNewForm(emptyForm); setFormErrors({}); }} className="text-white/70 hover:text-white cursor-pointer p-1"><ArrowRight className="w-5 h-5" /></button> : <Zap className="w-5 h-5 text-white/80" />}
+                {modalView === "new-patient" ? <button onClick={() => { setModalView("list"); setNewForm(emptyForm); setFormErrors({}); }} className="text-white/70 hover:text-white cursor-pointer p-1"><ArrowRight className="w-5 h-5" /></button> : <ClipboardPlus className="w-5 h-5 text-white/80" />}
                 <div>
                   <h3 className="text-white text-[17px] font-semibold">{modalView === "list" ? walkInButtonLabel : "רישום מטופל חדש"}</h3>
                   <p className="text-white/70 text-[12px]">{modalView === "list" ? "בחרו מטופל קיים או הוסיפו מטופל חדש" : "מלאו את הפרטים לפתיחת טיפול"}</p>
@@ -827,7 +1009,7 @@ export function Dashboard() {
               <div className="flex flex-col overflow-hidden">
                 <div className="px-5 pt-5 pb-3 space-y-3 shrink-0">
                   <div className="relative">
-                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500 pointer-events-none" />
+                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
                     {walkInSearch && <button onClick={() => setWalkInSearch("")} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>}
                     <input type="text" placeholder="חיפוש לפי שם חיה, בעלים, טלפון, שבב..." value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} className="w-full pr-11 pl-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300" autoFocus />
                   </div>

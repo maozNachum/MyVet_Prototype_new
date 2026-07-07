@@ -345,7 +345,7 @@ export function DigitalCare() {
   const showUrgentOnly = routeFilter === "urgent" || routePriority === "urgent";
 
   const metrics = useMemo(() => {
-    const open = conversations.filter((c) => c.status !== "closed").length;
+    const open = conversations.filter((c) => c.status === "open").length;
     const waitingStaff = conversations.filter(
       (c) => c.status === "waiting_staff",
     ).length;
@@ -359,7 +359,7 @@ export function DigitalCare() {
   const filteredConversations = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortConversations(conversations).filter((conversation) => {
-      if (showOpenOnly && conversation.status === "closed") return false;
+      if (showOpenOnly && conversation.status !== "open") return false;
       if (showVideoOnly && !conversation.hasOpenVideo) return false;
       if (
         showUrgentOnly &&
@@ -479,7 +479,7 @@ export function DigitalCare() {
       setConversations(vm);
       const sorted = sortConversations(vm);
       const preferredConversation = sorted.find((conversation) => {
-        if (routeFilter === "open") return conversation.status !== "closed";
+        if (routeFilter === "open") return conversation.status === "open";
         if (routeFilter === "video") return Boolean(conversation.hasOpenVideo);
         if (routeFilter === "urgent" || routePriority === "urgent")
           return (
@@ -1204,7 +1204,7 @@ export function DigitalCare() {
             title="שיחות פתוחות"
             value={metrics.open}
             tone="blue"
-            subtitle="שיחות שעדיין בטיפול"
+            subtitle="שיחות בסטטוס פתוחה"
           />
           <MetricCard
             icon={<Clock className="w-5 h-5" />}

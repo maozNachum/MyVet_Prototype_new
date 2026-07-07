@@ -20,6 +20,7 @@ import { VISIT_TYPES } from "../data/categoryConfig";
 import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
 import { PatientMedicalTimeline } from "../components/PatientMedicalTimeline";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
+import { VaccinationBook } from "../components/VaccinationBook";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -913,6 +914,19 @@ export function Patients() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mb-8">
+          <VaccinationBook
+            patientId={selectedPatient.id}
+            petName={pet.name}
+            species={pet.species}
+            breed={pet.breed}
+            ownerId={owner.id}
+            ownerName={owner.name}
+            ownerPhone={owner.phone}
+            mode="staff"
+          />
         </div>
 
         <div className="mb-8">

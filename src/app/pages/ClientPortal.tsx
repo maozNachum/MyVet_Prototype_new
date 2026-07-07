@@ -19,6 +19,7 @@ import { exportOwnerMedicalRecord } from "../hooks/useExportOwnerRecord";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { ClientPortalAssistant } from "../components/ai/PageAssistants";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
+import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
 import { toast } from "sonner";
 import {
@@ -2686,6 +2687,20 @@ export function ClientPortal() {
                                 ))}
                               </div>
                             )}
+                          </div>
+
+                          <div className="bg-white px-6 py-5 border-t border-gray-100">
+                            <VaccinationBook
+                              patientId={pet.id}
+                              petName={pet.name}
+                              species={pet.type === "dog" ? "כלב" : pet.type === "cat" ? "חתול" : "אחר"}
+                              breed={pet.breed}
+                              ownerId={ownerProfile?.owner_id || null}
+                              ownerName={ownerDisplayName}
+                              ownerPhone={ownerProfile?.phone || null}
+                              mode="owner"
+                              compact
+                            />
                           </div>
 
                           <div className="bg-gray-50/50 px-6 py-5">
