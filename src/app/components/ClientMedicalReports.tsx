@@ -348,17 +348,17 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden" dir="rtl">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="min-w-0">
           <h4 className="text-gray-900 text-[15px] font-bold">תיק רפואי דיגיטלי — {petName}</h4>
           <p className="text-gray-500 font-medium text-[12px]">ביקורים, בעיות, בדיקה גופנית, אבחנות, מרשמים ומסמכים</p>
         </div>
-        <button type="button" onClick={exportReports} className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[13px] border border-transparent hover:border-emerald-200 font-medium">
+        <button type="button" onClick={exportReports} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-100 px-3 py-1.5 text-[13px] font-medium text-emerald-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 sm:w-auto">
           <Download className="w-3.5 h-3.5" /> ייצוא
         </button>
       </div>
 
-      <div className="px-4 pt-4 border-b border-gray-100 flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto border-b border-gray-100 px-3 pt-3 sm:flex-wrap sm:px-4 sm:pt-4">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const count = counts[tab.key];
@@ -367,7 +367,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-t-xl text-[13px] border-b-2 transition-colors cursor-pointer ${active ? "text-[#1e40af] border-[#1e40af] bg-blue-50/60" : "text-gray-500 border-transparent hover:text-gray-800 hover:bg-gray-50"}`}
+              className={`flex shrink-0 items-center gap-2 px-3 py-2 rounded-t-xl text-[13px] border-b-2 transition-colors cursor-pointer ${active ? "text-[#1e40af] border-[#1e40af] bg-blue-50/60" : "text-gray-500 border-transparent hover:text-gray-800 hover:bg-gray-50"}`}
             >
               <Icon className="w-4 h-4" />
               <span className="font-semibold">{tab.label}</span>
@@ -377,7 +377,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
         })}
       </div>
 
-      <div className="p-5">
+      <div className="p-3 sm:p-5">
         {activeTab === "visits" && (
           <div className="space-y-4">
             {visits.length === 0 ? <EmptyState text="אין עדיין סיכומי ביקור" /> : visits.map((visit) => {

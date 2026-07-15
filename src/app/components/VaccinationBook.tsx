@@ -590,14 +590,14 @@ export function VaccinationBook({
       </div>
 
       <div className="p-5">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
           <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
             <p className="text-gray-500 text-[12px] font-bold">חיסונים בפנקס</p>
-            <p className="text-gray-950 text-[24px] font-extrabold mt-1">{records.length}</p>
+            <p className="text-gray-950 text-[20px] sm:text-[24px] font-extrabold mt-1">{records.length}</p>
           </div>
           <div className={`rounded-2xl border p-4 ${overdueRecords.length > 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100"}`}>
             <p className={`text-[12px] font-bold ${overdueRecords.length > 0 ? "text-rose-700" : "text-emerald-700"}`}>דורש תשומת לב</p>
-            <p className={`text-[24px] font-extrabold mt-1 ${overdueRecords.length > 0 ? "text-rose-800" : "text-emerald-800"}`}>{overdueRecords.length}</p>
+            <p className={`text-[20px] sm:text-[24px] font-extrabold mt-1 ${overdueRecords.length > 0 ? "text-rose-800" : "text-emerald-800"}`}>{overdueRecords.length}</p>
           </div>
           <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4">
             <p className="text-blue-700 text-[12px] font-bold">חיסון קרוב</p>
@@ -621,7 +621,38 @@ export function VaccinationBook({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <>
+          <div className="space-y-3 md:hidden">
+            {records.map((record) => {
+              const due = daysUntil(record.next_due_date);
+              const isOverdue = due !== null && due < 0;
+              return (
+                <article key={record.vaccination_id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-extrabold text-gray-950">{record.vaccine_name}</p>
+                      <p className="mt-1 text-[12px] font-semibold text-gray-500">ניתן בתאריך {formatDate(record.given_date)}</p>
+                    </div>
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${isOverdue ? "border-rose-100 bg-rose-50 text-rose-700" : "border-emerald-100 bg-emerald-50 text-emerald-700"}`}>
+                      <CalendarDays className="h-3.5 w-3.5" /> {formatDate(record.next_due_date)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-[12px]">
+                    <div><p className="font-bold text-slate-400">אצווה</p><p className="mt-0.5 break-words font-semibold text-slate-700">{record.batch_number || "לא צוינה"}</p></div>
+                    <div><p className="font-bold text-slate-400">תיעוד</p><p className="mt-0.5 font-semibold text-slate-700">{getMethodLabel(record.entry_method)}</p></div>
+                  </div>
+                  {(record.sticker_image_url || canEdit) && (
+                    <div className="mt-3 flex items-center gap-2">
+                      {record.sticker_image_url && <a href={record.sticker_image_url} target="_blank" rel="noreferrer" className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-3 text-[12px] font-bold text-blue-700"><FileImage className="h-4 w-4" /> הצג מדבקה</a>}
+                      {canEdit && <button type="button" onClick={() => openEditModal(record)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-700" aria-label={`עריכת חיסון ${record.vaccine_name}`}><Pencil className="h-4 w-4" /></button>}
+                      {canEdit && <button type="button" onClick={() => void deleteVaccination(record)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-700" aria-label={`מחיקת חיסון ${record.vaccine_name}`}>{deletingVaccinationId === record.vaccination_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 md:block">
             <table className="min-w-full text-right text-[13px]">
               <thead className="bg-slate-50 text-slate-500 font-bold">
                 <tr>
@@ -698,13 +729,14 @@ export function VaccinationBook({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/45 flex items-center justify-center px-4" onClick={closeAddModal}>
-          <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-[28px] shadow-2xl border border-slate-100" onClick={(event) => event.stopPropagation()}>
-            <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+        <div className="fixed inset-0 z-[80] bg-black/45 flex items-end justify-center sm:items-center sm:px-4" onClick={closeAddModal}>
+          <div className="w-full max-w-3xl max-h-[94dvh] sm:max-h-[92vh] overflow-y-auto bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl border border-slate-100" onClick={(event) => event.stopPropagation()}>
+            <div className="sticky top-0 bg-white z-10 px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-gray-950 text-[20px] font-extrabold">{editingRecord ? "עריכת חיסון בפנקס" : "הוספת חיסון לפנקס"}</h3>
                 <p className="text-gray-500 text-[13px] font-medium mt-1">
@@ -716,7 +748,7 @@ export function VaccinationBook({
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 space-y-5">
               {formError && <div className="rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 px-4 py-3 text-[13px] font-bold">{formError}</div>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

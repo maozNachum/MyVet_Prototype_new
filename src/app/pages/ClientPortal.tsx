@@ -283,6 +283,8 @@ const PORTAL_NAV_ITEMS: Array<{ key: PortalView; label: string; description: str
   { key: "profile", label: "תיק אישי", description: "פרטים אישיים", icon: User },
 ];
 
+const PORTAL_MOBILE_NAV_KEYS: PortalView[] = ["home", "appointments", "digital", "pets", "payments"];
+
 function portalViewLabel(view: PortalView) {
   return PORTAL_NAV_ITEMS.find((item) => item.key === view)?.label || "בית";
 }
@@ -313,9 +315,8 @@ export function ClientPortal() {
 
   // Section accordion state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    notifications: true,
     appointments: true, // שיניתי לברירת מחדל פתוח שיהיה קל לראות את התורים מה-Store
-    pets: false,
+    pets: true,
     digital: true,
   });
   const toggleSection = (key: string) =>
@@ -326,7 +327,6 @@ export function ClientPortal() {
     setIsPortalMenuOpen(false);
     setOpenSections((prev) => ({
       ...prev,
-      notifications: view === "home" || view === "notifications" ? true : prev.notifications,
       appointments: view === "home" || view === "appointments" ? true : prev.appointments,
       digital: view === "digital" ? true : prev.digital,
       pets: view === "pets" ? true : prev.pets,
@@ -1430,7 +1430,7 @@ export function ClientPortal() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#ffffff_100%)] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
+    <div dir="rtl" className="client-portal min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#ffffff_100%)] flex flex-col" style={{ fontFamily: "'Heebo', sans-serif" }}>
       
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="bg-white/92 backdrop-blur-xl border-b border-blue-100/70 shadow-sm sticky top-0 z-50 w-full">
@@ -1540,7 +1540,7 @@ export function ClientPortal() {
       )}
 
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-[560px] mx-auto px-4 py-5 sm:py-7 w-full">
+      <main className={`flex-1 mx-auto w-full px-3 pb-28 pt-4 transition-[max-width] sm:px-4 sm:pb-24 sm:pt-7 ${activePortalView === "home" ? "max-w-[560px]" : "max-w-[1040px]"}`}>
         <div className="mb-6 sm:mb-8 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
@@ -1560,59 +1560,6 @@ export function ClientPortal() {
 
           </div>
 
-          {false && activePortalView === "home" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <button
-                onClick={() => goToPortalView("appointments")}
-                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-gray-500 text-[13px] font-bold">התור הבא</p>
-                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{nextAppointment ? nextAppointment.petName : "אין תור קרוב"}</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                    <CalendarClock className="w-5 h-5" />
-                  </div>
-                </div>
-                <p className="text-gray-500 text-[13px] font-medium">
-                  {nextAppointment ? `${nextAppointment.date} · ${nextAppointment.time} · ${nextAppointment.type}` : "אפשר לקבוע תור חדש בלחיצה אחת."}
-                </p>
-              </button>
-
-              <button
-                onClick={() => goToPortalView("home")}
-                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-gray-500 text-[13px] font-bold">התראות חדשות</p>
-                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{unreadNotificationsCount}</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                </div>
-                <p className="text-gray-500 text-[13px] font-medium">מרכז ההתראות מופיע בדף הבית.</p>
-              </button>
-
-              <button
-                onClick={() => openPayments.length > 0 ? goToPortalView("payments") : openOwnerBooking()}
-                className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
-              >
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-gray-500 text-[13px] font-bold">פעולה מהירה</p>
-                    <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{openPayments.length > 0 ? `₪${openPaymentsTotal.toLocaleString()}` : "קביעת תור"}</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                    {openPayments.length > 0 ? <AlertCircle className="w-5 h-5" /> : <CalendarPlus className="w-5 h-5" />}
-                  </div>
-                </div>
-                <p className="text-gray-500 text-[13px] font-medium">{openPayments.length > 0 ? "יש יתרה פתוחה לתשלום." : "קבעו תור חדש במהירות."}</p>
-              </button>
-            </div>
-          )}
         </div>
 
         {isPortalLoading && (
@@ -1893,63 +1840,6 @@ export function ClientPortal() {
         {/* ── Portal Sections ── */}
         <div className="space-y-5">
 
-{false && activePortalView === "home" && (
-          <>
-          {/* ═══ 1. Notifications ═══ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <button
-              onClick={() => toggleSection("notifications")}
-              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-orange-50 rounded-xl p-2.5"><Bell className="w-5 h-5 text-orange-500" /></div>
-                <div className="text-right">
-                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מרכז התראות ותזכורות</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{portalNotifications.length} התראות / תזכורות</p>
-                </div>
-              </div>
-              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.notifications ? "rotate-180" : ""}`} />
-            </button>
-
-            {(activePortalView === "home" || openSections.notifications) && (
-              <div className="border-t border-gray-100 p-4 space-y-3">
-                {portalNotifications.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 font-medium text-[14px]">אין כרגע התראות או תזכורות במסד הנתונים</div>
-                )}
-                {portalNotifications.map((notif) => {
-                  const s = NOTIF_STYLE[notif.type];
-                  return (
-                    <div key={notif.id} className={`rounded-xl border border-gray-100 border-r-[3px] ${s.border} p-4 transition-all hover:shadow-sm`}>
-                      <div className="flex items-start gap-3">
-                        <div className="relative shrink-0">
-                          <img src={notif.petImage} alt={notif.petName} className="w-11 h-11 rounded-xl object-cover" />
-                          <div className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-md ${s.bg} flex items-center justify-center border-2 border-white`}>
-                            <s.Icon className={`w-2.5 h-2.5 ${s.iconColor}`} />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-gray-900 text-[13px]" style={{ fontWeight: 700 }}>{notif.title}</span>
-                            <span className="text-gray-300 text-[13px]">{notif.date}</span>
-                          </div>
-                          <p className="text-gray-500 text-[12px] mb-1" style={{ fontWeight: 600 }}>{notif.petName}</p>
-                          <p className="text-gray-600 text-[13px] mb-3" style={{ lineHeight: 1.6 }}>{notif.text}</p>
-                          <button onClick={openOwnerBooking} className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm" style={{ fontWeight: 500 }}>
-                            <Calendar className="w-3 h-3" /> קבע תור
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-
-          </>
-          )}
-
 {activePortalView === "digital" && (
           <>
           {/* ═══ 2. Digital Clinic ═══ */}
@@ -1981,7 +1871,7 @@ export function ClientPortal() {
                     setOpenSections((prev) => ({ ...prev, digital: true }));
                     setNewConversationSubject("התייעצות חדשה");
                   }}
-                  className="flex items-center gap-1.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
+                  className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-blue-50 px-2.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
                   style={{ fontWeight: 600 }}
                 >
                   <PlusCircle className="w-3.5 h-3.5" /> פנייה חדשה
@@ -2000,7 +1890,7 @@ export function ClientPortal() {
 
                 <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
                   {/* Owner conversation sidebar */}
-                  <div className="space-y-4">
+                  <div className={`space-y-4 ${selectedDigitalConversation ? "hidden xl:block" : "block"}`}>
                     <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-4">
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div>
@@ -2096,27 +1986,35 @@ export function ClientPortal() {
                   </div>
 
                   {/* Chat area */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[560px] flex flex-col">
+                  <div className={`${selectedDigitalConversation ? "flex" : "hidden xl:flex"} min-h-[min(660px,calc(100dvh-190px))] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm xl:min-h-[560px]`}>
                     {selectedDigitalConversation ? (
                       <>
-                        <div className="px-5 py-4 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                        <div className="px-3 py-3 sm:px-5 sm:py-4 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedConversationId(null)}
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 xl:hidden"
+                              aria-label="חזרה לרשימת השיחות"
+                            >
+                              <ChevronLeft className="h-5 w-5 rotate-180" />
+                            </button>
                             <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100">
                               <MessageCircle className="w-5 h-5 text-[#1e40af]" />
                             </div>
-                            <div>
-                              <h3 className="text-gray-900 text-[16px]" style={{ fontWeight: 800 }}>{selectedDigitalConversation.subject}</h3>
+                            <div className="min-w-0">
+                              <h3 className="truncate text-gray-900 text-[15px] sm:text-[16px]" style={{ fontWeight: 800 }}>{selectedDigitalConversation.subject}</h3>
                               <p className="text-gray-500 text-[12px] mt-0.5">
                                 {selectedDigitalConversation.petName} · {DIGITAL_STATUS_LABELS[selectedDigitalConversation.status]}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex w-full items-center gap-2 sm:w-auto">
                             <button
                               onClick={() => chatFileInputRef.current?.click()}
                               disabled={uploadingChatFile}
-                              className="flex items-center gap-1.5 border border-gray-200 hover:border-blue-200 hover:bg-blue-50 text-gray-600 hover:text-[#1e40af] rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60"
+                              className="flex min-h-10 flex-1 items-center justify-center gap-1.5 border border-gray-200 hover:border-blue-200 hover:bg-blue-50 text-gray-600 hover:text-[#1e40af] rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60 sm:flex-none"
                               style={{ fontWeight: 700 }}
                             >
                               <Paperclip className="w-4 h-4" /> {uploadingChatFile ? "מעלה..." : "צירוף קובץ"}
@@ -2124,7 +2022,7 @@ export function ClientPortal() {
                             <button
                               onClick={handleStartVideoSession}
                               disabled={startingVideo}
-                              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60"
+                              className="flex min-h-10 flex-1 items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-[12px] transition-colors cursor-pointer disabled:opacity-60 sm:flex-none"
                               style={{ fontWeight: 700 }}
                             >
                               {startingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />} {findLatestMeetUrl(digitalMessages) ? "הצטרף ל-Google Meet" : "בקש שיחת וידאו"}
@@ -2132,7 +2030,7 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        <div ref={chatMessagesContainerRef} className="flex-1 bg-[#f8fafc] p-4 overflow-y-auto max-h-[430px] space-y-3">
+                        <div ref={chatMessagesContainerRef} className="flex-1 bg-[#f8fafc] p-3 sm:p-4 overflow-y-auto max-h-[calc(100dvh-390px)] xl:max-h-[430px] space-y-3">
                           {digitalMessages.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-center text-gray-500 text-[13px] font-medium">
                               אין עדיין הודעות בשיחה הזאת.
@@ -2145,7 +2043,7 @@ export function ClientPortal() {
 
                               return (
                                 <div key={message.id} className={`flex ${isOwner ? "justify-end" : "justify-start"}`}>
-                                  <div className={`max-w-[78%] rounded-2xl px-4 py-3 shadow-sm border ${isOwner ? "bg-[#1e40af] text-white border-[#1e40af] rounded-br-md" : "bg-white text-gray-700 border-gray-100 rounded-bl-md"}`}>
+                                  <div className={`max-w-[88%] sm:max-w-[78%] rounded-2xl px-3.5 py-3 shadow-sm border ${isOwner ? "bg-[#1e40af] text-white border-[#1e40af] rounded-br-md" : "bg-white text-gray-700 border-gray-100 rounded-bl-md"}`}>
                                     <div className="flex items-center justify-between gap-4 mb-1.5">
                                       <span className={`text-[11px] ${isOwner ? "text-blue-100" : "text-gray-400"}`} style={{ fontWeight: 700 }}>
                                         {isOwner ? "אתם" : message.senderName}
@@ -2189,7 +2087,7 @@ export function ClientPortal() {
                           <div ref={chatEndRef} />
                         </div>
 
-                        <div className="border-t border-gray-100 p-4 bg-white">
+                        <div className="border-t border-gray-100 p-3 sm:p-4 bg-white">
                           <input
                             ref={chatFileInputRef}
                             type="file"
@@ -2350,7 +2248,7 @@ export function ClientPortal() {
                   return (
                     <div key={pet.id} className="rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-sm">
                       {/* ── Pet Card Header ── */}
-                      <div className="p-5 flex items-start gap-5">
+                      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:gap-5 sm:p-5">
                         <div className="relative shrink-0">
                           <img src={pet.image} alt={pet.name} className="w-[80px] h-[80px] rounded-2xl object-cover shadow-sm" />
                           <div className="absolute -bottom-1.5 -left-1.5 w-7 h-7 bg-white rounded-lg shadow-sm flex items-center justify-center border border-gray-100">
@@ -2359,7 +2257,7 @@ export function ClientPortal() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-2">
+                          <div className="flex flex-wrap items-center gap-2.5 mb-2">
                             <h3 className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{pet.name}</h3>
                             <span className="bg-gray-100 text-gray-500 text-[12px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
                               {pet.type === "dog" ? "כלב" : "חתול"}, {pet.breed}, בן {pet.age}
@@ -2375,10 +2273,10 @@ export function ClientPortal() {
                               <span key={f.label}><span className="text-gray-600" style={{ fontWeight: 500 }}>{f.label}:</span> {f.value}</span>
                             ))}
                           </div>
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
                             <button
                               onClick={() => setExpandedPet(isExpanded ? null : pet.id)}
-                              className="flex items-center gap-2 bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[13px] px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/15"
+                              className="flex min-h-11 w-full items-center justify-center gap-2 bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[13px] px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/15 sm:w-auto"
                               style={{ fontWeight: 600 }}
                             >
                               <FileText className="w-4 h-4" />
@@ -2387,7 +2285,7 @@ export function ClientPortal() {
                             </button>
                             <button
                               onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
-                              className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-emerald-200 w-fit"
+                              className="flex min-h-11 w-full items-center justify-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-xl transition-colors cursor-pointer text-[12px] border border-emerald-100 hover:border-emerald-200 sm:w-fit"
                               style={{ fontWeight: 500 }}
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -2396,7 +2294,7 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="hidden flex-col items-end gap-2 shrink-0 sm:flex">
                           <button
                             type="button"
                             onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
@@ -2422,7 +2320,7 @@ export function ClientPortal() {
                       {/* ── Expanded view ── */}
                       {isExpanded && (
                         <div className="border-t border-gray-100">
-                          <div className="px-6 py-4 bg-gradient-to-l from-blue-50/60 to-white border-b border-gray-100">
+                          <div className="px-4 py-4 sm:px-6 bg-gradient-to-l from-blue-50/60 to-white border-b border-gray-100">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-[#1e40af]" />
@@ -2492,7 +2390,7 @@ export function ClientPortal() {
                             </div>
                           </div>
 
-                          <div className="px-6 py-4 bg-white border-t border-gray-100">
+                          <div className="px-4 py-4 sm:px-6 bg-white border-t border-gray-100">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-2">
                                 <Receipt className="w-4 h-4 text-emerald-600" />
@@ -2551,7 +2449,7 @@ export function ClientPortal() {
                             )}
                           </div>
 
-                          <div className="bg-white px-6 py-5 border-t border-gray-100">
+                          <div className="bg-white px-4 py-5 sm:px-6 border-t border-gray-100">
                             <VaccinationBook
                               patientId={pet.id}
                               petName={pet.name}
@@ -2565,7 +2463,7 @@ export function ClientPortal() {
                             />
                           </div>
 
-                          <div className="bg-gray-50/50 px-6 py-5">
+                          <div className="bg-gray-50/50 px-4 py-5 sm:px-6">
                             <ClientMedicalReports petId={pet.id} petName={pet.name} />
                           </div>
                         </div>
@@ -2581,6 +2479,80 @@ export function ClientPortal() {
           </>
           )}
 
+
+{activePortalView === "payments" && (
+            <section className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
+              <div className="border-b border-emerald-100 bg-gradient-to-l from-emerald-50 via-white to-blue-50/50 p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-700 shadow-sm">
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-[17px] font-black text-gray-950">תשלומים וחיובים</h2>
+                      <p className="mt-0.5 text-[13px] font-semibold text-gray-500">כל החיובים במקום אחד, לפי חיית המחמד</p>
+                    </div>
+                  </div>
+                  <div className={`rounded-2xl border px-4 py-3 ${openPayments.length > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+                    <p className={`text-[12px] font-bold ${openPayments.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                      {openPayments.length > 0 ? "יתרה פתוחה" : "הכול שולם"}
+                    </p>
+                    <p className={`mt-1 text-[22px] font-black leading-none ${openPayments.length > 0 ? "text-amber-950" : "text-emerald-950"}`}>
+                      ₪{openPaymentsTotal.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {allPayments.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 className="h-7 w-7" />
+                  </div>
+                  <p className="text-[15px] font-black text-gray-900">אין חיובים להצגה</p>
+                  <p className="mt-1 text-[13px] leading-6 text-gray-500">חיובים חדשים והיסטוריית תשלומים יופיעו כאן.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {allPayments
+                    .slice()
+                    .sort((a, b) => Number(isOpenPayment(b.status)) - Number(isOpenPayment(a.status)))
+                    .map((payment) => {
+                      const petName = pets.find((pet) => pet.id === payment.petId)?.name || "חיוב כללי";
+                      const isOpen = isOpenPayment(payment.status);
+                      return (
+                        <article key={payment.id} className={`p-4 sm:p-5 ${isOpen ? "bg-amber-50/25" : "bg-white"}`}>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-[14px] font-black text-gray-950">{payment.title}</h3>
+                                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${isOpen ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                                  {getPaymentStatusLabel(payment.status)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[12px] font-semibold text-gray-500">{petName} · {payment.dueDate || payment.date}</p>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 sm:justify-end">
+                              <p className="text-[19px] font-black text-gray-950">₪{payment.amount.toLocaleString()}</p>
+                              {isOpen && (
+                                <button
+                                  type="button"
+                                  onClick={() => openDemoPayment(payment)}
+                                  disabled={payingPaymentId === payment.id}
+                                  className="min-h-11 rounded-xl bg-[#1e40af] px-4 py-2 text-[13px] font-black text-white shadow-sm transition-colors hover:bg-[#1e3a8a] disabled:cursor-not-allowed disabled:bg-gray-300"
+                                >
+                                  {payingPaymentId === payment.id ? "מעבד..." : "לתשלום"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                </div>
+              )}
+            </section>
+          )}
 
 {activePortalView === "profile" && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -2621,6 +2593,32 @@ export function ClientPortal() {
           )}
         </div>
       </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-[230] border-t border-blue-100 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:hidden" aria-label="ניווט מהיר בפורטל">
+        <div className="mx-auto grid max-w-[560px] grid-cols-5 gap-1">
+          {PORTAL_NAV_ITEMS.filter((item) => PORTAL_MOBILE_NAV_KEYS.includes(item.key)).map((item) => {
+            const Icon = item.icon;
+            const isActive = activePortalView === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => goToPortalView(item.key)}
+                className={`relative flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10.5px] font-black transition-colors ${isActive ? "bg-blue-50 text-[#1e40af]" : "text-gray-500"}`}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="max-w-full truncate">
+                  {item.key === "digital" ? "דיגיטל" : item.key === "pets" ? "חיות" : item.key === "payments" ? "תשלום" : item.label}
+                </span>
+                {item.key === "digital" && activeDigitalCount > 0 && (
+                  <span className="absolute left-2 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* ── Reschedule Modal ── */}
       {rescheduleAppt && (
@@ -2812,7 +2810,7 @@ export function ClientPortal() {
         onAppointmentCreated={refreshPortalData}
       />
 
-      <div className="portal-floating-ai fixed bottom-5 left-4 z-[240]">
+      <div className="portal-floating-ai fixed bottom-20 left-3 z-[240] sm:bottom-5 sm:left-4">
         <ClientPortalAssistant
           pets={pets}
           appointments={appointments}

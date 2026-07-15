@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import {
   Activity,
   AlertCircle,
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Bed,
@@ -104,7 +103,7 @@ type WorkItem = {
   priority: number;
 };
 
-type StatusTileTone = "neutral" | "schedule" | "communication" | "pending" | "clinical" | "warning" | "danger";
+type StatusTileTone = "schedule" | "communication" | "pending" | "warning";
 
 type StatusTile = {
   label: string;
@@ -270,13 +269,6 @@ function toneClasses(tone: WorkItem["tone"]) {
 
 function statusTileSkin(tone: StatusTileTone) {
   const skins: Record<StatusTileTone, { card: string; icon: string; bar: string; value: string; status: string }> = {
-    neutral: {
-      card: "border-slate-100 bg-white hover:border-slate-200",
-      icon: "bg-slate-50 text-slate-500 ring-slate-100",
-      bar: "bg-slate-200",
-      value: "text-slate-900",
-      status: "text-slate-500",
-    },
     schedule: {
       card: "border-blue-100/80 bg-gradient-to-br from-white to-blue-50/45 hover:border-blue-200",
       icon: "bg-blue-50 text-blue-700 ring-blue-100",
@@ -298,26 +290,12 @@ function statusTileSkin(tone: StatusTileTone) {
       value: "text-amber-950",
       status: "text-amber-700",
     },
-    clinical: {
-      card: "border-teal-100/80 bg-gradient-to-br from-white to-teal-50/45 hover:border-teal-200",
-      icon: "bg-teal-50 text-teal-700 ring-teal-100",
-      bar: "bg-teal-300",
-      value: "text-teal-950",
-      status: "text-teal-700",
-    },
     warning: {
       card: "border-orange-100/80 bg-gradient-to-br from-white to-orange-50/45 hover:border-orange-200",
       icon: "bg-orange-50 text-orange-700 ring-orange-100",
       bar: "bg-orange-300",
       value: "text-orange-950",
       status: "text-orange-700",
-    },
-    danger: {
-      card: "border-amber-100/80 bg-gradient-to-br from-white to-amber-50/35 hover:border-amber-200",
-      icon: "bg-amber-50 text-amber-700 ring-amber-100",
-      bar: "bg-amber-300",
-      value: "text-slate-950",
-      status: "text-amber-700",
     },
   };
   return skins[tone];
@@ -457,9 +435,6 @@ export function Dashboard() {
     const hasOpenConversations = openConversations.length > 0;
     const labCount = isSecretary ? dashboardData.payments.length : dashboardData.labs.length;
     const hasLabsOrPayments = labCount > 0;
-    const hasHospitalizations = dashboardData.hospitalizations.length > 0;
-    const hasLowInventory = dashboardData.inventory.length > 0;
-
     return [
       {
         label: "תורים להיום",
@@ -472,7 +447,7 @@ export function Dashboard() {
       {
         label: "פניות פתוחות",
         value: openConversations.length,
-        status: urgentOpenConversationsCount > 0 ? `${urgentOpenConversationsCount} בעדיפות גבוהה` : hasOpenConversations ? "ממתין לטיפול" : "אין פניות פתוחות",
+        status: hasOpenConversations ? "ממתינות למענה" : "אין פניות פתוחות",
         icon: MessageCircle,
         tone: "communication",
         path: "/digital-care?filter=open",
@@ -480,29 +455,13 @@ export function Dashboard() {
       {
         label: isSecretary ? "גבייה למעקב" : "בדיקות ממתינות",
         value: labCount,
-        status: isSecretary ? (hasLabsOrPayments ? "חיובים פתוחים" : "אין חיובים פתוחים") : urgentLabsCount > 0 ? `${urgentLabsCount} דחופות` : hasLabsOrPayments ? "ממתין לתוצאה" : "אין בדיקות פתוחות",
+        status: isSecretary ? (hasLabsOrPayments ? "חיובים פתוחים" : "אין חיובים פתוחים") : hasLabsOrPayments ? "ממתינות לתוצאה" : "אין בדיקות פתוחות",
         icon: isSecretary ? WalletCards : FlaskConical,
         tone: isSecretary ? "warning" : "pending",
         path: isSecretary ? "/clients?filter=debt" : "/lab-orders?filter=open",
       },
-      {
-        label: "אשפוזים פעילים",
-        value: dashboardData.hospitalizations.length,
-        status: severeHospitalizationsCount > 0 ? `${severeHospitalizationsCount} במעקב צמוד` : hasHospitalizations ? "במעקב מחלקה" : "אין אשפוזים פעילים",
-        icon: Bed,
-        tone: "clinical",
-        path: "/hospitalizations?filter=active",
-      },
-      {
-        label: "מלאי נמוך",
-        value: dashboardData.inventory.length,
-        status: outOfStockCount > 0 ? `${outOfStockCount} חסרים לגמרי` : hasLowInventory ? "להזמנה" : "המלאי תקין",
-        icon: Package,
-        tone: "warning",
-        path: "/inventory?filter=low-stock",
-      },
     ];
-  }, [dashboardData, isSecretary, openConversations, urgentOpenConversationsCount, urgentLabsCount, severeHospitalizationsCount, outOfStockCount, videoAppointmentsCount, physicalAppointmentsCount]);
+  }, [dashboardData, isSecretary, openConversations, videoAppointmentsCount, physicalAppointmentsCount]);
 
   async function loadPatients() {
     setIsLoadingPatients(true);
@@ -760,77 +719,39 @@ export function Dashboard() {
 
   const openConversationTarget = () => navigate("/digital-care?filter=open");
 
-  const clinicPulseAttentionCount = urgentOpenConversationsCount + urgentLabsCount + severeHospitalizationsCount + outOfStockCount;
-  const clinicPulseSignals = [
+  const clinicAttentionCount = workItems.length;
+  const clinicAreas = [
     {
       id: "conversations",
       title: "פניות",
-      count: openConversations.length,
-      countLabel: "פתוחות",
-      description: urgentOpenConversationsCount > 0
-        ? `${urgentOpenConversationsCount} בעדיפות גבוהה${openConversations[0]?.subject ? ` · האחרונה: ${openConversations[0].subject}` : ""}`
-        : openConversations[0]?.subject
-          ? `הפנייה האחרונה: ${openConversations[0].subject}`
-          : "אין פניות פתוחות כרגע",
+      needsAttention: urgentOpenConversationsCount > 0,
       icon: MessageCircle,
       onClick: openConversationTarget,
-      rowClass: "border-indigo-100 hover:border-indigo-200 hover:bg-indigo-50/45",
-      barClass: "bg-indigo-400",
       iconClass: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-      countClass: "text-indigo-700",
     },
     {
       id: "labs",
       title: "מעבדה",
-      count: dashboardData.labs.length,
-      countLabel: "ממתינות",
-      description: urgentLabsCount > 0
-        ? `${urgentLabsCount} בדיקות דחופות ממתינות לטיפול`
-        : dashboardData.labs[0]?.test_name
-          ? `הבדיקה האחרונה: ${dashboardData.labs[0].test_name}`
-          : "אין בדיקות פתוחות כרגע",
+      needsAttention: urgentLabsCount > 0,
       icon: FlaskConical,
       onClick: openLabTarget,
-      rowClass: "border-amber-100 hover:border-amber-200 hover:bg-amber-50/45",
-      barClass: "bg-amber-400",
       iconClass: "bg-amber-50 text-amber-700 ring-amber-100",
-      countClass: "text-amber-700",
     },
     {
       id: "hospitalizations",
       title: "אשפוזים",
-      count: dashboardData.hospitalizations.length,
-      countLabel: "פעילים",
-      description: severeHospitalizationsCount > 0
-        ? `${severeHospitalizationsCount} מאושפזים במעקב צמוד`
-        : expectedDischarges.length > 0
-          ? `${expectedDischarges.length} שחרורים צפויים`
-          : dashboardData.hospitalizations.length > 0
-            ? "כל המאושפזים נמצאים במעקב שגרתי"
-            : "אין אשפוזים פעילים כרגע",
+      needsAttention: severeHospitalizationsCount > 0 || expectedDischarges.length > 0,
       icon: Bed,
       onClick: openHospitalizationTarget,
-      rowClass: "border-emerald-100 hover:border-emerald-200 hover:bg-emerald-50/45",
-      barClass: "bg-emerald-400",
       iconClass: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-      countClass: "text-emerald-700",
     },
     {
       id: "inventory",
       title: "מלאי",
-      count: dashboardData.inventory.length,
-      countLabel: "נמוכים",
-      description: outOfStockCount > 0
-        ? `${outOfStockCount} פריטים חסרים לגמרי`
-        : dashboardData.inventory[0]?.item_name
-          ? `הפריט הנמוך ביותר: ${dashboardData.inventory[0].item_name}`
-          : "אין חריגות מלאי כרגע",
+      needsAttention: dashboardData.inventory.length > 0,
       icon: Package,
       onClick: () => navigate("/inventory?filter=low-stock"),
-      rowClass: "border-orange-100 hover:border-orange-200 hover:bg-orange-50/45",
-      barClass: "bg-orange-400",
       iconClass: "bg-orange-50 text-orange-700 ring-orange-100",
-      countClass: "text-orange-700",
     },
   ];
 
@@ -857,7 +778,7 @@ export function Dashboard() {
             <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[14px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
               <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
             </button>
-            <DashboardAssistant attentionCount={workItems.length} />
+            <DashboardAssistant />
             {isSecretary ? (
               <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[14px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                 <CalendarPlus className="w-4 h-4" /> קבע תור
@@ -882,13 +803,12 @@ export function Dashboard() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 items-stretch">
-          {statusTiles.map((tile, index) => {
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-stretch">
+          {statusTiles.map((tile) => {
             const Icon = tile.icon;
             const tileSkin = statusTileSkin(tile.tone);
-            const isLastTile = index === statusTiles.length - 1;
             return (
-              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className={`group relative h-full min-h-[104px] overflow-hidden rounded-2xl border px-4 py-3 text-right hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${tileSkin.card} ${isLastTile ? "sm:col-span-2 lg:col-span-2 xl:col-span-1" : ""}`}>
+              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className={`group relative h-full min-h-[104px] overflow-hidden rounded-2xl border px-4 py-3 text-right hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${tileSkin.card}`}>
                 <span className={`absolute right-0 top-4 bottom-4 w-1 rounded-l-full ${tileSkin.bar}`} />
                 <div className="flex h-full flex-col justify-between gap-3 pr-1">
                   <div className="flex items-center justify-between gap-3">
@@ -919,109 +839,62 @@ export function Dashboard() {
               </div>
             </div>
 
-            <div className="grid flex-1 gap-3 p-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-              <div className="relative overflow-hidden rounded-2xl border border-blue-500/70 bg-gradient-to-br from-[#173b9c] via-[#2151c9] to-[#2f6fe6] p-2.5 shadow-[0_14px_30px_rgba(30,64,175,0.2)]">
-                <div aria-hidden="true" className="pointer-events-none absolute -left-12 -top-16 h-36 w-36 rounded-full bg-sky-300/25 blur-3xl" />
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -right-10 h-40 w-40 rounded-full bg-indigo-950/20 blur-3xl" />
-                <div className="relative flex items-center justify-between gap-3 px-2 pb-3 pt-0.5">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-sky-200" />
-                    <h3 className="text-[15px] font-extrabold text-white">מה דורש טיפול עכשיו</h3>
-                  </div>
-                  {!isDashboardLoading && workItems.length > 0 && (
-                    <span className="rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white shadow-sm backdrop-blur-sm">{workItems.length} לטיפול</span>
-                  )}
-                </div>
-                {isDashboardLoading ? (
-                  <div className="relative flex min-h-[190px] items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 text-[14px] font-medium text-blue-50 backdrop-blur-sm" role="status">
-                    <Loader2 className="h-4 w-4 animate-spin" /> טוען משימות להיום...
-                  </div>
-                ) : workItems.length === 0 ? (
-                  <div className="relative flex min-h-[190px] flex-col items-center justify-center rounded-xl border border-white/20 bg-white/10 text-center text-blue-50 backdrop-blur-sm">
-                    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-emerald-200 ring-1 ring-white/20">
-                      <Check className="h-5 w-5" />
+            <div className="flex-1 p-3">
+              <div className="overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/70 via-white to-white">
+                <div className="flex flex-col gap-3 border-b border-blue-100/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-200">
+                      <Activity className="h-[18px] w-[18px]" />
                     </div>
-                    <p className="text-[16px] font-bold text-white">אין חריגים פתוחים כרגע</p>
-                    <p className="mt-1 text-[14px] text-blue-100">המרפאה מסודרת ואפשר להמשיך ביומן.</p>
-                  </div>
-                ) : (
-                  <div className="relative space-y-2">
-                    {workItems.map((item) => {
-                      const Icon = item.icon;
-                      const accent = item.tone === "red" ? "bg-amber-400" : item.tone === "amber" ? "bg-amber-400" : item.tone === "blue" ? "bg-blue-500" : item.tone === "emerald" ? "bg-emerald-500" : item.tone === "purple" ? "bg-purple-500" : "bg-slate-400";
-                      const soft = item.tone === "red" ? "bg-amber-50 text-amber-700" : item.tone === "amber" ? "bg-amber-50 text-amber-700" : item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-slate-50 text-slate-700";
-                      return (
-                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="group w-full rounded-xl border border-white/55 bg-white/95 px-2.5 py-2.5 text-right shadow-sm transition-all hover:border-blue-100 hover:bg-blue-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-700 cursor-pointer">
-                          <div className="flex items-center gap-3">
-                            <span className={`h-8 w-1 rounded-full ${accent}`} />
-                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${soft}`}>
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[14.5px] font-bold text-slate-950">{item.title}</p>
-                              <p className="mt-0.5 truncate text-[13px] text-slate-600">{item.detail}</p>
-                            </div>
-                            <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-700" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/80 via-white to-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                <div aria-hidden="true" className="pointer-events-none absolute -left-12 -top-16 h-36 w-36 rounded-full bg-blue-200/25 blur-3xl" />
-                <div className="relative flex items-start justify-between gap-3 px-4 pb-3 pt-4">
-                  <div className="flex min-w-0 items-start gap-2.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-200">
-                      <Activity className="h-[17px] w-[17px]" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-[16px] font-extrabold text-slate-950">דופק המרפאה</h3>
-                      <p className="mt-0.5 text-[13px] leading-5 text-slate-600">
-                        {clinicPulseAttentionCount > 0 ? `${clinicPulseAttentionCount} נושאים בעדיפות גבוהה` : "כל התחומים בשליטה"}
-                      </p>
+                    <div>
+                      <h3 className="text-[16px] font-extrabold text-slate-950">מצב המרפאה ופעולות לביצוע</h3>
+                      <p className="mt-0.5 text-[13px] text-slate-600">מקור אחד לחריגות — VetBot זמין להסבר ולהכוונה.</p>
                     </div>
                   </div>
                   {!isDashboardLoading && (
-                    <span className={`mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold ${clinicPulseAttentionCount > 0 ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${clinicPulseAttentionCount > 0 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                      {clinicPulseAttentionCount > 0 ? "דורש תשומת לב" : "מצב תקין"}
+                    <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold ${clinicAttentionCount > 0 ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"}`}>
+                      <span className={`h-2 w-2 rounded-full ${clinicAttentionCount > 0 ? "bg-amber-500" : "bg-emerald-500"}`} />
+                      {clinicAttentionCount > 0 ? `${clinicAttentionCount} פעולות מומלצות` : "הכול בשליטה"}
                     </span>
                   )}
                 </div>
+
+                <div className="grid grid-cols-2 gap-2 border-b border-blue-100/70 bg-white/70 p-3 sm:grid-cols-4">
+                  {clinicAreas.map((area) => {
+                    const Icon = area.icon;
+                    return (
+                      <button key={area.id} type="button" onClick={area.onClick} className="group flex min-h-[58px] items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 text-right transition-all hover:border-blue-200 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ${area.iconClass}`}><Icon className="h-4 w-4" /></span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-extrabold text-slate-900">{area.title}</span>
+                          <span className={`mt-0.5 flex items-center gap-1 text-[11.5px] font-bold ${area.needsAttention ? "text-amber-700" : "text-emerald-700"}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${area.needsAttention ? "bg-amber-500" : "bg-emerald-500"}`} />
+                            {area.needsAttention ? "דורש בדיקה" : "תקין"}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {isDashboardLoading ? (
-                  <div className="flex min-h-[240px] items-center justify-center gap-2 text-[14px] font-medium text-slate-500" role="status">
-                    <Loader2 className="h-4 w-4 animate-spin" /> טוען תמונת מצב...
+                  <div className="flex min-h-[174px] items-center justify-center gap-2 text-[14px] font-medium text-slate-500" role="status"><Loader2 className="h-4 w-4 animate-spin" /> טוען תמונת מצב...</div>
+                ) : workItems.length === 0 ? (
+                  <div className="flex min-h-[174px] flex-col items-center justify-center px-4 text-center">
+                    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"><Check className="h-5 w-5" /></div>
+                    <p className="text-[15px] font-extrabold text-slate-950">אין כרגע פעולות חריגות</p>
+                    <p className="mt-1 text-[13px] text-slate-500">אפשר להתמקד בתורים ובטיפול השוטף.</p>
                   </div>
                 ) : (
-                  <div className="relative space-y-2 px-2.5 pb-2.5">
-                    {clinicPulseSignals.map((signal) => {
-                      const Icon = signal.icon;
+                  <div className="grid gap-2 p-3 sm:grid-cols-2">
+                    {workItems.map((item) => {
+                      const Icon = item.icon;
+                      const soft = item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-amber-50 text-amber-700";
                       return (
-                        <button
-                          key={signal.id}
-                          type="button"
-                          onClick={signal.onClick}
-                          aria-label={`פתח ${signal.title}: ${signal.count} ${signal.countLabel}`}
-                          className={`group relative w-full overflow-hidden rounded-2xl border bg-white/90 px-3 py-2.5 text-right transition-all hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,23,42,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 cursor-pointer ${signal.rowClass}`}
-                        >
-                          <span className={`absolute bottom-2.5 right-0 top-2.5 w-1 rounded-l-full ${signal.barClass}`} aria-hidden="true" />
-                          <span className="flex items-center gap-2.5 pr-1">
-                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ${signal.iconClass}`}>
-                              <Icon className="h-[17px] w-[17px]" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-[14.5px] font-extrabold text-slate-950">{signal.title}</span>
-                              <span className="mt-0.5 block break-words text-[12.5px] leading-[18px] text-slate-600">{signal.description}</span>
-                            </span>
-                            <span className="flex shrink-0 flex-col items-center justify-center px-1 text-center">
-                              <span className={`text-[24px] font-black leading-none tabular-nums ${signal.countClass}`}>{signal.count}</span>
-                              <span className="mt-1 text-[12px] font-semibold text-slate-500">{signal.countLabel}</span>
-                            </span>
-                            <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:-translate-x-0.5 group-hover:text-blue-700" aria-hidden="true" />
-                          </span>
+                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="group flex min-h-[68px] items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 text-right transition-all hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${soft}`}><Icon className="h-[18px] w-[18px]" /></span>
+                          <span className="min-w-0 flex-1"><span className="block truncate text-[14px] font-extrabold text-slate-950">{item.title}</span><span className="mt-0.5 block truncate text-[12.5px] text-slate-600">{item.detail}</span></span>
+                          <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:-translate-x-0.5 group-hover:text-blue-700" />
                         </button>
                       );
                     })}

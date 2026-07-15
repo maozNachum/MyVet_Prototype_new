@@ -11,11 +11,11 @@ interface ModalOverlayProps {
 export function ModalOverlay({ onClose, children, maxWidth = "max-w-lg", zIndex = "z-[200]" }: ModalOverlayProps) {
   return (
     <div
-      className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-black/40 px-4`}
+      className={`fixed inset-0 ${zIndex} flex items-end justify-center bg-black/40 sm:items-center sm:px-4`}
       onClick={onClose}
     >
       <div
-        className={`bg-white rounded-2xl shadow-2xl border border-gray-200 w-full ${maxWidth} overflow-hidden`}
+        className={`max-h-[94dvh] w-full ${maxWidth} overflow-y-auto rounded-t-[28px] border border-gray-200 bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -38,7 +38,7 @@ export function ModalHeader({
   gradient = "bg-gradient-to-l from-[#1e40af] to-[#2563eb]",
 }: ModalHeaderProps) {
   return (
-    <div className={`px-6 py-4 flex items-center justify-between ${gradient}`}>
+    <div className={`sticky top-0 z-10 px-4 py-4 sm:px-6 flex items-center justify-between ${gradient}`}>
       <div className="flex items-center gap-3">
         {icon}
         <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>{title}</h3>

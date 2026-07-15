@@ -259,9 +259,9 @@ export function OwnerBookAppointment({
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 px-4" onClick={handleClose}>
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" dir="rtl" style={{ fontFamily: "'Heebo', sans-serif" }} onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-6 py-4 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/40 sm:items-center sm:px-4" onClick={handleClose}>
+      <div className="flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-gray-200 bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl" dir="rtl" style={{ fontFamily: "'Heebo', sans-serif" }} onClick={(e) => e.stopPropagation()}>
+        <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-4 py-4 sm:px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-white/80" />
             <div>
@@ -276,7 +276,7 @@ export function OwnerBookAppointment({
           <div className="h-1 bg-gray-100 shrink-0"><div className="h-full bg-[#1e40af] transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} /></div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
           {isSubmitted ? (
             <div className="flex flex-col items-center justify-center py-10">
               <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-5"><Check className="w-10 h-10 text-emerald-500" /></div>
@@ -296,7 +296,7 @@ export function OwnerBookAppointment({
                 <div className="space-y-6">
                   <div>
                     <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>בחרו חיה</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {displayPets.length === 0 && <div className="col-span-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px] font-medium">לא נמצאו חיות מחוברות לבעלים במסד הנתונים.</div>}
                       {displayPets.map((pet) => {
                         const Icon = pet.type === "dog" ? Dog : pet.type === "cat" ? Cat : PawPrint;
@@ -313,7 +313,7 @@ export function OwnerBookAppointment({
 
                   <div>
                     <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>סיבת ביקור</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {treatmentTypes.map((type) => {
                         const selected = selectedTreatment === type.id;
                         const Icon = type.icon;
@@ -328,7 +328,7 @@ export function OwnerBookAppointment({
 
                   <div>
                     <h4 className="text-gray-900 text-[15px] mb-3" style={{ fontWeight: 600 }}>סוג תור</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {APPOINTMENT_MODE_OPTIONS.map((mode) => {
                         const selected = selectedAppointmentMode === mode.value;
                         const Icon = mode.icon;
@@ -371,7 +371,7 @@ export function OwnerBookAppointment({
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {week[selectedDay]?.slots.length === 0 && <div className="col-span-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500 text-[14px]">המרפאה סגורה ביום זה.</div>}
                         {week[selectedDay]?.slots.map((slot) => (
                           <button key={slot.time} disabled={!slot.available} onClick={() => { setSelectedTime(slot.time); setValidationError(null); }} className={`py-2.5 rounded-xl border transition-all text-[13px] flex items-center justify-center gap-1.5 ${selectedTime === slot.time ? "border-[#1e40af] bg-[#1e40af] text-white" : slot.available ? "border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 cursor-pointer" : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through"}`}>
