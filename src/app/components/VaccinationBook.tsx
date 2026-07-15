@@ -8,15 +8,18 @@ import {
   FileImage,
   Loader2,
   Plus,
-  Printer,
+  Pencil,
   RefreshCw,
   ShieldCheck,
   Syringe,
-  Upload,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { getStaffName } from "../data/staffAuth";
+
+const VACCINATIONS_CHANGED_EVENT = "myvet:vaccinations-changed";
 
 type BarcodeDetectorResult = { rawValue: string };
 type BarcodeDetectorInstance = {
@@ -161,6 +164,8 @@ export function VaccinationBook({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<VaccinationRecord | null>(null);
+  const [deletingVaccinationId, setDeletingVaccinationId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [stickerFile, setStickerFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -214,6 +219,16 @@ export function VaccinationBook({
   useEffect(() => {
     loadVaccinations();
   }, [loadVaccinations]);
+
+  useEffect(() => {
+    const handleVaccinationsChanged = (event: Event) => {
+      const changedPatientId = Number((event as CustomEvent<{ patientId?: number }>).detail?.patientId);
+      if (changedPatientId === patientId) void loadVaccinations();
+    };
+
+    window.addEventListener(VACCINATIONS_CHANGED_EVENT, handleVaccinationsChanged);
+    return () => window.removeEventListener(VACCINATIONS_CHANGED_EVENT, handleVaccinationsChanged);
+  }, [loadVaccinations, patientId]);
 
   const stopScanner = useCallback(() => {
     if (frameRef.current) {
@@ -289,7 +304,32 @@ export function VaccinationBook({
   }
 
   function openAddModal() {
-    setForm({ ...emptyForm, given_date: new Date().toISOString().slice(0, 10) });
+    setEditingRecord(null);
+    setForm({
+      ...emptyForm,
+      given_date: new Date().toISOString().slice(0, 10),
+      administered_by: getStaffName(),
+    });
+    setStickerFile(null);
+    setFormError(null);
+    setScanError(null);
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(record: VaccinationRecord) {
+    setEditingRecord(record);
+    setForm({
+      vaccine_name: record.vaccine_name || "",
+      vaccine_type: record.vaccine_type || "",
+      manufacturer: record.manufacturer || "",
+      batch_number: record.batch_number || "",
+      barcode_value: record.barcode_value || "",
+      given_date: record.given_date || new Date().toISOString().slice(0, 10),
+      next_due_date: record.next_due_date || "",
+      expiry_date: record.expiry_date || "",
+      administered_by: record.administered_by || getStaffName(),
+      notes: record.notes || "",
+    });
     setStickerFile(null);
     setFormError(null);
     setScanError(null);
@@ -299,6 +339,8 @@ export function VaccinationBook({
   function closeAddModal() {
     stopScanner();
     setIsModalOpen(false);
+    setEditingRecord(null);
+    setStickerFile(null);
   }
 
   async function uploadStickerImage(vaccinationIdHint: string) {
@@ -336,11 +378,14 @@ export function VaccinationBook({
     try {
       const vaccinationIdHint = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
       const image = await uploadStickerImage(vaccinationIdHint);
-      const entryMethod = form.barcode_value.trim() ? "barcode" : stickerFile ? "photo" : "manual";
-
-      const { error } = await supabase.from("vaccinations").insert({
+      const entryMethod = form.barcode_value.trim()
+        ? "barcode"
+        : stickerFile || editingRecord?.sticker_image_path
+          ? "photo"
+          : "manual";
+      const payload = {
         pet_id: patientId,
-        owner_id: ownerId || null,
+        owner_id: ownerId || editingRecord?.owner_id || null,
         vaccine_name: vaccineName,
         vaccine_type: form.vaccine_type.trim() || null,
         manufacturer: form.manufacturer.trim() || null,
@@ -351,21 +396,61 @@ export function VaccinationBook({
         expiry_date: form.expiry_date || null,
         administered_by: form.administered_by.trim() || null,
         entry_method: entryMethod,
-        sticker_image_path: image.path,
-        sticker_image_url: image.url,
+        sticker_image_path: image.path || editingRecord?.sticker_image_path || null,
+        sticker_image_url: image.url || editingRecord?.sticker_image_url || null,
         notes: form.notes.trim() || null,
-      });
+      };
+
+      const saveQuery = editingRecord
+        ? supabase.from("vaccinations").update(payload).eq("vaccination_id", editingRecord.vaccination_id)
+        : supabase.from("vaccinations").insert(payload);
+      const { data, error } = await saveQuery.select("*").single();
 
       if (error) throw error;
+      const savedRecord = data as VaccinationRecord;
 
-      toast.success("החיסון נוסף לפנקס");
+      setRecords((current) => {
+        const next = editingRecord
+          ? current.map((record) => record.vaccination_id === savedRecord.vaccination_id ? savedRecord : record)
+          : [savedRecord, ...current];
+        return [...next].sort((a, b) => new Date(b.given_date).getTime() - new Date(a.given_date).getTime());
+      });
+
+      const successMessage = editingRecord ? "פרטי החיסון עודכנו" : "החיסון נוסף לפנקס";
       closeAddModal();
-      await loadVaccinations();
+      toast.success(successMessage);
     } catch (error) {
       console.error("Failed to save vaccination", error);
-      setFormError("לא הצלחנו לשמור את החיסון. בדוק שהטבלה וההרשאות קיימות ב־Supabase.");
+      setFormError(editingRecord ? "לא הצלחנו לעדכן את החיסון במסד הנתונים." : "לא הצלחנו לשמור את החיסון במסד הנתונים.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function deleteVaccination(record: VaccinationRecord) {
+    if (!canEdit || deletingVaccinationId) return;
+    const linkedVisitNote = record.visit_id ? " הרשומה הרפואית המקושרת לא תימחק." : "";
+    if (!window.confirm(`למחוק את החיסון ${record.vaccine_name} מפנקס החיסונים?${linkedVisitNote}`)) return;
+
+    setDeletingVaccinationId(record.vaccination_id);
+    try {
+      const { data, error } = await supabase
+        .from("vaccinations")
+        .delete()
+        .eq("vaccination_id", record.vaccination_id)
+        .select("vaccination_id")
+        .single();
+
+      if (error) throw error;
+      if (!data?.vaccination_id) throw new Error("Vaccination delete was not confirmed by the database");
+
+      setRecords((current) => current.filter((item) => item.vaccination_id !== record.vaccination_id));
+      toast.success("החיסון נמחק מהפנקס");
+    } catch (error) {
+      console.error("Failed to delete vaccination", error);
+      toast.error("לא הצלחנו למחוק את החיסון מהמסד");
+    } finally {
+      setDeletingVaccinationId(null);
     }
   }
 
@@ -533,6 +618,7 @@ export function VaccinationBook({
                   <th className="px-4 py-3">חיסון הבא</th>
                   <th className="px-4 py-3">תיעוד</th>
                   <th className="px-4 py-3">מדבקה</th>
+                  {canEdit && <th className="px-4 py-3">פעולות</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -565,6 +651,34 @@ export function VaccinationBook({
                           <span className="text-gray-400 text-[12px] font-semibold">אין צילום</span>
                         )}
                       </td>
+                      {canEdit && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(record)}
+                              disabled={Boolean(deletingVaccinationId)}
+                              className="w-9 h-9 rounded-xl border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer transition-colors"
+                              aria-label={`עריכת חיסון ${record.vaccine_name}`}
+                              title="עריכה"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteVaccination(record)}
+                              disabled={Boolean(deletingVaccinationId)}
+                              className="w-9 h-9 rounded-xl border border-rose-100 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer transition-colors"
+                              aria-label={`מחיקת חיסון ${record.vaccine_name}`}
+                              title="מחיקה"
+                            >
+                              {deletingVaccinationId === record.vaccination_id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -579,10 +693,12 @@ export function VaccinationBook({
           <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-[28px] shadow-2xl border border-slate-100" onClick={(event) => event.stopPropagation()}>
             <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-gray-950 text-[20px] font-extrabold">הוספת חיסון לפנקס</h3>
-                <p className="text-gray-500 text-[13px] font-medium mt-1">אפשר לסרוק ברקוד, להזין ידנית או לצלם מדבקה/אריזה.</p>
+                <h3 className="text-gray-950 text-[20px] font-extrabold">{editingRecord ? "עריכת חיסון בפנקס" : "הוספת חיסון לפנקס"}</h3>
+                <p className="text-gray-500 text-[13px] font-medium mt-1">
+                  {editingRecord ? "השינויים יישמרו בפנקס לאחר אישור מהמסד." : "אפשר לסרוק ברקוד, להזין ידנית או לצלם מדבקה/אריזה."}
+                </p>
               </div>
-              <button type="button" onClick={closeAddModal} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer transition-colors">
+              <button type="button" onClick={closeAddModal} aria-label="סגור חלון" className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -670,7 +786,7 @@ export function VaccinationBook({
                   className="flex-1 h-12 rounded-2xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-[14px] font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-colors"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {isSaving ? "שומר חיסון..." : "שמור חיסון בפנקס"}
+                  {isSaving ? "שומר חיסון..." : editingRecord ? "שמור שינויים" : "שמור חיסון בפנקס"}
                 </button>
                 <button
                   type="button"

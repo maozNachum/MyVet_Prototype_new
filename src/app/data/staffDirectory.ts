@@ -14,10 +14,9 @@ export interface StaffMember {
 
 type StaffRow = {
   staff_id: string | null;
-  name: string | null;
+  full_name: string | null;
   role: string | null;
-  license_no?: string | null;
-  certification_level?: string | null;
+  is_active?: boolean | null;
 };
 
 export function normalizeStaffRole(role?: string | null): StaffRole {
@@ -37,20 +36,19 @@ export function staffRoleLabel(role: StaffRole) {
 export function mapStaffRow(row: StaffRow): StaffMember {
   const role = normalizeStaffRole(row.role);
   return {
-    id: row.staff_id || row.name || crypto.randomUUID(),
-    name: row.name?.trim() || staffRoleLabel(role),
+    id: row.staff_id || row.full_name || crypto.randomUUID(),
+    name: row.full_name?.trim() || staffRoleLabel(role),
     role,
     roleLabel: staffRoleLabel(role),
-    licenseNo: row.license_no || undefined,
-    certificationLevel: row.certification_level || undefined,
   };
 }
 
 export async function fetchStaffMembers(roles?: StaffRole[]) {
   let query = supabase
     .from("staff")
-    .select("staff_id, name, role, license_no, certification_level")
-    .order("name", { ascending: true });
+    .select("staff_id, full_name, role, is_active")
+    .eq("is_active", true)
+    .order("full_name", { ascending: true });
 
   const { data, error } = await query;
   if (error) throw error;

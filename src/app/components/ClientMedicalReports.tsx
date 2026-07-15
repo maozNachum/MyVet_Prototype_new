@@ -17,6 +17,7 @@ import {
 import { supabase } from "../../services/supabaseClient";
 import { PrescriptionDocumentModal } from "./PrescriptionDocumentModal";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 interface ClientMedicalReportsProps {
   petId: number;
@@ -281,14 +282,45 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
       return;
     }
 
+    const popup = window.open("", "_blank");
+    if (popup) popup.opener = null;
     const { data, error: signedError } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 60 * 5);
 
     if (signedError || !data?.signedUrl) {
+      popup?.close();
       toast.error("לא הצלחנו לפתוח את המסמך");
       return;
     }
 
-    window.open(data.signedUrl, "_blank");
+    if (popup) popup.location.href = data.signedUrl;
+    else window.open(data.signedUrl, "_blank");
+  };
+
+  const exportReports = () => {
+    const workbook = XLSX.utils.book_new();
+    const summary = [
+      ["תיק רפואי דיגיטלי", petName],
+      ["תאריך הפקה", new Date().toLocaleDateString("he-IL")],
+      ["ביקורים", visits.length],
+      ["מרשמים", prescriptions.length],
+      ["בדיקות מעבדה", labOrders.length],
+      ["מסמכים", documents.length],
+    ];
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), "סיכום");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(visits.map((visit) => ({
+      תאריך: formatDate(visit.visit_date), רופא: visit.vet_name || "", סיבה: visit.reason || "", אבחנה: visit.final_diagnosis || visit.diagnosis || "", טיפול: visit.treatment || "", הערות: visit.notes || "",
+    }))), "ביקורים");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(prescriptions.map((item) => ({
+      תרופה: item.medication || "", מינון: item.dosage || "", תדירות: item.frequency || "", משך: item.duration || "", תאריך: formatDate(item.start_date), רופא: item.prescribed_by || "",
+    }))), "מרשמים");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(labOrders.map((item) => ({
+      בדיקה: item.test_name || "", קטגוריה: item.category || "", סטטוס: statusLabel(item.status), תאריך: formatDate(item.ordered_date), תוצאה: item.result_value || item.results || "", טווח: item.normal_range || "",
+    }))), "מעבדה");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(documents.map((item) => ({
+      מסמך: item.file_name, קטגוריה: item.category, תאריך: formatDate(item.uploaded_at), סוג: item.mime_type || "",
+    }))), "מסמכים");
+    XLSX.writeFile(workbook, `MyVet_${petName}_medical_record.xlsx`);
+    toast.success("התיק הרפואי יוצא בהצלחה");
   };
 
   const openPrescriptionDocument = (prescription: PrescriptionRow) => {
@@ -321,7 +353,7 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
           <h4 className="text-gray-900 text-[15px] font-bold">תיק רפואי דיגיטלי — {petName}</h4>
           <p className="text-gray-500 font-medium text-[12px]">ביקורים, בעיות, בדיקה גופנית, אבחנות, מרשמים ומסמכים</p>
         </div>
-        <button className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[12px] border border-transparent hover:border-emerald-200 font-medium">
+        <button type="button" onClick={exportReports} className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[13px] border border-transparent hover:border-emerald-200 font-medium">
           <Download className="w-3.5 h-3.5" /> ייצוא
         </button>
       </div>

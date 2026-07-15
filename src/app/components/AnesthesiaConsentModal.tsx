@@ -1,20 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  X, Tablet, Smartphone, MessageSquare, CheckCircle2,
+  X, Tablet, CheckCircle2,
   PenLine, Trash2, ArrowRight, ShieldCheck, AlertTriangle,
 } from "lucide-react";
+import { supabase } from "../../services/supabaseClient";
 
 interface AnesthesiaConsentModalProps {
+  patientId: number;
+  ownerId: string;
   petName?: string;
   ownerName?: string;
   onClose: () => void;
 }
 
-type SignMethod = "clinic" | "sms" | null;
+type SignMethod = "clinic" | null;
 type View = "select" | "form" | "success";
 
 // ─── Signature Canvas ─────────────────────────────────────────────────────────
-function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignature: boolean) => void }) {
+function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (signature: string | null) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
@@ -22,18 +25,16 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
 
   const getPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
     if (e instanceof TouchEvent) {
       const touch = e.touches[0];
       return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
       };
     }
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
   };
 
@@ -67,7 +68,7 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
 
     lastPos.current = pos;
     setIsEmpty(false);
-    onSignatureChange(true);
+    onSignatureChange(canvas.toDataURL("image/png"));
   }, [onSignatureChange]);
 
   const stopDrawing = useCallback(() => {
@@ -113,7 +114,7 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setIsEmpty(true);
-    onSignatureChange(false);
+    onSignatureChange(null);
   };
 
   return (
@@ -161,36 +162,83 @@ function SignatureCanvas({ onSignatureChange }: { onSignatureChange: (hasSignatu
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[char] || char);
+}
+
 export function AnesthesiaConsentModal({
+  patientId,
+  ownerId,
   petName = "החיה",
   ownerName = "משפחת ישראלי",
   onClose,
 }: AnesthesiaConsentModalProps) {
   const [selected, setSelected] = useState<SignMethod>(null);
   const [view, setView] = useState<View>("select");
-  const [smsSent, setSmsSent] = useState(false);
-  const [hasSignature, setHasSignature] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const today = new Date().toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   const handleConfirm = () => {
-    if (selected === "sms") {
-      setSmsSent(true);
-      setTimeout(onClose, 2200);
-    } else if (selected === "clinic") {
-      setView("form");
-    }
+    if (selected === "clinic") setView("form");
   };
 
-  const handleSubmitForm = () => {
-    if (!hasSignature) {
+  const handleSubmitForm = async () => {
+    if (!signatureData) {
       setSignatureError(true);
       setTimeout(() => setSignatureError(false), 3000);
       return;
     }
-    setView("success");
-    setTimeout(onClose, 2800);
+    if (!agreedToTerms || isSaving) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    const safeOwnerId = String(ownerId || "unknown-owner").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const filePath = `consents/${safeOwnerId}/${patientId}/${Date.now()}-anesthesia-consent.html`;
+
+    try {
+      const safePetName = escapeHtml(petName);
+      const safeOwnerName = escapeHtml(ownerName);
+      const consentHtml = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>טופס הסכמה להרדמה - ${safePetName}</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 28px;color:#172033;line-height:1.75}h1{color:#1e40af}.box{background:#f8fafc;border:1px solid #dbe4f0;border-radius:12px;padding:16px;margin:18px 0}.warning{background:#fffbeb;border-color:#fde68a}img{max-width:420px;border:1px solid #cbd5e1;border-radius:10px;background:white}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}</style></head><body><h1>טופס הסכמה לביצוע הרדמה כללית</h1><div class="box meta"><div><strong>שם החיה:</strong><br>${safePetName}</div><div><strong>בעלים:</strong><br>${safeOwnerName}</div><div><strong>תאריך:</strong><br>${escapeHtml(today)}</div></div><p>אני החתום/ה מטה מאשר/ת לצוות מרפאת MyVet לבצע הרדמה כללית לצורך הטיפול הרפואי הנדרש בחיה המצוינת לעיל.</p><div class="box warning"><strong>סיכונים והסבר רפואי</strong><p>הוסברו לי הסיכונים הכרוכים בהרדמה כללית, לרבות תגובות אלרגיות, הפרעות בקצב הלב, ירידה בלחץ הדם וסיכון נשימתי. ידוע לי כי ייתכנו סיבוכים בלתי צפויים שידרשו טיפול נוסף.</p></div><p>אני מצהיר/ה שמסרתי לצוות מידע מלא על מצב החיה, תרופות, אלרגיות והיסטוריה רפואית, שקיבלתי הזדמנות לשאול שאלות ושניתן לי מענה מספק.</p><p><strong>חתימת הבעלים:</strong></p><img src="${signatureData}" alt="חתימת הבעלים"><p>המסמך נחתם ונשמר במערכת MyVet בתאריך ${escapeHtml(today)}.</p></body></html>`;
+      const file = new Blob([consentHtml], { type: "text/html;charset=utf-8" });
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, file, { contentType: "text/html;charset=utf-8", upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { error: documentError } = await supabase.from("documents").insert({
+        owner_id: ownerId,
+        pet_id: patientId,
+        visit_id: null,
+        file_name: `טופס הסכמה להרדמה - ${petName}.html`,
+        file_path: filePath,
+        file_url: null,
+        mime_type: "text/html",
+        file_size: file.size,
+        category: "anesthesia_consent",
+      });
+      if (documentError) {
+        await supabase.storage.from("documents").remove([filePath]);
+        throw documentError;
+      }
+
+      setView("success");
+      setTimeout(onClose, 2800);
+    } catch (error) {
+      console.error("Failed saving anesthesia consent", error);
+      setSaveError("לא הצלחנו לשמור את טופס ההסכמה בתיק הרפואי. נסו שוב.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ── VIEW: select ─────────────────────────────────────────────────────────
@@ -221,12 +269,14 @@ export function AnesthesiaConsentModal({
                   החתמת טופס הסכמה להרדמה
                 </h2>
                 <p className="text-gray-500 font-medium text-[13.5px] mt-1.5" style={{ lineHeight: 1.55 }}>
-                  בחר כיצד תרצה להחתים את הלקוח עבור הטיפול של{" "}
+                  פתחו טופס מאובטח לחתימה ושמירה בתיק הרפואי של{" "}
                   <span className="text-gray-600" style={{ fontWeight: 600 }}>{petName}</span>
                 </p>
               </div>
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="סגור חלון"
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0 mr-1 -mt-1"
               >
                 <X style={{ width: 18, height: 18 }} />
@@ -235,7 +285,7 @@ export function AnesthesiaConsentModal({
           </div>
 
           {/* Cards */}
-          <div className="px-7 py-6 grid grid-cols-2 gap-4">
+          <div className="px-7 py-6">
             {/* Card 1 — Clinic */}
             <button
               onClick={() => setSelected("clinic")}
@@ -271,58 +321,7 @@ export function AnesthesiaConsentModal({
               </span>
             </button>
 
-            {/* Card 2 — SMS */}
-            <button
-              onClick={() => setSelected("sms")}
-              className={`relative group flex flex-col items-center justify-center gap-4 rounded-2xl border-2 p-6 transition-all duration-200 cursor-pointer ${
-                selected === "sms"
-                  ? "border-emerald-500 bg-emerald-50/60 shadow-md shadow-emerald-500/10"
-                  : "border-gray-200 bg-gray-50/70 hover:border-emerald-400 hover:bg-emerald-50/30 hover:shadow-sm"
-              }`}
-              style={{ minHeight: 210 }}
-            >
-              {selected === "sms" && (
-                <span className="absolute top-3 left-3 text-emerald-500">
-                  <CheckCircle2 className="w-5 h-5" />
-                </span>
-              )}
-              <div className="relative">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
-                  selected === "sms" ? "bg-emerald-100" : "bg-white shadow-sm border border-gray-100 group-hover:bg-emerald-50"
-                }`}>
-                  <Smartphone className={`w-8 h-8 transition-colors ${selected === "sms" ? "text-emerald-600" : "text-gray-500 font-medium group-hover:text-emerald-500"}`} />
-                </div>
-                <span className={`absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl flex items-center justify-center border-2 border-white shadow-sm ${
-                  selected === "sms" ? "bg-emerald-500" : "bg-blue-500"
-                }`}>
-                  <MessageSquare className="w-3.5 h-3.5 text-white" />
-                </span>
-              </div>
-              <div className="text-center">
-                <p className={`text-[15px] mb-1.5 ${selected === "sms" ? "text-emerald-800" : "text-gray-800"}`} style={{ fontWeight: 700 }}>
-                  שליחת קישור ב-SMS
-                </p>
-                <p className={`text-[12px] leading-relaxed ${selected === "sms" ? "text-emerald-700/70" : "text-gray-500 font-medium"}`}>
-                  שלח קישור מאובטח לנייד של הלקוח לחתימה דיגיטלית מרחוק
-                </p>
-              </div>
-              <span className={`text-[13px] px-3 py-1 rounded-full ${
-                selected === "sms" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
-              }`} style={{ fontWeight: 600 }}>
-                שליחה מרחוק
-              </span>
-            </button>
           </div>
-
-          {/* SMS sent banner */}
-          {smsSent && (
-            <div className="mx-7 mb-4 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-              <span className="text-emerald-700 text-[13px]" style={{ fontWeight: 500 }}>
-                קישור SMS נשלח בהצלחה לנייד הלקוח!
-              </span>
-            </div>
-          )}
 
           {/* Footer */}
           <div className="px-7 pb-7 flex items-center justify-between gap-3">
@@ -341,9 +340,7 @@ export function AnesthesiaConsentModal({
               }`}
               style={{ fontWeight: 600 }}
             >
-              {selected === "sms" ? <><MessageSquare className="w-4 h-4" />שלח קישור</> :
-               selected === "clinic" ? <><Tablet className="w-4 h-4" />פתח טופס</> :
-               "המשך"}
+              {selected === "clinic" ? <><Tablet className="w-4 h-4" />פתח טופס</> : "המשך"}
             </button>
           </div>
         </div>
@@ -459,8 +456,14 @@ export function AnesthesiaConsentModal({
 
             {/* Agreement checkbox */}
             <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(event) => setAgreedToTerms(event.target.checked)}
+                className="sr-only"
+              />
               <div
-                onClick={() => setAgreedToTerms(!agreedToTerms)}
+                aria-hidden="true"
                 className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
                   agreedToTerms ? "bg-emerald-500 border-emerald-500" : "border-gray-300 group-hover:border-emerald-400"
                 }`}
@@ -474,7 +477,7 @@ export function AnesthesiaConsentModal({
             </label>
 
             {/* Signature pad */}
-            <SignatureCanvas onSignatureChange={setHasSignature} />
+            <SignatureCanvas onSignatureChange={setSignatureData} />
 
             {/* Signature error */}
             {signatureError && (
@@ -483,29 +486,36 @@ export function AnesthesiaConsentModal({
                 יש לחתום על הטופס לפני האישור
               </div>
             )}
+            {saveError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-[13px]" role="alert">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {saveError}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
           <div className="px-7 py-5 border-t border-gray-100 bg-gray-50/40 flex items-center justify-between gap-3 shrink-0">
             <button
               onClick={onClose}
-              className="text-gray-500 font-medium hover:text-gray-600 text-[13px] px-4 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-gray-100 border border-transparent hover:border-gray-200"
+              disabled={isSaving}
+              className="text-gray-500 font-medium hover:text-gray-600 text-[13px] px-4 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-gray-100 border border-transparent hover:border-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
               style={{ fontWeight: 500 }}
             >
               ביטול
             </button>
             <button
-              onClick={handleSubmitForm}
-              disabled={!agreedToTerms}
+              onClick={() => void handleSubmitForm()}
+              disabled={!agreedToTerms || !signatureData || isSaving}
               className={`flex items-center gap-2 text-[14px] px-7 py-3 rounded-xl transition-all cursor-pointer shadow-md ${
-                agreedToTerms
+                agreedToTerms && signatureData && !isSaving
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
                   : "bg-gray-100 text-gray-300 cursor-not-allowed"
               }`}
               style={{ fontWeight: 700 }}
             >
               <ShieldCheck className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
-              אשר וחתום על הטופס
+              {isSaving ? "שומר בתיק הרפואי..." : "אשר ושמור את הטופס"}
             </button>
           </div>
         </div>

@@ -59,7 +59,6 @@ export function AppointmentSchedule() {
   const openDigitalCareForAppointment = useCallback(
     (appt: CalendarAppointment) => {
       const params = new URLSearchParams();
-      params.set("appointment_id", String(appt.appointmentId || appt.id));
       if (appt.petId) params.set("pet_id", String(appt.petId));
       if (appt.ownerId) params.set("owner_id", appt.ownerId);
       navigate(`/digital-care?${params.toString()}`);
@@ -207,7 +206,7 @@ export function AppointmentSchedule() {
 
   return (
     <main
-      className="max-w-[1600px] mx-auto px-6 py-6"
+      className="max-w-[1600px] mx-auto px-4 py-6 sm:px-6"
       dir="rtl"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >

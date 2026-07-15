@@ -15,10 +15,9 @@ import {
   Video,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
-import { getStaffType } from "../data/staffAuth";
+import { getStaffType, type StaffType } from "../data/staffAuth";
 import { useAppointmentStore, type CalendarAppointment } from "../data/AppointmentStore";
 
-type StaffType = "vet" | "nurse" | "secretary";
 type FlowItemTone = "blue" | "emerald" | "amber" | "rose" | "purple" | "gray";
 
 type ConversationRow = {
@@ -113,10 +112,6 @@ const toneClasses: Record<FlowItemTone, { card: string; icon: string; badge: str
     item: "border-gray-100 bg-white",
   },
 };
-
-function isSameDay(appt: CalendarAppointment, date: Date) {
-  return appt.day === date.getDate() && appt.month === date.getMonth() && appt.year === date.getFullYear();
-}
 
 function appointmentDate(appt: CalendarAppointment) {
   const [hours, minutes] = appt.time.split(":").map(Number);

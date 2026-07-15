@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   Activity,
-  AlertTriangle,
   Bed,
   CalendarClock,
   CheckCircle2,
@@ -275,7 +274,24 @@ export function Hospitalizations() {
           },
         });
 
-        if (visitError) console.warn("Discharge saved without medical visit", visitError);
+        if (visitError) {
+          const { error: rollbackError } = await supabase
+            .from("hospitalizations")
+            .update({
+              status: discharge.row.status,
+              discharged_at: discharge.row.discharged_at,
+              discharge_summary: discharge.row.discharge_summary,
+              notes: discharge.row.notes,
+            })
+            .eq("hospitalization_id", discharge.row.hospitalization_id);
+
+          if (rollbackError) {
+            console.error("Failed rolling back hospitalization after medical visit failure", rollbackError);
+            throw new Error("השחרור נשמר חלקית. יש לבדוק את האשפוז ואת התיק הרפואי לפני ניסיון נוסף.");
+          }
+
+          throw visitError;
+        }
       }
 
       toast.success("האשפוז נסגר בהצלחה");
@@ -283,7 +299,11 @@ export function Hospitalizations() {
       await loadData();
     } catch (error) {
       console.error("Failed discharging hospitalization", error);
-      toast.error("לא הצלחנו לשחרר מאשפוז");
+      toast.error(
+        error instanceof Error && error.message.startsWith("השחרור נשמר חלקית")
+          ? error.message
+          : "לא הצלחנו לשחרר מאשפוז. לא בוצע שינוי סופי.",
+      );
     } finally {
       setSavingDischarge(false);
     }
@@ -298,15 +318,15 @@ export function Hospitalizations() {
   ];
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8" dir="rtl">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8" dir="rtl">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
             <Bed className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-gray-900 text-[24px] font-bold">אשפוזים</h1>
-            <p className="text-gray-500 text-[14px] mt-1">מעקב אחר מטופלים מאושפזים ושחרורים</p>
+            <h1 className="text-gray-900 text-[26px] font-bold">אשפוזים</h1>
+            <p className="text-gray-500 text-[15px] mt-1">מעקב אחר מטופלים מאושפזים ושחרורים</p>
           </div>
         </div>
         <button type="button" onClick={() => void loadData()} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center gap-2 cursor-pointer">

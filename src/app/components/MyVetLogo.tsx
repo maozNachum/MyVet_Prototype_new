@@ -15,8 +15,8 @@ export function MyVetLogo({
     <svg
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
-      width="full"
-      height="full"
+      width="100%"
+      height="100%"
       viewBox={showTagline ? "0 0 600 330" : "0 0 600 290"}
       preserveAspectRatio="xMidYMid meet"
       className={className}

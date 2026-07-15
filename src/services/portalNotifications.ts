@@ -17,7 +17,6 @@ export type PortalActionView =
   | "appointments"
   | "digital"
   | "pets"
-  | "documents"
   | "payments"
   | "notifications"
   | "profile";
@@ -48,7 +47,7 @@ export interface PublishToOwnerPortalInput {
   actionView?: PortalActionView;
   actionUrl?: string | null;
   target?: "owner" | "staff" | "both";
-  createdByRole?: "vet" | "nurse" | "secretary" | "staff" | "system" | "owner";
+  createdByRole?: "clinic_admin" | "vet" | "nurse" | "secretary" | "staff" | "system" | "owner";
   eventType?: OwnerPortalEventType;
   sourceType?: string | null;
   sourceId?: string | number | null;
@@ -71,10 +70,9 @@ export interface CreateOwnerReminderInput {
   metadata?: Record<string, unknown> | null;
 }
 
-export function portalActionUrl(ownerId: string, view: PortalActionView = "home") {
-  const safeOwnerId = encodeURIComponent(ownerId);
+export function portalActionUrl(_ownerId: string, view: PortalActionView = "home") {
   const safeView = encodeURIComponent(view);
-  return `/portal?owner_id=${safeOwnerId}&view=${safeView}`;
+  return `/portal?view=${safeView}`;
 }
 
 export function normalizePortalNotificationType(type?: string | null): PortalNotificationType {
@@ -94,7 +92,7 @@ export function defaultActionViewForType(type?: string | null): PortalActionView
   if (normalized === "payment") return "payments";
   if (normalized === "appointment") return "appointments";
   if (normalized === "medical" || normalized === "lab") return "pets";
-  if (normalized === "document") return "documents";
+  if (normalized === "document") return "digital";
   if (normalized === "digital") return "digital";
 
   return "notifications";
@@ -107,7 +105,7 @@ export function portalActionLabelForType(type?: string | null) {
   if (normalized === "appointment") return "צפייה בתורים";
   if (normalized === "medical") return "פתיחת תיק רפואי";
   if (normalized === "lab") return "צפייה בתיק";
-  if (normalized === "document") return "פתיחת מסמכים";
+  if (normalized === "document") return "פתיחת המרפאה הדיגיטלית";
   if (normalized === "digital") return "פתיחת שיחה";
 
   return "צפייה";
@@ -122,7 +120,7 @@ export function extractViewFromActionUrl(actionUrl?: string | null): PortalActio
       : new URL(actionUrl, "https://myvet.local");
 
     const view = url.searchParams.get("view") as PortalActionView | null;
-    const allowed: PortalActionView[] = ["home", "appointments", "digital", "pets", "documents", "payments", "notifications", "profile"];
+    const allowed: PortalActionView[] = ["home", "appointments", "digital", "pets", "payments", "notifications", "profile"];
     return view && allowed.includes(view) ? view : null;
   } catch {
     return null;
@@ -346,10 +344,10 @@ export async function publishDocumentToOwner(input: {
   return safePublishToOwnerPortal({
     ownerId: input.ownerId,
     petId: input.petId ?? null,
-    title: "מסמך חדש זמין",
-    message: input.fileName ? `מסמך חדש זמין באזור המסמכים: ${input.fileName}` : "מסמך חדש זמין באזור המסמכים.",
+    title: "קובץ חדש מהמרפאה",
+    message: input.fileName ? `קובץ חדש זמין במרפאה הדיגיטלית: ${input.fileName}` : "קובץ חדש זמין במרפאה הדיגיטלית.",
     type: "document",
-    actionView: "documents",
+    actionView: "digital",
     createdByRole: "staff",
     eventType: "document",
     sourceType: "document",

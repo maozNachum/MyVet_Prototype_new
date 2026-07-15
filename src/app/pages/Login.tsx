@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowRight,
@@ -18,12 +18,12 @@ import {
 } from "lucide-react";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { supabase } from "../../services/supabaseClient";
+import type { StaffType } from "../data/staffAuth";
 
 const heroImage =
   "https://images.unsplash.com/photo-1681779876669-50709aa75025?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZyUyMGNhdCUyMHRvZ2V0aGVyJTIwc29mdCUyMGxpZ2h0JTIwcG9ydHJhaXR8ZW58MXx8fHwxNzcyNDU2MTg0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
 type LoginRole = null | "owner" | "staff";
-export type StaffType = "clinic_admin" | "vet" | "nurse" | "secretary";
 
 type FormField =
   | "fullName"
@@ -96,8 +96,34 @@ export function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const recoveryRole = searchParams.get("role");
+    const recoveryRequested = searchParams.get("mode") === "recovery";
+
+    const openRecoveryForm = () => {
+      setRole(recoveryRole === "staff" ? "staff" : "owner");
+      setIsSignUp(false);
+      setIsPasswordRecovery(true);
+      setFormMessage("בחרו סיסמה חדשה לחשבון שלכם.");
+      setFormErrors({});
+    };
+
+    if (recoveryRequested) openRecoveryForm();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") openRecoveryForm();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const clearFieldError = (field: FormField) => {
     setFormErrors((prev) => {
@@ -226,6 +252,26 @@ export function Login() {
           );
         }
 
+        if (existingOwner) {
+          const existingEmail = String(existingOwner.email || "")
+            .trim()
+            .toLowerCase();
+
+          if (!existingEmail) {
+            const message =
+              "ברשומת הלקוח הקיימת לא שמור אימייל. כדי לחבר חשבון באופן בטוח, פנו למרפאה לעדכון הפרטים.";
+            setFormErrors({ idNumber: message, email: message });
+            throw new Error(message);
+          }
+
+          if (existingEmail !== normalizedEmail) {
+            const message =
+              "האימייל שהוזן אינו תואם לאימייל השמור במרפאה עבור תעודת הזהות הזו. פנו למרפאה לבדיקת הפרטים.";
+            setFormErrors({ email: message });
+            throw new Error(message);
+          }
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
@@ -243,13 +289,11 @@ export function Login() {
         if (!data.user) throw new Error("המשתמש לא נוצר במערכת האימות.");
 
         const { firstName, lastName } = splitFullName(fullName);
-        const ownerPayload = {
-          owner_id: normalizedId,
+        const ownerProfilePayload = {
           auth_user_id: data.user.id,
           owner_first_name: firstName,
           owner_last_name: lastName,
           phone: normalizedPhone,
-          email: normalizedEmail,
           terms_accepted_at: new Date().toISOString(),
           terms_version: TERMS_VERSION,
         };
@@ -257,14 +301,18 @@ export function Login() {
         if (existingOwner) {
           const { error: updateOwnerError } = await supabase
             .from("owners")
-            .update(ownerPayload)
+            .update(ownerProfilePayload)
             .eq("owner_id", normalizedId);
 
           if (updateOwnerError) throw updateOwnerError;
         } else {
           const { error: insertOwnerError } = await supabase
             .from("owners")
-            .insert(ownerPayload);
+            .insert({
+              owner_id: normalizedId,
+              ...ownerProfilePayload,
+              email: normalizedEmail,
+            });
           if (insertOwnerError) throw insertOwnerError;
         }
 
@@ -362,7 +410,7 @@ export function Login() {
         );
       }
 
-      if (staffProfile.is_active === false) {
+      if (staffProfile.is_active !== true) {
         await supabase.auth.signOut();
         throw new Error("משתמש הצוות הזה אינו פעיל. פנו למנהל המרפאה.");
       }
@@ -401,10 +449,97 @@ export function Login() {
     }
   };
 
-  const handleFaceId = () => {
-    setFormMessage(
-      "התחברות מהירה תיפתח בהמשך. כרגע יש להתחבר עם אימייל וסיסמה.",
-    );
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    setFormMessage(null);
+    setFormErrors({});
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      const message = "הזינו כתובת אימייל תקינה כדי לקבל קישור לאיפוס סיסמה.";
+      setFormErrors({ email: message });
+      setFormMessage(message);
+      return;
+    }
+
+    setIsSendingPasswordReset(true);
+    setFormMessage("שולח קישור מאובטח לאיפוס הסיסמה...");
+
+    try {
+      const recoveryRole = role === "staff" ? "staff" : "owner";
+      const redirectTo = `${window.location.origin}/login?mode=recovery&role=${recoveryRole}`;
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        normalizedEmail,
+        { redirectTo },
+      );
+
+      if (error) throw error;
+
+      setFormMessage(
+        "אם קיים חשבון עבור הכתובת הזו, יישלח אליה קישור לאיפוס הסיסמה. בדקו גם בתיקיית הספאם.",
+      );
+    } catch (error) {
+      console.error("Failed to request password reset", error);
+      const message =
+        "לא הצלחנו לשלוח כרגע קישור לאיפוס סיסמה. נסו שוב בעוד כמה דקות.";
+      setFormErrors({ general: message });
+      setFormMessage(message);
+    } finally {
+      setIsSendingPasswordReset(false);
+    }
+  };
+
+  const handlePasswordRecovery = async (
+    event?: React.FormEvent | React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event?.preventDefault();
+    const errors: FormErrors = {};
+
+    if (!PASSWORD_POLICY_REGEX.test(password)) {
+      errors.password = `הסיסמה חייבת להכיל לפחות ${MIN_PASSWORD_LENGTH} תווים, אות באנגלית ומספר.`;
+    }
+    if (!confirmPassword) {
+      errors.confirmPassword = "הזינו שוב את הסיסמה לאימות.";
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "הסיסמאות לא תואמות. בדקו והזינו שוב.";
+    }
+
+    setFormErrors(errors);
+    setFormMessage(getFirstError(errors));
+    if (Object.keys(errors).length > 0) return;
+
+    setIsLoading(true);
+    setFormMessage("מעדכן את הסיסמה...");
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
+      await supabase.auth.signOut();
+      window.history.replaceState({}, "", window.location.pathname);
+      setPassword("");
+      setConfirmPassword("");
+      setFormErrors({});
+      setIsPasswordRecovery(false);
+      setFormMessage("הסיסמה עודכנה בהצלחה. אפשר להתחבר כעת עם הסיסמה החדשה.");
+    } catch (error) {
+      console.error("Failed to update recovered password", error);
+      const message =
+        "לא הצלחנו לעדכן את הסיסמה. ייתכן שהקישור פג תוקף; בקשו קישור חדש ונסו שוב.";
+      setFormErrors({ general: message });
+      setFormMessage(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const leavePasswordRecovery = async () => {
+    await supabase.auth.signOut();
+    window.history.replaceState({}, "", window.location.pathname);
+    setIsPasswordRecovery(false);
+    setPassword("");
+    setConfirmPassword("");
+    setFormErrors({});
+    setFormMessage(null);
   };
 
   return (
@@ -430,7 +565,7 @@ export function Login() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center bg-gray-50/50 px-6 py-8 lg:py-6">
+      <div className="flex-1 flex items-center justify-center bg-[radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(180deg,#f7faff_0%,#ffffff_100%)] px-6 py-8 lg:py-6">
         <div className="w-full max-w-[520px]">
           <div className="flex items-center justify-center gap-2.5 mb-6 lg:mb-8">
             <div className="bg-[#1e40af] rounded-xl p-2.5 shadow-lg shadow-blue-500/20">
@@ -573,6 +708,10 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => {
+                  if (isPasswordRecovery) {
+                    void leavePasswordRecovery();
+                    return;
+                  }
                   setRole(null);
                   setIsSignUp(false);
                   resetForm();
@@ -581,7 +720,9 @@ export function Login() {
                 style={{ fontWeight: 500 }}
               >
                 <ArrowRight className="w-4 h-4" />
-                חזרה לבחירת סוג כניסה
+                {isPasswordRecovery
+                  ? "חזרה למסך הכניסה"
+                  : "חזרה לבחירת סוג כניסה"}
               </button>
 
               <div className="text-center mb-8">
@@ -616,14 +757,18 @@ export function Login() {
                   className="text-gray-900 text-[24px] mb-2"
                   style={{ fontWeight: 700 }}
                 >
-                  {role === "owner"
+                  {isPasswordRecovery
+                    ? "יצירת סיסמה חדשה"
+                    : role === "owner"
                     ? isSignUp
                       ? "פתיחת חשבון לקוח"
                       : "שלום, אזור אישי"
                     : "שלום, צוות המרפאה"}
                 </h1>
                 <p className="text-gray-500 font-medium text-[15px]">
-                  {role === "owner"
+                  {isPasswordRecovery
+                    ? "הזינו סיסמה חדשה שתשמש אתכם בכניסה הבאה"
+                    : role === "owner"
                     ? isSignUp
                       ? "צרו חשבון חדש לניהול התיק הרפואי והתורים"
                       : "התחברו כדי לצפות בתיק הרפואי ובתורים"
@@ -642,62 +787,16 @@ export function Login() {
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
+                  if (isPasswordRecovery) {
+                    void handlePasswordRecovery(event);
+                    return;
+                  }
                   void handleLogin(event);
                 }}
                 noValidate
                 className="space-y-5"
               >
-                {role === "owner" && isSignUp && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormMessage(
-                          "אפשרות ההרשמה עם Google תיפתח בהמשך. כרגע אפשר להמשיך בהרשמה רגילה דרך הטופס.",
-                        )
-                      }
-                      disabled={isLoading}
-                      className="w-full border-2 border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-70 rounded-xl py-3.5 px-4 transition-all cursor-pointer flex items-center justify-center text-gray-700"
-                      style={{ fontWeight: 600 }}
-                      aria-label="המשך עם Google להרשמה"
-                    >
-                      <svg
-                        className="w-6 h-6"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fill="#4285F4"
-                          d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.18 3.56-8.65Z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3a7.2 7.2 0 0 1-10.72-3.79H1.34v3.1A12 12 0 0 0 12 24Z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.35 14.31a7.18 7.18 0 0 1 0-4.62V6.59H1.34a12 12 0 0 0 0 10.82l4.01-3.1Z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.43-3.43C17.96 1.22 15.24 0 12 0A12 12 0 0 0 1.34 6.59l4.01 3.1A7.2 7.2 0 0 1 12 4.77Z"
-                        />
-                      </svg>
-                    </button>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span
-                        className="text-gray-500 text-[13px]"
-                        style={{ fontWeight: 500 }}
-                      >
-                        או
-                      </span>
-                      <div className="flex-1 h-px bg-gray-200" />
-                    </div>
-                  </>
-                )}
-
-                {role === "staff" && (
+                {role === "staff" && !isPasswordRecovery && (
                   <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-right">
                     <div className="flex items-start gap-3">
                       <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[#1e40af]" />
@@ -800,30 +899,32 @@ export function Login() {
                   </>
                 )}
 
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-gray-600 text-[13px] mb-2"
-                    style={{ fontWeight: 500 }}
-                  >
-                    {role === "owner" ? "אימייל" : "אימייל צוות"}
-                  </label>
-                  <div className="relative">
-                    <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
-                    <input
-                      type="email"
-                      id="email"
-                      value={email}
-                      onChange={(event) => {
-                        setEmail(event.target.value);
-                        clearFieldError("email");
-                      }}
-                      className={`w-full pr-11 pl-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("email")}`}
-                      placeholder="הזינו כתובת אימייל"
-                    />
+                {!isPasswordRecovery && (
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-gray-600 text-[13px] mb-2"
+                      style={{ fontWeight: 500 }}
+                    >
+                      {role === "owner" ? "אימייל" : "אימייל צוות"}
+                    </label>
+                    <div className="relative">
+                      <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
+                      <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(event) => {
+                          setEmail(event.target.value);
+                          clearFieldError("email");
+                        }}
+                        className={`w-full pr-11 pl-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("email")}`}
+                        placeholder="הזינו כתובת אימייל"
+                      />
+                    </div>
+                    <ErrorText message={formErrors.email} />
                   </div>
-                  <ErrorText message={formErrors.email} />
-                </div>
+                )}
 
                 <div>
                   <label
@@ -831,7 +932,7 @@ export function Login() {
                     className="block text-gray-600 text-[13px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
-                    סיסמה
+                    {isPasswordRecovery ? "סיסמה חדשה" : "סיסמה"}
                   </label>
                   <div className="relative">
                     <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
@@ -845,7 +946,11 @@ export function Login() {
                         if (confirmPassword) clearFieldError("confirmPassword");
                       }}
                       className={`w-full pr-11 pl-11 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("password")}`}
-                      placeholder="הזינו סיסמה"
+                      placeholder={
+                        isPasswordRecovery
+                          ? "הזינו סיסמה חדשה"
+                          : "הזינו סיסמה"
+                      }
                     />
                     <button
                       type="button"
@@ -859,7 +964,7 @@ export function Login() {
                       )}
                     </button>
                   </div>
-                  {role === "owner" && isSignUp && (
+                  {((role === "owner" && isSignUp) || isPasswordRecovery) && (
                     <p className="mt-2 text-[12px] font-medium text-gray-500">
                       לפחות 6 תווים, אות באנגלית ומספר.
                     </p>
@@ -867,7 +972,7 @@ export function Login() {
                   <ErrorText message={formErrors.password} />
                 </div>
 
-                {role === "owner" && isSignUp && (
+                {((role === "owner" && isSignUp) || isPasswordRecovery) && (
                   <>
                     <div>
                       <label
@@ -907,56 +1012,54 @@ export function Login() {
                       <ErrorText message={formErrors.confirmPassword} />
                     </div>
 
-                    <div>
-                      <label
-                        className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer ${formErrors.acceptedTerms ? "border-red-300 bg-red-50" : "border-rose-100 bg-rose-50/40"}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={acceptedTerms}
-                          onChange={(event) => {
-                            setAcceptedTerms(event.target.checked);
-                            clearFieldError("acceptedTerms");
-                          }}
-                          className="mt-1 w-4 h-4 accent-rose-500 shrink-0"
-                        />
-                        <span
-                          className="text-gray-600 text-[13px] leading-6"
-                          style={{ fontWeight: 500 }}
+                    {role === "owner" && isSignUp && !isPasswordRecovery && (
+                      <div>
+                        <label
+                          className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer ${formErrors.acceptedTerms ? "border-red-300 bg-red-50" : "border-rose-100 bg-rose-50/40"}`}
                         >
-                          אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות של הפורטל,
-                          ומבין/ה שהמידע באזור האישי אינו מחליף פנייה לצוות
-                          המרפאה במקרה דחוף.
-                        </span>
-                      </label>
-                      <ErrorText message={formErrors.acceptedTerms} />
-                    </div>
+                          <input
+                            type="checkbox"
+                            checked={acceptedTerms}
+                            onChange={(event) => {
+                              setAcceptedTerms(event.target.checked);
+                              clearFieldError("acceptedTerms");
+                            }}
+                            className="mt-1 w-4 h-4 accent-rose-500 shrink-0"
+                          />
+                          <span
+                            className="text-gray-600 text-[13px] leading-6"
+                            style={{ fontWeight: 500 }}
+                          >
+                            אני מאשר/ת את <a href="/privacy#terms" target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#1e40af] underline underline-offset-2">תנאי השימוש</a> ו<a href="/privacy" target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#1e40af] underline underline-offset-2">מדיניות הפרטיות</a> של הפורטל,
+                            ומבין/ה שהמידע באזור האישי אינו מחליף פנייה לצוות
+                            המרפאה במקרה דחוף.
+                          </span>
+                        </label>
+                        <ErrorText message={formErrors.acceptedTerms} />
+                      </div>
+                    )}
                   </>
                 )}
 
-                {!isSignUp && (
+                {!isSignUp && !isPasswordRecovery && (
                   <div className="text-left">
                     <button
                       type="button"
-                      onClick={() =>
-                        setFormMessage(
-                          role === "owner"
-                            ? "לאיפוס סיסמה פנו למרפאה או בקשו קישור התחברות חדש."
-                            : "לאיפוס סיסמה פנו למנהל המערכת במרפאה.",
-                        )
-                      }
-                      className={`text-[13px] hover:underline cursor-pointer transition-colors ${role === "owner" ? "text-rose-500" : "text-[#1e40af]"}`}
+                      onClick={() => void handleForgotPassword()}
+                      disabled={isLoading || isSendingPasswordReset}
+                      className={`text-[13px] hover:underline disabled:no-underline disabled:opacity-60 cursor-pointer disabled:cursor-wait transition-colors ${role === "owner" ? "text-rose-500" : "text-[#1e40af]"}`}
                       style={{ fontWeight: 500 }}
                     >
-                      שכחת סיסמה?
+                      {isSendingPasswordReset
+                        ? "שולח קישור..."
+                        : "שכחת סיסמה?"}
                     </button>
                   </div>
                 )}
 
                 <button
-                  type="button"
-                  onClick={(event) => void handleLogin(event)}
-                  disabled={isLoading}
+                  type="submit"
+                  disabled={isLoading || isSendingPasswordReset}
                   className={`w-full text-white py-3.5 rounded-xl transition-all shadow-lg cursor-pointer text-[16px] flex items-center justify-center gap-2 ${role === "owner" ? "bg-gradient-to-l from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-70 shadow-rose-500/20" : "bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-[#1e40af]/70 shadow-blue-500/20"}`}
                   style={{ fontWeight: 600 }}
                 >
@@ -969,7 +1072,9 @@ export function Login() {
                       ) : (
                         <Stethoscope className="w-5 h-5" />
                       )}
-                      {role === "owner"
+                      {isPasswordRecovery
+                        ? "עדכון סיסמה"
+                        : role === "owner"
                         ? isSignUp
                           ? "יצירת חשבון לקוח"
                           : "כניסה לאזור האישי"
@@ -978,7 +1083,7 @@ export function Login() {
                   )}
                 </button>
 
-                {role === "owner" && (
+                {role === "owner" && !isPasswordRecovery && (
                   <div className="text-center pt-1">
                     <button
                       type="button"
@@ -997,56 +1102,6 @@ export function Login() {
                 )}
               </form>
 
-              <div className="flex items-center gap-4 my-7">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span
-                  className="text-gray-500 font-medium text-[13px]"
-                  style={{ fontWeight: 500 }}
-                >
-                  או
-                </span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleFaceId}
-                disabled={isLoading}
-                className={`w-full group border hover:bg-opacity-50 disabled:opacity-60 rounded-xl py-4 px-5 transition-all cursor-pointer flex flex-col items-center gap-3 ${role === "owner" ? "border-gray-200 hover:border-rose-200 hover:bg-rose-50/50" : "border-gray-200 hover:border-blue-200 hover:bg-blue-50/50"}`}
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${role === "owner" ? "bg-gradient-to-br from-rose-50 to-pink-100 group-hover:from-rose-100 group-hover:to-pink-200" : "bg-gradient-to-br from-blue-50 to-indigo-100 group-hover:from-blue-100 group-hover:to-indigo-200"}`}
-                >
-                  <svg
-                    width="30"
-                    height="30"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={
-                      role === "owner" ? "text-rose-500" : "text-[#1e40af]"
-                    }
-                  >
-                    <path d="M7 3H5a2 2 0 0 0-2 2v2" />
-                    <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-                    <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-                    <path d="M17 21h2a2 2 0 0 0 2-2v-2" />
-                    <path d="M9 9v1" />
-                    <path d="M15 9v1" />
-                    <path d="M12 12v1.5" />
-                    <path d="M9.5 15.5a3.5 3.5 0 0 0 5 0" />
-                  </svg>
-                </div>
-                <span
-                  className="text-gray-500 text-[13px] group-hover:text-gray-700 transition-colors"
-                  style={{ fontWeight: 500 }}
-                >
-                  התחברות מהירה בטאבלט באמצעות זיהוי פנים
-                </span>
-              </button>
             </div>
           )}
 

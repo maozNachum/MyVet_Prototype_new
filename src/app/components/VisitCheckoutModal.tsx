@@ -364,6 +364,8 @@ export function VisitCheckoutModal({
     }
 
     setIsSaving(true);
+    let createdPaymentId: number | null = null;
+    let persistenceComplete = false;
     try {
       const { data: payment, error: paymentError } = await supabase
         .from("payments")
@@ -384,7 +386,11 @@ export function VisitCheckoutModal({
         .single();
 
       if (paymentError) throw paymentError;
-      const paymentId = payment?.payment_id;
+      const paymentId = Number(payment?.payment_id);
+      if (!Number.isFinite(paymentId) || paymentId <= 0) {
+        throw new Error("PAYMENT_ID_MISSING");
+      }
+      createdPaymentId = paymentId;
 
       const paymentItems = validItems.map((item) => ({
         payment_id: paymentId,
@@ -404,6 +410,7 @@ export function VisitCheckoutModal({
         .from("payment_items")
         .insert(paymentItems);
       if (itemsError) throw itemsError;
+      persistenceComplete = true;
 
       if (!markPaid && ownerId) {
         await publishPaymentToOwner({
@@ -422,7 +429,24 @@ export function VisitCheckoutModal({
       onClose();
     } catch (saveError) {
       console.error("Failed saving checkout", saveError);
-      toast.error("לא הצלחנו לשמור את החיוב");
+      let rollbackFailed = false;
+      if (createdPaymentId && !persistenceComplete) {
+        const { error: itemsRollbackError } = await supabase
+          .from("payment_items")
+          .delete()
+          .eq("payment_id", createdPaymentId);
+        const { error: paymentRollbackError } = await supabase
+          .from("payments")
+          .delete()
+          .eq("payment_id", createdPaymentId);
+        rollbackFailed = Boolean(itemsRollbackError || paymentRollbackError);
+      }
+
+      toast.error(
+        rollbackFailed
+          ? "החיוב נשמר חלקית. בדקו את רשימת החיובים לפני ניסיון נוסף."
+          : "לא הצלחנו לשמור את החיוב",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -446,6 +470,7 @@ export function VisitCheckoutModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="סגור חלון"
             className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"
           >
             <X className="w-5 h-5" />

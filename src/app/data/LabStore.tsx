@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { getStaffId } from "./staffAuth";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface LabOrder {
@@ -107,8 +108,7 @@ function mapLabOrderRow(row: any): LabOrder {
     status: normalizeStatus(row.status),
     orderedDate: formatDateForUi(row.ordered_date),
     testDate: row.test_date || undefined,
-    // ordered_by is uuid in the DB. Until staff authentication is connected to staff.staff_id,
-    // we keep it null in DB and show a readable fallback in the UI.
+    // ordered_by is a UUID in the DB; the readable label remains a UI concern.
     orderedBy: row.staff?.name || "צוות המרפאה",
     results: row.results || undefined,
     normalRange: row.normal_range || undefined,
@@ -129,8 +129,7 @@ function buildInsertPayload(order: Omit<LabOrder, "id">) {
     status: order.status,
     ordered_date: parseDateToIso(order.orderedDate),
     test_date: order.testDate || null,
-    // The database column is uuid. Until login is connected to staff.staff_id, keep it null.
-    ordered_by: null,
+    ordered_by: getStaffId(),
     results: order.results || null,
     normal_range: order.normalRange || null,
     result_value: order.resultValue || null,

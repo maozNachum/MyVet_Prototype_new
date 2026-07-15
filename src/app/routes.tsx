@@ -13,6 +13,12 @@ import { DigitalCare } from "./pages/DigitalCare";
 import { Hospitalizations } from "./pages/Hospitalizations";
 import { LabOrders } from "./pages/LabOrders";
 import { PriceList } from "./pages/PriceList";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import { canAccessReportsPage } from "./data/staffAuth";
+
+function ReportsRoute() {
+  return canAccessReportsPage() ? <Reports /> : <Navigate to="/" replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +30,14 @@ export const router = createBrowserRouter([
     Component: ClientPortal,
   },
   {
+    path: "/owner-preview",
+    Component: ClientPortal,
+  },
+  {
+    path: "/privacy",
+    Component: PrivacyPolicy,
+  },
+  {
     path: "/",
     Component: Layout,
     children: [
@@ -33,7 +47,7 @@ export const router = createBrowserRouter([
       { path: "clients", Component: Clients },
       { path: "patients", Component: Patients },
       { path: "inventory", Component: Inventory },
-      { path: "reports", Component: Reports },
+      { path: "reports", Component: ReportsRoute },
       { path: "digital-care", Component: DigitalCare },
       { path: "hospitalizations", Component: Hospitalizations },
       { path: "lab-orders", Component: LabOrders },

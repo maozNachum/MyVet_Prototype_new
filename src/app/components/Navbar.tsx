@@ -1,8 +1,8 @@
-import { LogOut, Search, Cat, Dog, X, Phone, Stethoscope, Scissors, MessageCircle, Package, Loader2 } from "lucide-react";
+import { LogOut, Search, Cat, Dog, X, Phone, Stethoscope, Scissors, Package, Loader2, ShieldCheck, Menu } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { getStaffType, getStaffLabel, canAccessReportsPage, getStaffName } from "../data/staffAuth";
+import { getStaffType, getStaffLabel, canAccessReportsPage, getStaffName, clearStaffSession } from "../data/staffAuth";
 import { MyVetLogo } from "./MyVetLogo";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import {
@@ -93,6 +93,16 @@ function getInventoryCategoryLabel(category?: string | null) {
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      clearStaffSession();
+      navigate("/login", { replace: true });
+    }
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [patientItems, setPatientItems] = useState<PatientSearchItem[]>([]);
@@ -104,7 +114,7 @@ export function Navbar() {
   const staffType = getStaffType();
   const staffLabel = getStaffLabel(staffType);
   const staffName = getStaffName();
-  const StaffIcon = staffType === "vet" ? Stethoscope : staffType === "nurse" ? Scissors : Phone;
+  const StaffIcon = staffType === "clinic_admin" ? ShieldCheck : staffType === "vet" ? Stethoscope : staffType === "nurse" ? Scissors : Phone;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -195,9 +205,25 @@ export function Navbar() {
       }
     }
 
-    loadSearchData();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadSearchData();
+    };
+
+    void loadSearchData();
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    const channel = supabase
+      .channel("myvet-navbar-search-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, loadSearchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "owners" }, loadSearchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, loadSearchData)
+      .subscribe();
+
     return () => {
       mounted = false;
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      void supabase.removeChannel(channel);
     };
   }, []);
 
@@ -232,18 +258,38 @@ export function Navbar() {
   const openCommandCenter = () => {
     setSearchQuery("");
     setIsSearchOpen(false);
+    setIsMobileMenuOpen(false);
     window.dispatchEvent(new CustomEvent("myvet:open-command-center"));
   };
 
+  const mobileNavItems = [
+    { to: "/", label: "דשבורד" },
+    { to: "/appointments", label: "יומן תורים" },
+    { to: "/clients", label: "לקוחות" },
+    { to: "/patients", label: "מטופלים" },
+    { to: "/inventory", label: "מלאי" },
+    { to: "/digital-care", label: "דיגיטל" },
+    ...(canAccessReportsPage() ? [{ to: "/reports", label: "דוחות" }] : []),
+  ];
+
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
-      <div className="w-full px-4 h-16 flex items-center justify-between mx-auto">
-        <div className="flex items-center gap-4 xl:gap-6">
-          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-22 h-19 flex items-center justify-center transform scale-[1.6] origin-right">
+      <div className="mx-auto flex h-16 w-full items-center justify-between px-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4 xl:gap-6">
+          <Link to="/" aria-label="MyVet – דף הבית" className="flex shrink-0 items-center transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg">
+            <div className="flex h-19 w-22 origin-right scale-[1.6] items-center justify-center transform">
               <MyVetLogo color="white" showTagline={false} />
             </div>
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((open) => !open)}
+            aria-label={isMobileMenuOpen ? "סגור תפריט" : "פתח תפריט"}
+            aria-expanded={isMobileMenuOpen}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 md:hidden"
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
           <div className="hidden md:block w-px h-6 bg-white/20 ml-2"></div>
           <div className="hidden md:flex items-center gap-1">
             <Link
@@ -272,11 +318,10 @@ export function Navbar() {
             </Link>
             <Link
               to="/digital-care"
-              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/digital-care") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <MessageCircle className="w-4 h-4" />
               דיגיטל
             </Link>
             {canAccessReportsPage() && (
@@ -317,7 +362,7 @@ export function Navbar() {
                 onFocus={() => {
                   if (searchQuery.length >= 1) setIsSearchOpen(true);
                 }}
-                className="w-full pr-10 pl-8 py-2 bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-xl text-[13px] text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all shadow-inner"
+                className="w-full pr-10 pl-8 py-2 bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-xl text-[14px] text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all shadow-inner"
               />
 
               {isSearchOpen && searchQuery.length >= 1 && (
@@ -337,7 +382,7 @@ export function Navbar() {
                       {limitedPatientResults.length > 0 && (
                         <>
                           <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                            <span className="text-gray-500 text-[12px] font-semibold">מטופלים ולקוחות ({patientResults.length})</span>
+                            <span className="text-gray-500 text-[13px] font-semibold">מטופלים ולקוחות ({patientResults.length})</span>
                           </div>
                           {limitedPatientResults.map((patient) => {
                             const PetIcon = patient.speciesType === "cat" ? Cat : Dog;
@@ -349,9 +394,9 @@ export function Navbar() {
                                 <div className="flex-1 min-w-0 text-right">
                                   <div className="flex items-center gap-2">
                                     <span className="text-gray-900 text-[14px] font-semibold truncate">{patient.petName}</span>
-                                    <span className="text-gray-500 font-medium text-[12px] truncate">{patient.species}{patient.breed ? ` · ${patient.breed}` : ""}</span>
+                                    <span className="text-gray-500 font-medium text-[13px] truncate">{patient.species}{patient.breed ? ` · ${patient.breed}` : ""}</span>
                                   </div>
-                                  <div className="flex items-center gap-3 text-[12px] text-gray-500">
+                                  <div className="flex items-center gap-3 text-[13px] text-gray-500">
                                     <span className="truncate">{patient.ownerName}</span>
                                     {patient.ownerPhone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{patient.ownerPhone}</span>}
                                   </div>
@@ -365,7 +410,7 @@ export function Navbar() {
                       {limitedInventoryResults.length > 0 && (
                         <>
                           <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 border-t border-t-gray-100">
-                            <span className="text-gray-500 text-[12px] font-semibold">פריטי מלאי ({inventoryResults.length})</span>
+                            <span className="text-gray-500 text-[13px] font-semibold">פריטי מלאי ({inventoryResults.length})</span>
                           </div>
                           {limitedInventoryResults.map((item) => (
                             <button key={`inv-${item.id}`} type="button" onClick={() => handleSelectInventory(item.name)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors cursor-pointer text-right border-b border-gray-50 last:border-b-0">
@@ -376,7 +421,7 @@ export function Navbar() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-gray-900 text-[14px] font-semibold truncate">{item.name}</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-[12px] text-gray-500">
+                                <div className="flex items-center gap-3 text-[13px] text-gray-500">
                                   <span>{item.categoryLabel}</span>
                                   <span className="font-mono text-gray-500 font-medium">מק״ט {item.sku}</span>
                                   <span>מלאי {item.quantity}</span>
@@ -400,34 +445,55 @@ export function Navbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:gap-4">
           <button
             type="button"
             onClick={openCommandCenter}
-            className="hidden xl:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[13px] font-medium text-white/90 transition hover:bg-white/15 hover:text-white"
+            className="hidden xl:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[14px] font-medium text-white/90 transition hover:bg-white/15 hover:text-white"
             title="פתח מרכז פעולות"
           >
             <Search className="w-4 h-4" />
             <span>פעולות</span>
-            <kbd className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white/80">Ctrl K</kbd>
+            <kbd className="rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-bold text-white/80">Ctrl K</kbd>
           </button>
           <div className="hidden lg:block w-px h-6 bg-white/20 ml-2"></div>
-          <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-3 py-1.5 border border-white/10 shadow-inner">
+          <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-2 sm:px-3 py-1.5 border border-white/10 shadow-inner" title={`${staffName} | ${staffLabel}`}>
             <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />
-            <span className="text-[13px] text-white font-medium whitespace-nowrap">
+            <span className="hidden text-[14px] font-medium text-white whitespace-nowrap sm:inline">
               {staffName} <span className="text-blue-300/60 font-normal mx-1">|</span> {staffLabel}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => navigate("/login")}
-            className="flex items-center gap-2 text-white/80 hover:text-white hover:bg-red-500/90 transition-all px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
+            onClick={handleLogout}
+            aria-label="התנתקות"
+            className="flex items-center gap-2 rounded-xl p-2 text-[14px] font-medium text-white/80 transition-all hover:bg-red-500/90 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:px-3 cursor-pointer"
           >
-            <span>התנתקות</span>
+            <span className="hidden sm:inline">התנתקות</span>
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div className="border-t border-white/10 bg-[#1e3a8a]/95 px-3 pb-3 pt-2 shadow-lg md:hidden">
+          <div className="grid grid-cols-2 gap-2">
+            {mobileNavItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-semibold transition ${isActive(item.to) ? "bg-white text-[#1e40af]" : "bg-white/10 text-white hover:bg-white/15"}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+          <button type="button" onClick={openCommandCenter} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15">
+            <Search className="h-4 w-4" /> חיפוש ופעולות
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

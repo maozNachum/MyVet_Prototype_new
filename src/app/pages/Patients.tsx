@@ -1,10 +1,10 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from '../../services/supabaseClient';
 import {
   Users, UserPlus, Eye, Search, Cat, Dog, AlertTriangle,
-  Calendar, AlertCircle, CalendarCheck, ChevronLeft, Stethoscope,
+  Calendar, AlertCircle, ChevronLeft,
   ArrowRight, Phone, CreditCard, Download, Mail, Pencil, Trash2, X,
-  ClipboardList, Activity, CheckCircle2, Pill, FileText, Video,
+  FileText,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { TreatmentModal } from "../components/TreatmentModal";
@@ -16,7 +16,6 @@ import { exportMedicalRecord } from "../hooks/useExportMedicalRecord";
 import { canEditMedicalRecords, canPerformTreatment } from "../data/staffAuth";
 import { LabResultsPanel } from "../components/LabResultsPanel";
 import { useSearchFilter } from "../hooks/useSearchFilter";
-import { VISIT_TYPES } from "../data/categoryConfig";
 import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
 import { PatientMedicalTimeline } from "../components/PatientMedicalTimeline";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
@@ -226,99 +225,6 @@ function calculateAgeFromBirthDate(birthDate?: string | null) {
   return age;
 }
 
-function severityLabel(value?: string | null) {
-  switch (value) {
-    case "critical": return "קריטי";
-    case "serious": return "חמור";
-    case "normal": return "רגיל";
-    default: return "רגיל";
-  }
-}
-
-function statusLabel(value?: string | null) {
-  switch (value) {
-    case "active": return "פעיל";
-    case "improved": return "השתפר";
-    case "resolved": return "נפתר";
-    case "low": return "נמוכה";
-    case "possible": return "אפשרית";
-    case "likely": return "סבירה";
-    case "critical": return "קריטי";
-    case "serious": return "חמור";
-    case "normal": return "רגיל";
-    default: return value || "לא צוין";
-  }
-}
-
-function severityClass(value?: string | null) {
-  switch (value) {
-    case "critical": return "bg-red-50 text-red-700 border-red-200";
-    case "serious": return "bg-amber-50 text-amber-700 border-amber-200";
-    default: return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  }
-}
-
-function getVisitDisplayConfig(visitType?: string | null) {
-  const customTypes: Record<string, { label: string; icon: any; color: string }> = {
-    full_exam: {
-      label: "בדיקה רפואית מלאה",
-      icon: Stethoscope,
-      color: "bg-blue-50 text-blue-600 border-blue-200",
-    },
-    vaccination: {
-      label: "חיסון",
-      icon: CheckCircle2,
-      color: "bg-emerald-50 text-emerald-600 border-emerald-200",
-    },
-    weight_check: {
-      label: "שקילה",
-      icon: Activity,
-      color: "bg-amber-50 text-amber-600 border-amber-200",
-    },
-    prescription_only: {
-      label: "מרשם בלבד",
-      icon: Pill,
-      color: "bg-purple-50 text-purple-600 border-purple-200",
-    },
-    lab: {
-      label: "בדיקת מעבדה",
-      icon: ClipboardList,
-      color: "bg-sky-50 text-sky-600 border-sky-200",
-    },
-    follow_up: {
-      label: "מעקב קצר",
-      icon: CalendarCheck,
-      color: "bg-teal-50 text-teal-600 border-teal-200",
-    },
-    note: {
-      label: "הערה רפואית",
-      icon: FileText,
-      color: "bg-gray-50 text-gray-600 border-gray-200",
-    },
-    video_consultation: {
-      label: "סיכום שיחת וידאו",
-      icon: Video,
-      color: "bg-indigo-50 text-indigo-600 border-indigo-200",
-    },
-    hospitalization: {
-      label: "אשפוז",
-      icon: Activity,
-      color: "bg-emerald-50 text-emerald-600 border-emerald-200",
-    },
-    hospitalization_discharge: {
-      label: "שחרור מאשפוז",
-      icon: CheckCircle2,
-      color: "bg-teal-50 text-teal-600 border-teal-200",
-    },
-  };
-
-  if (visitType && customTypes[visitType]) return customTypes[visitType];
-  if (visitType && Object.prototype.hasOwnProperty.call(VISIT_TYPES, visitType)) {
-    return VISIT_TYPES[visitType as keyof typeof VISIT_TYPES];
-  }
-  return VISIT_TYPES.checkup;
-}
-
 function splitOwnerNameForDocument(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   return {
@@ -354,17 +260,6 @@ function mapVisitForPrescriptionDocument(visit: any) {
   };
 }
 
-function MedicalDetailSection({ icon: Icon, title, children }: { icon: any; title: string; children: ReactNode }) {
-  return (
-    <section className="bg-white rounded-2xl border border-gray-100 p-4">
-      <h5 className="flex items-center gap-2 text-gray-900 font-bold text-[14px] mb-2">
-        <Icon className="w-4 h-4 text-[#1e40af]" /> {title}
-      </h5>
-      <div className="text-gray-700 text-[13px] leading-7 whitespace-pre-wrap">{children}</div>
-    </section>
-  );
-}
-
 type TabKey = "list" | "register";
 
 export function Patients() {
@@ -381,7 +276,6 @@ export function Patients() {
   const [isAnesthesiaOpen, setIsAnesthesiaOpen] = useState(false);
   const [isEditPetOpen, setIsEditPetOpen] = useState(false);
   const [isDeletingPet, setIsDeletingPet] = useState(false);
-  const [expandedVisitId, setExpandedVisitId] = useState<number | null>(null);
   const [selectedPrescriptionForPrint, setSelectedPrescriptionForPrint] = useState<any | null>(null);
   const [selectedPrescriptionVisit, setSelectedPrescriptionVisit] = useState<any | null>(null);
   const [isHospitalizationOpen, setIsHospitalizationOpen] = useState(false);
@@ -585,6 +479,7 @@ export function Patients() {
 
   // פונקציית השמירה למסד הנתונים ב-Supabase
   const onSubmit = async (data: PatientFormValues) => {
+    let createdOwnerId: string | null = null;
     try {
       if (data.breed === "other" && !data.customBreed?.trim()) {
         setError("customBreed", {
@@ -627,6 +522,7 @@ export function Patients() {
 
         if (ownerError) throw ownerError;
         ownerData = insertedOwner;
+        createdOwnerId = insertedOwner.owner_id;
       }
 
       // 2. הוספת המטופל לטבלת patients ומקשרים אותו ל-owner_id
@@ -655,7 +551,19 @@ export function Patients() {
       window.location.reload();
     } catch (error) {
       console.error("Supabase Insert Error:", error);
-      toast.error("לא הצלחנו לשמור את המטופל. נסה שוב");
+      let rollbackFailed = false;
+      if (createdOwnerId) {
+        const { error: rollbackError } = await supabase
+          .from("owners")
+          .delete()
+          .eq("owner_id", createdOwnerId);
+        rollbackFailed = Boolean(rollbackError);
+      }
+      toast.error(
+        rollbackFailed
+          ? "המטופל לא נשמר, אך נוצר כרטיס בעלים חלקי. בדקו את רשימת הלקוחות לפני ניסיון נוסף."
+          : "לא הצלחנו לשמור את המטופל. נסה שוב",
+      );
     }
   };
 
@@ -766,7 +674,7 @@ export function Patients() {
     const PetIcon = pet.speciesType === "cat" ? Cat : Dog;
 
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
         <button
           onClick={() => setSelectedPatient(null)}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
@@ -1183,6 +1091,8 @@ export function Patients() {
 
         {isAnesthesiaOpen && (
           <AnesthesiaConsentModal
+            patientId={selectedPatient.id}
+            ownerId={owner.id}
             petName={pet.name}
             ownerName={owner.name}
             onClose={() => setIsAnesthesiaOpen(false)}
@@ -1212,14 +1122,14 @@ export function Patients() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
       <div className="flex items-center gap-3 mb-8">
         <div className="bg-blue-100 rounded-xl p-2.5">
           <Users className="w-6 h-6 text-[#1e40af]" />
         </div>
         <div>
-          <h1 className="text-gray-900 text-[22px] font-bold">מטופלים</h1>
-          <p className="text-gray-500 text-[14px]">ניהול מטופלים, רישום חדשים וצפייה בתיקים</p>
+          <h1 className="text-gray-900 text-[26px] font-bold">מטופלים</h1>
+          <p className="text-gray-500 text-[15px]">ניהול מטופלים, רישום חדשים וצפייה בתיקים</p>
         </div>
       </div>
 

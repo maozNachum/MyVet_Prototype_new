@@ -134,7 +134,7 @@ export function CommandCenter() {
               </div>
               <div>
                 <h2 className="text-[19px] font-bold text-slate-900">מרכז פעולות</h2>
-                <p className="text-[13px] text-slate-500">גישה מהירה לפי תפקיד: {staffLabel}</p>
+                <p className="text-[14px] text-slate-500">גישה מהירה לפי תפקיד: {staffLabel}</p>
               </div>
             </div>
             <button type="button" onClick={close} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900" aria-label="סגור">
@@ -159,7 +159,7 @@ export function CommandCenter() {
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
               <Search className="mb-3 h-9 w-9 text-slate-300" />
               <h3 className="text-[16px] font-bold text-slate-800">לא מצאנו פעולה מתאימה</h3>
-              <p className="mt-1 max-w-md text-[13px] leading-6 text-slate-500">נסה שם פעולה אחר, למשל תור, מחירון, חוב, אשפוז או מעבדה.</p>
+              <p className="mt-1 max-w-md text-[14px] leading-6 text-slate-500">נסה שם פעולה אחר, למשל תור, מחירון, חוב, אשפוז או מעבדה.</p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -169,7 +169,7 @@ export function CommandCenter() {
 
                 return (
                   <section key={group}>
-                    <h3 className="mb-2 px-2 text-[12px] font-bold uppercase tracking-wide text-slate-400">{APP_ACTION_GROUP_LABELS[group]}</h3>
+                    <h3 className="mb-2 px-2 text-[13px] font-bold uppercase tracking-wide text-slate-400">{APP_ACTION_GROUP_LABELS[group]}</h3>
                     <div className="space-y-2">
                       {groupItems.map((action) => {
                         const Icon = ICONS[action.iconKey] || Home;
@@ -186,9 +186,9 @@ export function CommandCenter() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="truncate text-[15px] font-bold text-slate-900">{action.title}</span>
-                                {action.badge && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">{action.badge}</span>}
+                                {action.badge && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[12px] font-bold text-blue-700">{action.badge}</span>}
                               </div>
-                              <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-slate-500">{action.description}</p>
+                              <p className="mt-0.5 line-clamp-2 text-[14px] leading-5 text-slate-500">{action.description}</p>
                             </div>
                             <ArrowLeft className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:-translate-x-1 group-hover:text-blue-500" />
                           </button>
@@ -202,9 +202,9 @@ export function CommandCenter() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3 text-[12px] text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3 text-[13px] text-slate-500">
           <span>אפשר לפתוח מכל מסך.</span>
-          <kbd className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-sans text-[12px] font-bold text-slate-600 shadow-sm">{shortcutKey}</kbd>
+          <kbd className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-sans text-[13px] font-bold text-slate-600 shadow-sm">{shortcutKey}</kbd>
         </div>
       </div>
     </div>

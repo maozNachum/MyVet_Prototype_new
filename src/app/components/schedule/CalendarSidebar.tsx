@@ -47,7 +47,9 @@ export function CalendarSidebar({
             <span className="text-[12px] leading-none">תורים</span>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="סגור חלונית תורים"
             className="text-white/50 hover:text-white cursor-pointer p-1 transition-colors"
           >
             <X className="w-4 h-4" />

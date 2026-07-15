@@ -6,7 +6,6 @@ import {
   Clock,
   FlaskConical,
   Loader2,
-  PawPrint,
   RefreshCw,
   Save,
   Search,
@@ -335,15 +334,15 @@ export function LabOrders() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8" dir="rtl">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8" dir="rtl">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
             <FlaskConical className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-gray-900 text-[24px] font-bold">מעבדה</h1>
-            <p className="text-gray-500 text-[14px] mt-1">
+            <h1 className="text-gray-900 text-[26px] font-bold">מעבדה</h1>
+            <p className="text-gray-500 text-[15px] mt-1">
               בדיקות פתוחות, דחופות ותוצאות שהושלמו
             </p>
           </div>

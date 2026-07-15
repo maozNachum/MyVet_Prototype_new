@@ -31,22 +31,21 @@ function toDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function hourBucket(value?: string | null) {
-  if (!value) return "לא מוגדר";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "לא מוגדר";
-  const hour = date.getHours();
-  if (hour < 10) return "מוקדם";
-  if (hour < 14) return "בוקר";
-  if (hour < 18) return "צהריים";
-  return "ערב";
-}
-
 function normalizeMode(value?: string | null) {
   return value === "video" ? "video" : "physical";
 }
 
+function isLowStockInventoryItem(item: any) {
+  const hasPersonalThreshold = item?.lowStockThreshold !== undefined || item?.low_stock_threshold !== undefined;
+  if (!hasPersonalThreshold && typeof item?.lowStock === "boolean") return item.lowStock;
+
+  const quantity = Number(item?.quantity ?? item?.stock_quantity ?? 0);
+  const threshold = Number(item?.lowStockThreshold ?? item?.low_stock_threshold ?? 5);
+  return quantity <= (Number.isFinite(threshold) ? threshold : 5);
+}
+
 function buildRoleFocus(role: AiUserRole) {
+  if (role === "clinic_admin") return "תמונת מצב ניהולית, פעילות רפואית, שירות, תפעול וגבייה";
   if (role === "secretary") return "תורים, שירות לקוחות, פניות, תיאום וגבייה";
   if (role === "nurse") return "תפעול רפואי, מעבדה, אשפוזים, תורים ותיעוד סיעודי";
   if (role === "vet") return "תיק רפואי, עומס קליני, מעבדה, אשפוזים ותיעוד ביקורים";
@@ -87,13 +86,15 @@ export async function buildDashboardContext(role: AiUserRole) {
     supabase.from("lab_orders").select("lab_order_id", { count: "exact", head: true }).not("status", "eq", "completed").eq("is_urgent", true),
     supabase.from("payments").select("payment_id", { count: "exact", head: true }).in("status", ["unpaid", "partial"]),
     supabase.from("payments").select("payment_id,amount,status").in("status", ["unpaid", "partial"]),
-    supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).neq("status", "closed"),
-    supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).neq("status", "closed").in("priority", ["high", "urgent"]),
-    supabase.from("inventory").select("item_id", { count: "exact", head: true }).lte("stock_quantity", 10),
+    supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).eq("status", "open"),
+    supabase.from("conversations").select("conversation_id", { count: "exact", head: true }).eq("status", "open").in("priority", ["high", "urgent"]),
+    supabase.from("inventory").select("item_id,stock_quantity,low_stock_threshold"),
   ]);
 
   const openPaymentRows = Array.isArray(openPaymentsForTotal.data) ? openPaymentsForTotal.data : [];
   const openPaymentsAmount = openPaymentRows.reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0);
+  const lowStockRows = Array.isArray(lowStockInventory.data) ? lowStockInventory.data : [];
+  const lowStockCount = lowStockRows.filter(isLowStockInventoryItem).length;
 
   return {
     screen: "dashboard",
@@ -110,7 +111,7 @@ export async function buildDashboardContext(role: AiUserRole) {
       billingFollowUps: safeCount(billingFollowUps),
       openDigitalConversations: safeCount(openConversations),
       highPriorityConversations: safeCount(highPriorityConversations),
-      lowStockInventory: safeCount(lowStockInventory),
+      lowStockInventory: lowStockCount,
     },
     reportInsights: {
       billing: {
@@ -118,7 +119,7 @@ export async function buildDashboardContext(role: AiUserRole) {
         openAmount: openPaymentsAmount,
       },
       inventory: {
-        lowStockItems: safeCount(lowStockInventory),
+        lowStockItems: lowStockCount,
       },
       lab: {
         openOrders: role === "secretary" ? 0 : safeCount(openLabOrders),
@@ -182,7 +183,7 @@ export function buildInventoryContext({ items, role }: { items: any[]; role: AiU
     const key = item.categoryLabel || item.category || "ללא קטגוריה";
     if (!acc[key]) acc[key] = { total: 0, low: 0 };
     acc[key].total += 1;
-    if (item.lowStock) acc[key].low += 1;
+    if (isLowStockInventoryItem(item)) acc[key].low += 1;
     return acc;
   }, {});
 
@@ -192,12 +193,12 @@ export function buildInventoryContext({ items, role }: { items: any[]; role: AiU
     roleFocus: buildRoleFocus(role),
     summary: {
       totalItems: items.length,
-      lowStockItems: items.filter((item) => item.lowStock).length,
+      lowStockItems: items.filter(isLowStockInventoryItem).length,
       estimatedStockValue: items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0),
       categorySummary,
     },
     itemsToReview: items
-      .filter((item) => item.lowStock || Number(item.quantity || 0) <= 5)
+      .filter(isLowStockInventoryItem)
       .slice(0, 50)
       .map((item) => ({
         itemName: item.name,
@@ -205,7 +206,7 @@ export function buildInventoryContext({ items, role }: { items: any[]; role: AiU
         category: item.categoryLabel || item.category,
         quantity: item.quantity,
         price: item.price,
-        lowStock: Boolean(item.lowStock),
+        lowStock: isLowStockInventoryItem(item),
       })),
     navigation: navigationContext(role),
   };
@@ -284,12 +285,12 @@ export function buildPortalContext({ pets, appointments, notifications, digitalC
       petsCount: pets.length,
       upcomingAppointments: appointments.length,
       appointmentsToday: appointments.filter((appointment) => String(appointment.start_time || appointment.date || "").startsWith(today)).length,
-      openDigitalConversations: digitalConversations.filter((conversation) => conversation.status !== "closed").length,
+      openDigitalConversations: digitalConversations.filter((conversation) => conversation.status === "open").length,
       unreadNotifications: notifications.filter((notification) => !notification.isRead).length,
       billingFollowUps: billingItems.filter((item) => item.status !== "paid").length,
       hasVideoAppointment: appointments.some((appointment) => normalizeMode(appointment.appointment_mode || appointment.appointmentMode) === "video"),
     },
-    availableActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ", "צפייה במסמכים", "הצטרפות לשיחת וידאו"],
+    availableActions: ["קביעת תור", "פתיחת פנייה", "צירוף קובץ בתוך פנייה", "צפייה בפנקס חיסונים", "הצטרפות לשיחת וידאו"],
     navigation: navigationContext("owner"),
     expectedAnswerStyle: "עזרה באתר בלבד. להפנות לצוות במקרה רפואי.",
   };

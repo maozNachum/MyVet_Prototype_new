@@ -56,6 +56,13 @@ type PatientRow = {
 type Client = OwnerRow & {
   fullName: string;
   pets: PatientRow[];
+  openDebt: number;
+};
+
+type PaymentRow = {
+  owner_id: string | null;
+  amount: number | string | null;
+  status: string | null;
 };
 
 type OwnerEditForm = {
@@ -230,6 +237,7 @@ function isClientMatchingSearch(client: Client, query: string) {
 export function Clients() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const showDebtOnly = searchParams.get("filter") === "debt";
 
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
@@ -264,7 +272,11 @@ export function Clients() {
       setIsLoading(true);
       setErrorMessage(null);
 
-      const [{ data: ownersData, error: ownersError }, { data: patientsData, error: patientsError }] = await Promise.all([
+      const [
+        { data: ownersData, error: ownersError },
+        { data: patientsData, error: patientsError },
+        { data: paymentsData, error: paymentsError },
+      ] = await Promise.all([
         supabase
           .from("owners")
           .select("owner_id, owner_first_name, owner_last_name, phone, email, address, auth_user_id, created_at")
@@ -273,10 +285,15 @@ export function Clients() {
           .from("patients")
           .select("pet_id, pet_name, species, breed, gender, birth_date, microchip, allergies, weight, neutered_status, owner_id, created_at")
           .order("pet_name", { ascending: true }),
+        supabase
+          .from("payments")
+          .select("owner_id, amount, status")
+          .in("status", ["unpaid", "partial"]),
       ]);
 
       if (ownersError) throw ownersError;
       if (patientsError) throw patientsError;
+      if (paymentsError) throw paymentsError;
 
       const petsByOwnerId = new Map<string, PatientRow[]>();
 
@@ -288,12 +305,20 @@ export function Clients() {
         petsByOwnerId.set(ownerId, pets);
       });
 
+      const debtByOwnerId = new Map<string, number>();
+      ((paymentsData ?? []) as PaymentRow[]).forEach((payment) => {
+        const ownerId = normalize(payment.owner_id);
+        if (!ownerId) return;
+        debtByOwnerId.set(ownerId, (debtByOwnerId.get(ownerId) || 0) + Number(payment.amount || 0));
+      });
+
       const mappedClients: Client[] = (ownersData ?? []).map((owner) => {
         const row = owner as OwnerRow;
         return {
           ...row,
           fullName: buildFullName(row),
           pets: petsByOwnerId.get(row.owner_id) ?? [],
+          openDebt: debtByOwnerId.get(row.owner_id) || 0,
         };
       });
 
@@ -317,8 +342,8 @@ export function Clients() {
   );
 
   const filteredClients = useMemo(
-    () => clients.filter((client) => isClientMatchingSearch(client, searchQuery)),
-    [clients, searchQuery]
+    () => clients.filter((client) => (!showDebtOnly || client.openDebt > 0) && isClientMatchingSearch(client, searchQuery)),
+    [clients, searchQuery, showDebtOnly]
   );
 
   const totalPets = useMemo(
@@ -512,7 +537,7 @@ export function Clients() {
 
   if (selectedClient) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
         <button
           onClick={backToList}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
@@ -562,7 +587,7 @@ export function Clients() {
                 <Save className="w-4 h-4" /> עריכת פרטי לקוח
               </button>
               <button
-                onClick={() => navigate(`/portal?owner_id=${selectedClient.owner_id}`)}
+                onClick={() => navigate(`/owner-preview?owner_id=${selectedClient.owner_id}`)}
                 className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold border border-emerald-200"
               >
                 <ExternalLink className="w-4 h-4" /> פתיחת פורטל לקוח
@@ -946,15 +971,15 @@ export function Clients() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 rounded-xl p-2.5">
             <Users className="w-6 h-6 text-[#1e40af]" />
           </div>
           <div>
-            <h1 className="text-gray-900 text-[22px] font-bold">לקוחות</h1>
-            <p className="text-gray-500 text-[14px]">ניהול בעלי חיות וצפייה בחיות המשויכות לכל לקוח</p>
+            <h1 className="text-gray-900 text-[26px] font-bold">לקוחות</h1>
+            <p className="text-gray-500 text-[15px]">ניהול בעלי חיות וצפייה בחיות המשויכות לכל לקוח</p>
           </div>
         </div>
 
@@ -990,6 +1015,12 @@ export function Clients() {
       </div>
 
       <div className="mb-6">
+        {showDebtOnly && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[14px] text-amber-900">
+            <span className="font-semibold">מוצגים רק לקוחות עם יתרה פתוחה ({clients.filter((client) => client.openDebt > 0).length})</span>
+            <button type="button" onClick={() => setSearchParams({})} className="rounded-xl border border-amber-200 bg-white px-3 py-1.5 font-bold hover:bg-amber-100">הצג את כולם</button>
+          </div>
+        )}
         <div className="relative max-w-xl">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
           <input
@@ -1055,6 +1086,13 @@ export function Clients() {
                   <span>נוצר: {formatDate(client.created_at)}</span>
                 </div>
               </div>
+
+              {client.openDebt > 0 && (
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800">
+                  <span>יתרה פתוחה</span>
+                  <span>₪{client.openDebt.toLocaleString("he-IL")}</span>
+                </div>
+              )}
 
               {client.pets.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-1.5">

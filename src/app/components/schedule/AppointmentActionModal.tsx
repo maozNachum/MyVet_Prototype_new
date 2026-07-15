@@ -1,5 +1,5 @@
 import {
-  Calendar, X, Stethoscope, Trash2, CalendarClock,
+  Calendar, Stethoscope, Trash2, CalendarClock,
   Check, Pencil, ChevronDown, AlertTriangle, User, Video, Building2,
 } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -129,7 +129,7 @@ export function AppointmentActionModal({
     }
 
     onClose();
-    navigate(`/patients?selected=${appt.petId || appt.id}`);
+    navigate(appt.petId ? `/patients?selected=${appt.petId}` : "/patients");
   };
 
   return (

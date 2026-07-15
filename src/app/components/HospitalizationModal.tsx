@@ -144,6 +144,8 @@ export function HospitalizationModal({
   const handleOpenHospitalization = async () => {
     if (!validateOpen()) return;
     setIsSaving(true);
+    let createdVisitId: number | null = null;
+    let hospitalizationSaved = false;
 
     try {
       const admittedIso = toIsoOrNull(admittedAt) || new Date().toISOString();
@@ -175,9 +177,10 @@ export function HospitalizationModal({
           admittedAt: admittedIso,
           expectedDischargeAt: expectedIso,
         },
-      });
+      }, { showSuccessToast: false });
 
       if (!visit) throw new Error("הביקור הרפואי לא נשמר");
+      createdVisitId = visit.id;
 
       const { data, error } = await supabase
         .from("hospitalizations")
@@ -199,6 +202,7 @@ export function HospitalizationModal({
         .single();
 
       if (error) throw error;
+      hospitalizationSaved = true;
 
       await updateVisit(visit.id, {
         entryData: {
@@ -212,7 +216,19 @@ export function HospitalizationModal({
       onClose();
     } catch (error: any) {
       console.error("Failed opening hospitalization", error);
-      toast.error(error?.message || "לא הצלחנו לפתוח אשפוז");
+      let rollbackFailed = false;
+      if (createdVisitId && !hospitalizationSaved) {
+        const { error: rollbackError } = await supabase
+          .from("medical_visits")
+          .delete()
+          .eq("visit_id", createdVisitId);
+        rollbackFailed = Boolean(rollbackError);
+      }
+      toast.error(
+        rollbackFailed
+          ? "האשפוז לא נפתח, אך נשמר ביקור חלקי בתיק. בדקו את התיק לפני ניסיון נוסף."
+          : error?.message || "לא הצלחנו לפתוח אשפוז",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -222,6 +238,8 @@ export function HospitalizationModal({
     if (!activeHospitalization) return;
     if (!validateDischarge()) return;
     setIsSaving(true);
+    let hospitalizationUpdated = false;
+    let persistenceComplete = false;
 
     try {
       const dischargeIso = new Date().toISOString();
@@ -236,8 +254,9 @@ export function HospitalizationModal({
         .eq("hospitalization_id", activeHospitalization.hospitalization_id);
 
       if (error) throw error;
+      hospitalizationUpdated = true;
 
-      await addVisit({
+      const dischargeVisit = await addVisit({
         patientId,
         date: dischargeIso,
         vetName: vetName.trim() || activeHospitalization.vet_name || "צוות המרפאה",
@@ -259,14 +278,33 @@ export function HospitalizationModal({
           dischargedAt: dischargeIso,
           dischargeSummary: dischargeSummary.trim(),
         },
-      });
+      }, { showSuccessToast: false });
+      if (!dischargeVisit) throw new Error("סיכום השחרור לא נשמר בתיק הרפואי");
+      persistenceComplete = true;
 
       toast.success("האשפוז נסגר ונוסף סיכום שחרור לתיק הרפואי");
       await onSaved();
       onClose();
     } catch (error: any) {
       console.error("Failed discharging hospitalization", error);
-      toast.error(error?.message || "לא הצלחנו לשחרר מאשפוז");
+      let rollbackFailed = false;
+      if (hospitalizationUpdated && !persistenceComplete && activeHospitalization) {
+        const { error: rollbackError } = await supabase
+          .from("hospitalizations")
+          .update({
+            status: activeHospitalization.status || "active",
+            discharged_at: activeHospitalization.discharged_at || null,
+            discharge_summary: activeHospitalization.discharge_summary || null,
+            notes: activeHospitalization.notes || null,
+          })
+          .eq("hospitalization_id", activeHospitalization.hospitalization_id);
+        rollbackFailed = Boolean(rollbackError);
+      }
+      toast.error(
+        rollbackFailed
+          ? "האשפוז עודכן חלקית ללא סיכום רפואי. בדקו את האשפוז לפני ניסיון נוסף."
+          : error?.message || "לא הצלחנו לשחרר מאשפוז",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -293,7 +331,7 @@ export function HospitalizationModal({
               <p className="text-white/80 text-[13px] mt-0.5">{petName} · בעלים: {ownerName}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="סגור חלון" className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>

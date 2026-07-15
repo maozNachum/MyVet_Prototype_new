@@ -14,10 +14,9 @@ import {
   Video,
 } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
-import { getStaffType } from "../data/staffAuth";
+import { getStaffType, type StaffType } from "../data/staffAuth";
 
 type WorklistTone = "blue" | "emerald" | "amber" | "rose" | "purple" | "gray";
-type StaffType = "vet" | "nurse" | "secretary";
 
 type WorklistAction = {
   id: string;
@@ -105,7 +104,7 @@ async function safeSelect<T = any>(query: PromiseLike<{ data: T[] | null; error:
 
 export function SmartWorklist() {
   const navigate = useNavigate();
-  const role = getStaffType() as StaffType;
+  const role: StaffType = getStaffType();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
   const [labOrders, setLabOrders] = useState<any[]>([]);
@@ -186,8 +185,8 @@ export function SmartWorklist() {
   const actions = useMemo<WorklistAction[]>(() => {
     const next: WorklistAction[] = [];
     const { todayKey } = todayRange();
-    const canSeeMedical = role === "vet" || role === "nurse";
-    const canSeePayments = role === "secretary" || role === "vet";
+    const canSeeMedical = role === "clinic_admin" || role === "vet" || role === "nurse";
+    const canSeePayments = role === "clinic_admin" || role === "secretary" || role === "vet";
 
     const videoAppointments = appointments.filter((appointment) => appointment.appointment_mode === "video");
     const todayVideo = videoAppointments.filter((appointment) => String(appointment.start_time || "").startsWith(todayKey));
@@ -344,7 +343,7 @@ export function SmartWorklist() {
     return next.sort((a, b) => b.priority - a.priority).slice(0, 6);
   }, [appointments, conversations, hospitalizations, inventory, labOrders, payments, role]);
 
-  const headline = role === "secretary" ? "פעולות שירות להיום" : role === "nurse" ? "פעולות סיעודיות להיום" : "פעולות מומלצות להיום";
+  const headline = role === "clinic_admin" ? "פעולות ניהול להיום" : role === "secretary" ? "פעולות שירות להיום" : role === "nurse" ? "פעולות סיעודיות להיום" : "פעולות מומלצות להיום";
 
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" dir="rtl">

@@ -54,6 +54,8 @@ type InventoryFormValues = {
   price: string;
 };
 
+type InventorySortKey = "sku" | "name" | "categoryLabel" | "quantity" | "lowStockThreshold" | "price";
+
 const DEFAULT_LOW_STOCK_THRESHOLD_BY_CATEGORY: Record<InventoryCategory, number> = {
   medication: 5,
   equipment: 2,
@@ -157,6 +159,8 @@ export function Inventory() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<InventorySortKey>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -192,6 +196,8 @@ export function Inventory() {
 
   useEffect(() => {
     const filterFromUrl = searchParams.get("filter");
+    const searchFromUrl = searchParams.get("search");
+    if (searchFromUrl !== null) setSearchQuery(searchFromUrl);
     if (!filterFromUrl) return;
 
     const allowedFilters = new Set(FILTERS.map((filter) => filter.key));
@@ -219,7 +225,23 @@ export function Inventory() {
     if (activeFilter === "all") return true;
     if (activeFilter === "low-stock") return item.lowStock;
     return item.category === activeFilter;
+  }).sort((a, b) => {
+    const aValue = a[sortKey];
+    const bValue = b[sortKey];
+    const comparison = typeof aValue === "number" && typeof bValue === "number"
+      ? aValue - bValue
+      : String(aValue).localeCompare(String(bValue), "he");
+    return sortDirection === "asc" ? comparison : -comparison;
   });
+
+  const toggleSort = (nextKey: InventorySortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((direction) => direction === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection("asc");
+  };
 
   const totalItems = items.length;
   const lowStockCount = items.filter((i) => i.lowStock).length;
@@ -376,7 +398,7 @@ export function Inventory() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
@@ -387,10 +409,10 @@ export function Inventory() {
           })()}
         </div>
         <div>
-          <h1 className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>
+          <h1 className="text-gray-900 text-[26px]" style={{ fontWeight: 700 }}>
             ניהול מלאי
           </h1>
-          <p className="text-gray-500 text-[14px]">ניהול תרופות, ציוד רפואי וחומרים מתכלים</p>
+          <p className="text-gray-500 text-[15px]">ניהול תרופות, ציוד רפואי וחומרים מתכלים</p>
         </div>
         </div>
         <InventoryAssistant items={items} />
@@ -497,23 +519,25 @@ export function Inventory() {
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-100">
                 {[
-                  { label: "מקט", width: "w-[100px]" },
-                  { label: "שם פריט", width: "" },
-                  { label: "קטגוריה", width: "w-[160px]" },
-                  { label: "כמות במלאי", width: "w-[140px]" },
-                  { label: "סף מלאי נמוך", width: "w-[140px]" },
-                  { label: "מחיר ליחידה", width: "w-[130px]" },
-                  { label: "פעולות", width: "w-[130px]" },
+                  { label: "מקט", width: "w-[100px]", sortKey: "sku" as const },
+                  { label: "שם פריט", width: "", sortKey: "name" as const },
+                  { label: "קטגוריה", width: "w-[160px]", sortKey: "categoryLabel" as const },
+                  { label: "כמות במלאי", width: "w-[140px]", sortKey: "quantity" as const },
+                  { label: "סף מלאי נמוך", width: "w-[140px]", sortKey: "lowStockThreshold" as const },
+                  { label: "מחיר ליחידה", width: "w-[130px]", sortKey: "price" as const },
+                  { label: "פעולות", width: "w-[130px]", sortKey: undefined },
                 ].map((col) => (
                   <th
                     key={col.label}
                     className={`text-right px-5 py-4 text-gray-500 text-[13px] ${col.width}`}
                     style={{ fontWeight: 600 }}
                   >
-                    <span className="flex items-center gap-1.5 cursor-pointer hover:text-gray-700 transition-colors">
-                      {col.label}
-                      {col.label !== "פעולות" && <ArrowUpDown className="w-3 h-3 text-gray-300" />}
-                    </span>
+                    {col.sortKey ? (
+                      <button type="button" onClick={() => toggleSort(col.sortKey)} className="flex items-center gap-1.5 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 rounded-md">
+                        {col.label}
+                        <ArrowUpDown className={`h-3.5 w-3.5 ${sortKey === col.sortKey ? "text-blue-600" : "text-gray-300"}`} />
+                      </button>
+                    ) : col.label}
                   </th>
                 ))}
               </tr>

@@ -2,13 +2,13 @@ import { useState, useRef, useCallback, useEffect, type ComponentType } from "re
 import {
   LogOut, Dog, Cat, Calendar, Menu, Home,
   AlertTriangle, Info, FileText, ChevronLeft, ChevronDown,
-  Syringe, Stethoscope, Scissors, Heart, User,
+  Syringe, Stethoscope, Heart, User,
   CalendarPlus, Clock, MapPin, Trash2, CalendarClock, Bell, X,
-  Download, Upload, File, Image, Paperclip, Eye,
+  Download, Paperclip, Eye,
   Receipt, CheckCircle2, CreditCard, AlertCircle,
   MessageCircle, Send, Video, ExternalLink, ShieldCheck, PlusCircle, Loader2,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { Footer } from "../components/Footer";
 import { OwnerBookAppointment } from "../components/OwnerBookAppointment";
 import { SuccessMessage } from "../components/shared/SuccessMessage";
@@ -21,6 +21,8 @@ import { ClientPortalAssistant } from "../components/ai/PageAssistants";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
+import { clearStaffSession } from "../data/staffAuth";
+import { ensureNoAppointmentConflict } from "../data/AppointmentStore";
 import { toast } from "sonner";
 import {
   defaultActionViewForType,
@@ -61,21 +63,6 @@ interface Pet {
 interface FutureAppointment {
   id: number; petName: string; petType: "dog" | "cat" | "other"; petImage: string;
   date: string; time: string; type: string; vet: string; room: string; notes: string;
-}
-
-interface UploadedFile {
-  id: number;
-  documentId: number;
-  name: string;
-  size: number;
-  type: string;
-  petId: number;
-  petName: string;
-  category: string;
-  uploadDate: string;
-  filePath: string;
-  fileUrl?: string | null;
-  previewUrl?: string;
 }
 
 interface DigitalConversation {
@@ -120,36 +107,16 @@ const DIGITAL_STATUS_LABELS: Record<DigitalConversation["status"], string> = {
 };
 
 const DIGITAL_PRIORITY_LABELS: Record<DigitalConversation["priority"], string> = {
-  low: "נמוכה",
+  low: "רגילה",
   normal: "רגילה",
-  high: "גבוהה",
+  high: "דחופה",
   urgent: "דחופה",
 };
-
-const FILE_CATEGORIES = [
-  { key: "vaccination", label: "תעודת חיסון" },
-  { key: "lab", label: "תוצאות מעבדה" },
-  { key: "insurance", label: "ביטוח" },
-  { key: "prescription", label: "מרשם" },
-  { key: "xray", label: "צילום רנטגן" },
-  { key: "invoice", label: "חשבונית / קבלה" },
-  { key: "medical_summary", label: "סיכום רפואי" },
-  { key: "other", label: "אחר" },
-] as const;
-
-const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  FILE_CATEGORIES.map((c) => [c.key, c.label])
-);
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-}
-
-function getFileIcon(type: string) {
-  if (type.startsWith("image/")) return Image;
-  return File;
 }
 
 function getSafeFileExtension(fileName: string) {
@@ -324,17 +291,23 @@ function isPortalView(value: string | null): value is PortalView {
   return Boolean(value) && ["home", "appointments", "digital", "pets", "payments", "notifications", "profile"].includes(value as PortalView);
 }
 
+function portalViewFromUrl(value: string | null): PortalView {
+  if (value === "documents") return "digital";
+  return isPortalView(value) ? value : "home";
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 export function ClientPortal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const ownerIdFromUrl = searchParams.get("owner_id") || searchParams.get("ownerId") || "";
+  const isStaffPreview = location.pathname === "/owner-preview";
 
   const [expandedPet, setExpandedPet] = useState<number | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [activePortalView, setActivePortalView] = useState<PortalView>(() => {
-    const viewFromUrl = searchParams.get("view");
-    return isPortalView(viewFromUrl) ? viewFromUrl : "home";
+    return portalViewFromUrl(searchParams.get("view"));
   });
   const [isPortalMenuOpen, setIsPortalMenuOpen] = useState(false);
 
@@ -361,6 +334,34 @@ export function ClientPortal() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, []);
 
+  const handlePortalLogout = useCallback(async () => {
+    if (isStaffPreview) {
+      navigate("/clients", { replace: true });
+      return;
+    }
+
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Failed to sign out from owner portal", error);
+      toast.error("לא הצלחנו להתנתק כרגע. נסו שוב.");
+      return;
+    }
+
+    clearStaffSession();
+    navigate("/login", { replace: true });
+  }, [isStaffPreview, navigate]);
+
+  const blockStaffPreviewMutation = useCallback(() => {
+    if (!isStaffPreview) return false;
+    toast.info("תצוגת הצוות היא לקריאה בלבד. לביצוע פעולה חזרו למערכת המרפאה.");
+    return true;
+  }, [isStaffPreview]);
+
+  const openOwnerBooking = useCallback(() => {
+    if (blockStaffPreviewMutation()) return;
+    setIsBookingOpen(true);
+  }, [blockStaffPreviewMutation]);
+
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
   const [appointments, setAppointments] = useState<FutureAppointment[]>([]);
@@ -376,9 +377,7 @@ export function ClientPortal() {
 
   useEffect(() => {
     const viewFromUrl = searchParams.get("view");
-    if (isPortalView(viewFromUrl)) {
-      setActivePortalView(viewFromUrl);
-    }
+    setActivePortalView(portalViewFromUrl(viewFromUrl));
   }, [searchParams]);
 
   const [rescheduleAppt, setRescheduleAppt] = useState<FutureAppointment | null>(null);
@@ -418,7 +417,6 @@ export function ClientPortal() {
       setPortalNotifications([]);
       setVisitSummariesByPet({});
       setPaymentsByPet({});
-      setUploadedFiles([]);
       setDigitalConversations([]);
       setDigitalMessages([]);
       setDigitalAttachments([]);
@@ -430,8 +428,38 @@ export function ClientPortal() {
       const ownerSelect = "owner_id, owner_first_name, owner_last_name, phone, email, address, auth_user_id";
       let ownerData: (OwnerProfile & { auth_user_id?: string | null }) | null = null;
 
-      // תמיכה בקישור דמו ישן: /portal?owner_id=...
-      if (requestedOwnerId) {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+
+      const authUser = authData.user;
+      if (!authUser) {
+        clearPortalData();
+        setPortalError("לא זוהה משתמש מחובר. התחברו מחדש כדי לפתוח את האזור האישי.");
+        return;
+      }
+
+      // תצוגת צוות היא נתיב נפרד: רק עובד פעיל יכול לפתוח כרטיס בעלים לפי מזהה.
+      if (isStaffPreview) {
+        if (!requestedOwnerId) {
+          clearPortalData();
+          setPortalError("לא נבחר לקוח לתצוגה מקדימה.");
+          return;
+        }
+
+        const { data: staffData, error: staffError } = await supabase
+          .from("staff")
+          .select("staff_id")
+          .eq("auth_user_id", authUser.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (staffError) throw staffError;
+        if (!staffData) {
+          clearPortalData();
+          setPortalError("אין לחשבון הזה הרשאת צוות לפתיחת תצוגת לקוח.");
+          return;
+        }
+
         const { data, error } = await supabase
           .from("owners")
           .select(ownerSelect)
@@ -443,21 +471,27 @@ export function ClientPortal() {
 
         if (!ownerData) {
           clearPortalData();
-          setPortalError("לא מצאנו אזור אישי עבור המספר שהוזן. בדקו שהקישור נכון או פנו למרפאה.");
+          setPortalError("כרטיס הלקוח שביקשתם אינו קיים.");
+          return;
+        }
+      // owner_id בפורטל הלקוח הוא רק קיצור ניווט, ולעולם אינו עוקף את זהות המשתמש המחובר.
+      } else if (requestedOwnerId) {
+        const { data, error } = await supabase
+          .from("owners")
+          .select(ownerSelect)
+          .eq("owner_id", requestedOwnerId)
+          .eq("auth_user_id", authUser.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        ownerData = data;
+
+        if (!ownerData) {
+          clearPortalData();
+          setPortalError("הקישור לאזור האישי אינו שייך לחשבון המחובר. התחברו לחשבון המתאים או פנו למרפאה.");
           return;
         }
       } else {
-        // מצב אמיתי: /portal ללא owner_id. מזהים את הלקוח לפי Supabase Auth.
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError) throw authError;
-
-        const authUser = authData.user;
-        if (!authUser) {
-          clearPortalData();
-          setPortalError("לא זוהה משתמש מחובר. התחברו מחדש כדי לפתוח את האזור האישי.");
-          return;
-        }
-
         const { data: ownerByAuth, error: ownerByAuthError } = await supabase
           .from("owners")
           .select(ownerSelect)
@@ -650,51 +684,8 @@ export function ClientPortal() {
       setVisitSummariesByPet(summariesByPet);
       setPaymentsByPet(paymentSummariesByPet);
       setPets(mappedPets);
-      setUploadPetId(mappedPets[0]?.id || 0);
-
       let mappedAppointments: FutureAppointment[] = [];
       const petById = new Map(mappedPets.map((pet) => [pet.id, pet]));
-
-      const { data: documentRows, error: documentsError } = await supabase
-        .from("documents")
-        .select("document_id, owner_id, pet_id, visit_id, file_name, file_path, file_url, mime_type, file_size, category, uploaded_at")
-        .eq("owner_id", ownerData.owner_id)
-        .order("uploaded_at", { ascending: false });
-
-      if (documentsError) throw documentsError;
-
-      const mappedDocuments: UploadedFile[] = await Promise.all((documentRows || []).map(async (row: any) => {
-        let signedUrl: string | null = null;
-
-        if (row.file_path) {
-          const { data: signedData } = await supabase.storage
-            .from("documents")
-            .createSignedUrl(row.file_path, 60 * 60);
-
-          signedUrl = signedData?.signedUrl || null;
-        }
-
-        const petId = row.pet_id !== null && row.pet_id !== undefined ? Number(row.pet_id) : 0;
-        const pet = petById.get(petId);
-        const mimeType = row.mime_type || "application/octet-stream";
-
-        return {
-          id: Number(row.document_id),
-          documentId: Number(row.document_id),
-          name: row.file_name || "מסמך",
-          size: Number(row.file_size || 0),
-          type: mimeType,
-          petId,
-          petName: pet?.name || "כללי",
-          category: row.category || "other",
-          uploadDate: formatPortalDate(row.uploaded_at),
-          filePath: row.file_path || "",
-          fileUrl: row.file_url || signedUrl,
-          previewUrl: mimeType.startsWith("image/") ? (signedUrl || row.file_url || undefined) : undefined,
-        };
-      }));
-
-      setUploadedFiles(mappedDocuments);
 
       if (petIds.length > 0) {
         const { data: appointmentRows, error: appointmentsError } = await supabase
@@ -800,7 +791,6 @@ export function ClientPortal() {
       setPortalNotifications([]);
       setVisitSummariesByPet({});
       setPaymentsByPet({});
-      setUploadedFiles([]);
       setDigitalConversations([]);
       setDigitalMessages([]);
       setDigitalAttachments([]);
@@ -809,7 +799,7 @@ export function ClientPortal() {
     } finally {
       setIsPortalLoading(false);
     }
-  }, [ownerIdFromUrl]);
+  }, [isStaffPreview, ownerIdFromUrl]);
 
   useEffect(() => {
     refreshPortalData(ownerIdFromUrl);
@@ -931,16 +921,19 @@ export function ClientPortal() {
         uploadedAt: row.uploaded_at,
       })));
 
-      await supabase
-        .from("messages")
-        .update({ is_read_by_owner: true })
-        .eq("conversation_id", conversationId)
-        .neq("sender_type", "owner");
+      if (!isStaffPreview) {
+        const { error: markOwnerReadError } = await supabase
+          .from("messages")
+          .update({ is_read_by_owner: true })
+          .eq("conversation_id", conversationId)
+          .neq("sender_type", "owner");
+        if (markOwnerReadError) console.error("Failed marking owner messages as read", markOwnerReadError);
+      }
     } catch (error) {
       console.error("Failed to load digital messages", error);
       setDigitalError("לא הצלחנו לטעון את הודעות השיחה.");
     }
-  }, [ownerDisplayName]);
+  }, [isStaffPreview, ownerDisplayName]);
 
   useEffect(() => {
     if (ownerProfile?.owner_id) {
@@ -958,19 +951,15 @@ export function ClientPortal() {
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [digitalMessages.length, selectedConversationId]);
 
-  const refreshDigitalModule = async () => {
-    if (!ownerProfile?.owner_id) return;
-    await loadDigitalConversations(ownerProfile.owner_id);
-    await loadDigitalMessages(selectedConversationId);
-  };
-
   const handleCreateConversation = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!ownerProfile?.owner_id) return;
     if (!newConversationSubject.trim()) {
       toast.error("כתבו נושא קצר לפנייה.");
       return;
     }
 
+    let createdConversationId: number | null = null;
     try {
       setCreatingConversation(true);
       const now = new Date().toISOString();
@@ -993,6 +982,7 @@ export function ClientPortal() {
       if (error) throw error;
 
       const conversationId = Number(conversation.conversation_id);
+      createdConversationId = conversationId;
       const openingText = newConversationText.trim() || `שלום, אשמח להתייעץ לגבי: ${newConversationSubject.trim()}`;
 
       const { error: messageError } = await supabase
@@ -1017,6 +1007,10 @@ export function ClientPortal() {
       await loadDigitalConversations(ownerProfile.owner_id);
       await loadDigitalMessages(conversationId);
     } catch (error) {
+      if (createdConversationId) {
+        await supabase.from("messages").delete().eq("conversation_id", createdConversationId);
+        await supabase.from("conversations").delete().eq("conversation_id", createdConversationId);
+      }
       console.error("Failed to create conversation", error);
       toast.error("לא הצלחנו לפתוח פנייה חדשה. נסה שוב בעוד רגע.");
     } finally {
@@ -1025,17 +1019,19 @@ export function ClientPortal() {
   };
 
   const handleSendOwnerMessage = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!ownerProfile?.owner_id || !selectedConversationId) return;
     if (!messageInput.trim()) {
       toast.error("כתבו הודעה לפני השליחה.");
       return;
     }
 
+    let createdMessageId: number | null = null;
     try {
       setSendingMessage(true);
       const now = new Date().toISOString();
 
-      const { error } = await supabase
+      const { data: createdMessage, error } = await supabase
         .from("messages")
         .insert({
           conversation_id: selectedConversationId,
@@ -1046,19 +1042,24 @@ export function ClientPortal() {
           message_type: "text",
           is_read_by_owner: true,
           is_read_by_staff: false,
-        });
+        })
+        .select("message_id")
+        .single();
 
       if (error) throw error;
+      createdMessageId = Number(createdMessage.message_id);
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
-        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .update({ status: "waiting_staff", closed_at: null, last_message_at: now, updated_at: now })
         .eq("conversation_id", selectedConversationId);
+      if (conversationUpdateError) throw conversationUpdateError;
 
       setMessageInput("");
       await loadDigitalMessages(selectedConversationId);
       if (ownerProfile?.owner_id) await loadDigitalConversations(ownerProfile.owner_id);
     } catch (error) {
+      if (createdMessageId) await supabase.from("messages").delete().eq("message_id", createdMessageId);
       console.error("Failed to send message", error);
       toast.error("לא הצלחנו לשלוח את ההודעה.");
     } finally {
@@ -1079,8 +1080,11 @@ export function ClientPortal() {
     const file = event.target.files?.[0];
     event.target.value = "";
 
+    if (blockStaffPreviewMutation()) return;
     if (!file || !ownerProfile?.owner_id || !selectedConversationId) return;
 
+    let uploadedFilePath: string | null = null;
+    let createdAttachmentMessageId: number | null = null;
     try {
       setUploadingChatFile(true);
       const now = new Date().toISOString();
@@ -1091,6 +1095,7 @@ export function ClientPortal() {
         .upload(filePath, file, { contentType: getStorageContentType(file), upsert: false });
 
       if (uploadError) throw uploadError;
+      uploadedFilePath = filePath;
 
       const isImage = file.type.startsWith("image/");
       const { data: messageData, error: messageError } = await supabase
@@ -1109,6 +1114,7 @@ export function ClientPortal() {
         .single();
 
       if (messageError) throw messageError;
+      createdAttachmentMessageId = Number(messageData.message_id);
 
       const { error: attachmentError } = await supabase
         .from("message_attachments")
@@ -1126,14 +1132,20 @@ export function ClientPortal() {
 
       if (attachmentError) throw attachmentError;
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
-        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .update({ status: "waiting_staff", closed_at: null, last_message_at: now, updated_at: now })
         .eq("conversation_id", selectedConversationId);
+      if (conversationUpdateError) throw conversationUpdateError;
 
       await loadDigitalMessages(selectedConversationId);
       await loadDigitalConversations(ownerProfile.owner_id);
     } catch (error) {
+      if (createdAttachmentMessageId) {
+        await supabase.from("message_attachments").delete().eq("message_id", createdAttachmentMessageId);
+        await supabase.from("messages").delete().eq("message_id", createdAttachmentMessageId);
+      }
+      if (uploadedFilePath) await supabase.storage.from("chat-attachments").remove([uploadedFilePath]);
       console.error("Failed to upload chat attachment", error);
       toast.error("לא הצלחנו להעלות את הקובץ לשיחה. נסה שוב בעוד רגע.");
     } finally {
@@ -1142,20 +1154,29 @@ export function ClientPortal() {
   };
 
   const openChatAttachment = async (attachment: ChatAttachmentSummary) => {
+    const popup = window.open("", "_blank");
     try {
       const { data, error } = await supabase.storage
         .from("chat-attachments")
         .createSignedUrl(attachment.filePath, 60 * 10);
 
       if (error) throw error;
-      if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+      if (!data?.signedUrl) throw new Error("SIGNED_URL_MISSING");
+      if (popup) {
+        popup.opener = null;
+        popup.location.href = data.signedUrl;
+      } else {
+        window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (error) {
+      popup?.close();
       console.error("Failed to open chat attachment", error);
       toast.error("לא הצלחנו לפתוח את הקובץ.");
     }
   };
 
   const handleStartVideoSession = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!ownerProfile?.owner_id || !selectedConversationId) return;
 
     const existingMeetUrl = findLatestMeetUrl(digitalMessages);
@@ -1163,6 +1184,8 @@ export function ClientPortal() {
       window.open(existingMeetUrl, "_blank", "noopener,noreferrer");
       return;
     }
+
+    const popup = window.open("", "_blank");
 
     try {
       setStartingVideo(true);
@@ -1180,7 +1203,12 @@ export function ClientPortal() {
 
       const existingSession = existingSessions?.[0];
       if (existingSession?.meeting_url) {
-        window.open(existingSession.meeting_url, "_blank", "noopener,noreferrer");
+        if (popup) {
+          popup.opener = null;
+          popup.location.href = existingSession.meeting_url;
+        } else {
+          window.open(existingSession.meeting_url, "_blank", "noopener,noreferrer");
+        }
         return;
       }
 
@@ -1214,15 +1242,18 @@ export function ClientPortal() {
 
       if (messageError) throw messageError;
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
-        .update({ status: "waiting_staff", last_message_at: now, updated_at: now })
+        .update({ status: "waiting_staff", closed_at: null, last_message_at: now, updated_at: now })
         .eq("conversation_id", selectedConversationId);
+      if (conversationUpdateError) throw conversationUpdateError;
 
       await loadDigitalMessages(selectedConversationId);
       await loadDigitalConversations(ownerProfile.owner_id);
+      popup?.close();
       toast.success("הבקשה לשיחת וידאו נשלחה לצוות המרפאה.");
     } catch (error) {
+      popup?.close();
       console.error("Failed to request video session", error);
       toast.error("לא הצלחנו לשלוח בקשה לשיחת וידאו.");
     } finally {
@@ -1232,6 +1263,7 @@ export function ClientPortal() {
 
   // 2. עדכון להזזת תור מול Supabase
   const handleReschedule = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!rescheduleAppt) return;
     if (!rescheduleDate || !rescheduleTime) {
       toast.error("בחרו תאריך ושעה חדשים לפני אישור הזזת התור.");
@@ -1246,8 +1278,20 @@ export function ClientPortal() {
 
     try {
       const startTime = new Date(year, month - 1, day, Number(rescheduleTime.split(":")[0]), Number(rescheduleTime.split(":")[1] || 0));
+      if (Number.isNaN(startTime.getTime()) || startTime.getTime() <= Date.now()) {
+        toast.error("בחרו מועד עתידי ותקין להזזת התור.");
+        return;
+      }
       const endTime = new Date(startTime);
       endTime.setMinutes(endTime.getMinutes() + 30);
+      await ensureNoAppointmentConflict({
+        startDate: startTime,
+        endDate: endTime,
+        vet: rescheduleAppt.vet,
+        room: rescheduleAppt.room,
+        mode: rescheduleAppt.room === "דיגיטל" ? "video" : "physical",
+        excludeId: rescheduleAppt.id,
+      });
 
       const { error } = await supabase
         .from("appointments")
@@ -1269,11 +1313,13 @@ export function ClientPortal() {
       }, 1800);
     } catch (e) {
       console.error("Failed to reschedule", e);
+      toast.error("לא הצלחנו להזיז את התור. נסו שוב או פנו למרפאה.");
     }
   };
 
   // 3. עדכון לביטול תור מול ה-Store
   const handleCancel = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!cancelAppt) return;
     try {
       const { error } = await supabase
@@ -1291,10 +1337,12 @@ export function ClientPortal() {
       }, 1800);
     } catch (e) {
       console.error("Failed to cancel", e);
+      toast.error("לא הצלחנו לבטל את התור. נסו שוב או פנו למרפאה.");
     }
   };
 
   const openDemoPayment = (payment: PaymentSummary) => {
+    if (blockStaffPreviewMutation()) return;
     setPaymentSuccess(false);
     setPaymentToPay(payment);
   };
@@ -1314,6 +1362,7 @@ export function ClientPortal() {
   };
 
   const handleDemoPaymentConfirm = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!paymentToPay) return;
 
     try {
@@ -1347,178 +1396,6 @@ export function ClientPortal() {
     }
   };
 
-  // File upload state connected to Supabase Storage + documents table
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadPetId, setUploadPetId] = useState<number>(0);
-  const [uploadCategory, setUploadCategory] = useState<string>("other");
-  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
-  const [deleteConfirmFile, setDeleteConfirmFile] = useState<UploadedFile | null>(null);
-  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
-  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(null);
-
-  const processFiles = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    if (!ownerProfile?.owner_id) {
-      toast.error("לא ניתן להעלות קבצים בלי בעלים מחובר.");
-      return;
-    }
-
-    if (!uploadPetId) {
-      toast.error("בחרו חיה לפני העלאת קובץ.");
-      return;
-    }
-
-    const maxSize = 10 * 1024 * 1024; // 10 MB
-    const pet = pets.find((p) => p.id === uploadPetId);
-    const uploadedEntries: UploadedFile[] = [];
-
-    setIsUploadingFiles(true);
-
-    for (const file of Array.from(files)) {
-      if (file.size > maxSize) {
-        toast.error(`הקובץ "${file.name}" גדול מדי (מקסימום 10MB)`);
-        continue;
-      }
-
-      const safeName = sanitizeStorageFileName(file.name);
-      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
-      const filePath = `${ownerProfile.owner_id}/${uploadPetId}/${uniqueName}`;
-
-      try {
-        const { error: uploadError } = await supabase.storage
-          .from("documents")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: getStorageContentType(file),
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: documentData, error: documentError } = await supabase
-          .from("documents")
-          .insert({
-            owner_id: ownerProfile.owner_id,
-            pet_id: uploadPetId,
-            file_name: file.name,
-            file_path: filePath,
-            mime_type: getStorageContentType(file),
-            file_size: file.size,
-            category: uploadCategory,
-            uploaded_by_role: "owner",
-          })
-          .select("document_id, file_name, file_path, file_url, mime_type, file_size, category, uploaded_at")
-          .single();
-
-        if (documentError) throw documentError;
-
-        const { data: signedData } = await supabase.storage
-          .from("documents")
-          .createSignedUrl(filePath, 60 * 60);
-
-        const signedUrl = signedData?.signedUrl || null;
-        const mimeType = documentData.mime_type || getStorageContentType(file);
-
-        uploadedEntries.push({
-          id: Number(documentData.document_id),
-          documentId: Number(documentData.document_id),
-          name: documentData.file_name || file.name,
-          size: Number(documentData.file_size || file.size),
-          type: mimeType,
-          petId: uploadPetId,
-          petName: pet?.name || "כללי",
-          category: documentData.category || uploadCategory,
-          uploadDate: formatPortalDate(documentData.uploaded_at),
-          filePath: documentData.file_path || filePath,
-          fileUrl: documentData.file_url || signedUrl,
-          previewUrl: mimeType.startsWith("image/") ? (signedUrl || undefined) : undefined,
-        });
-      } catch (error) {
-        console.error("Failed to upload document", error);
-        toast.error(`לא הצלחנו להעלות את הקובץ "${file.name}". נסה שוב בעוד רגע.`);
-      }
-    }
-
-    if (uploadedEntries.length > 0) {
-      setUploadedFiles((prev) => [...uploadedEntries, ...prev]);
-    }
-
-    setIsUploadingFiles(false);
-  }, [ownerProfile, uploadPetId, uploadCategory, pets]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    void processFiles(e.dataTransfer.files);
-  }, [processFiles]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleOpenFile = async (file: UploadedFile) => {
-    try {
-      let url = file.previewUrl || file.fileUrl || null;
-
-      if (!url && file.filePath) {
-        const { data, error } = await supabase.storage
-          .from("documents")
-          .createSignedUrl(file.filePath, 60 * 60);
-
-        if (error) throw error;
-        url = data?.signedUrl || null;
-      }
-
-      if (!url) {
-        toast.error("לא נמצא קישור לקובץ.");
-        return;
-      }
-
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Failed to open document", error);
-      toast.error("לא הצלחנו לפתוח את הקובץ כרגע. נסה שוב בעוד רגע.");
-    }
-  };
-
-  const handleDeleteFile = async (fileToDelete: UploadedFile) => {
-    try {
-      setDeletingDocumentId(fileToDelete.documentId);
-
-      if (fileToDelete.filePath) {
-        const { error: storageError } = await supabase.storage
-          .from("documents")
-          .remove([fileToDelete.filePath]);
-
-        if (storageError) throw storageError;
-      }
-
-      const { error: dbError } = await supabase
-        .from("documents")
-        .delete()
-        .eq("document_id", fileToDelete.documentId);
-
-      if (dbError) throw dbError;
-
-      setUploadedFiles((prev) => prev.filter((f) => f.documentId !== fileToDelete.documentId));
-      setDeleteConfirmFile(null);
-    } catch (error) {
-      console.error("Failed to delete document", error);
-      toast.error("לא הצלחנו למחוק את הקובץ כרגע. נסה שוב בעוד רגע.");
-    } finally {
-      setDeletingDocumentId(null);
-    }
-  };
-
   const allPayments = Object.values(paymentsByPet).flat() as PaymentSummary[];
   const openPayments = allPayments.filter((payment) => isOpenPayment(payment.status));
   const openPaymentsTotal = openPayments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -1532,11 +1409,9 @@ export function ClientPortal() {
 
   const getNotificationTargetView = (notification: PortalNotification): PortalView => {
     const viewFromUrlRaw = extractViewFromActionUrl(notification.actionUrl);
-    if (viewFromUrlRaw === "documents") return "digital";
     if (isPortalView(viewFromUrlRaw)) return viewFromUrlRaw;
 
     const inferredViewRaw = defaultActionViewForType(notification.type);
-    if (inferredViewRaw === "documents") return "digital";
     if (isPortalView(inferredViewRaw)) return inferredViewRaw;
 
     if (notification.type === "document") return "digital";
@@ -1554,7 +1429,7 @@ export function ClientPortal() {
 
   const handleNotificationClick = async (notification: PortalNotification) => {
     try {
-      if (!notification.isRead) {
+      if (!isStaffPreview && !notification.isRead) {
         markNotificationLocallyRead(notification);
         await markPortalNotificationRead(notification.source, notification.sourceId);
       }
@@ -1566,6 +1441,7 @@ export function ClientPortal() {
   };
 
   const handleMarkAllNotificationsRead = async () => {
+    if (blockStaffPreviewMutation()) return;
     if (!ownerProfile?.owner_id || unreadNotificationsCount === 0) return;
 
     const previous = portalNotifications;
@@ -1619,6 +1495,20 @@ export function ClientPortal() {
         </div>
       </header>
 
+      {isStaffPreview && (
+        <div className="w-full border-b border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950" role="status">
+          <div className="mx-auto flex max-w-[560px] items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-amber-700" />
+              <span>תצוגת צוות לקריאה בלבד — פעולות בשם הלקוח חסומות.</span>
+            </div>
+            <button type="button" onClick={() => navigate("/clients")} className="shrink-0 rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-[13px] font-black hover:bg-amber-100">
+              חזרה
+            </button>
+          </div>
+        </div>
+      )}
+
       {isPortalMenuOpen && (
         <div className="fixed inset-0 z-[900] bg-black/35" onClick={() => setIsPortalMenuOpen(false)}>
           <aside
@@ -1628,7 +1518,7 @@ export function ClientPortal() {
             <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
               <div>
                 <p className="text-gray-900 text-[17px] font-bold">האזור האישי</p>
-                <p className="text-gray-500 text-[12px] mt-0.5">{ownerDisplayName}</p>
+                <p className="text-gray-500 text-[13px] mt-0.5">{ownerDisplayName}</p>
               </div>
               <button
                 onClick={() => setIsPortalMenuOpen(false)}
@@ -1658,7 +1548,7 @@ export function ClientPortal() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold">{item.label}</p>
-                      <p className="text-[12px] opacity-70 truncate">{item.description}</p>
+                      <p className="text-[13px] opacity-70 truncate">{item.description}</p>
                     </div>
                   </button>
                 );
@@ -1667,10 +1557,10 @@ export function ClientPortal() {
 
             <div className="p-4 border-t border-gray-100">
               <button
-                onClick={() => navigate("/login")}
+                onClick={handlePortalLogout}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 text-[14px] font-bold cursor-pointer"
               >
-                <LogOut className="w-4 h-4" /> התנתקות
+                <LogOut className="w-4 h-4" /> {isStaffPreview ? "חזרה למערכת" : "התנתקות"}
               </button>
             </div>
           </aside>
@@ -1682,7 +1572,7 @@ export function ClientPortal() {
         <div className="mb-6 sm:mb-8 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[12px] font-bold mb-3">
+              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[13px] font-bold mb-3">
                 <Home className="w-3.5 h-3.5" /> {portalViewLabel(activePortalView)}
               </div>
               <h1 className="text-gray-900 text-[25px] sm:text-[28px] mb-1" style={{ fontWeight: 900 }}>
@@ -1706,7 +1596,7 @@ export function ClientPortal() {
               >
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-gray-500 text-[12px] font-bold">התור הבא</p>
+                    <p className="text-gray-500 text-[13px] font-bold">התור הבא</p>
                     <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{nextAppointment ? nextAppointment.petName : "אין תור קרוב"}</p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
@@ -1724,7 +1614,7 @@ export function ClientPortal() {
               >
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-gray-500 text-[12px] font-bold">התראות חדשות</p>
+                    <p className="text-gray-500 text-[13px] font-bold">התראות חדשות</p>
                     <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{unreadNotificationsCount}</p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500">
@@ -1735,12 +1625,12 @@ export function ClientPortal() {
               </button>
 
               <button
-                onClick={() => openPayments.length > 0 ? goToPortalView("payments") : setIsBookingOpen(true)}
+                onClick={() => openPayments.length > 0 ? goToPortalView("payments") : openOwnerBooking()}
                 className="bg-white border border-gray-100 rounded-3xl p-4 text-right shadow-sm hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-gray-500 text-[12px] font-bold">פעולה מהירה</p>
+                    <p className="text-gray-500 text-[13px] font-bold">פעולה מהירה</p>
                     <p className="text-gray-900 text-[18px] font-extrabold mt-0.5">{openPayments.length > 0 ? `₪${openPaymentsTotal.toLocaleString()}` : "קביעת תור"}</p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
@@ -1791,7 +1681,7 @@ export function ClientPortal() {
 
                 <div className="grid grid-cols-2 gap-2.5 mb-5">
                   <button
-                    onClick={() => setIsBookingOpen(true)}
+                    onClick={openOwnerBooking}
                     className="min-h-[58px] rounded-2xl bg-white text-[#1e40af] px-4 py-3 flex items-center justify-center gap-2 text-[14px] font-black shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
                   >
                     <CalendarPlus className="w-4 h-4" /> קביעת תור
@@ -1808,32 +1698,32 @@ export function ClientPortal() {
                 <div className="grid grid-cols-3 gap-2.5 text-center">
                   <button onClick={() => goToPortalView("appointments")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
                     <p className="text-[20px] font-black leading-none">{appointments.length}</p>
-                    <p className="text-[11px] text-blue-50 mt-1 font-bold">תורים</p>
+                    <p className="text-[12px] text-blue-50 mt-1 font-bold">תורים</p>
                   </button>
                   <button onClick={() => goToPortalView("notifications")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
                     <p className="text-[20px] font-black leading-none">{unreadNotificationsCount}</p>
-                    <p className="text-[11px] text-blue-50 mt-1 font-bold">חדשות</p>
+                    <p className="text-[12px] text-blue-50 mt-1 font-bold">חדשות</p>
                   </button>
                   <button onClick={() => goToPortalView("digital")} className="rounded-2xl bg-white/12 border border-white/15 px-2 py-3 cursor-pointer">
                     <p className="text-[20px] font-black leading-none">{activeDigitalCount}</p>
-                    <p className="text-[11px] text-blue-50 mt-1 font-bold">שיחות</p>
+                    <p className="text-[12px] text-blue-50 mt-1 font-bold">שיחות</p>
                   </button>
                 </div>
               </div>
             </section>
 
             <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-3 border-b border-blue-100/70 bg-gradient-to-l from-blue-50/90 via-indigo-50/40 to-white p-5">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
                     <CalendarClock className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-gray-900 text-[16px] font-black">תורים עתידיים</h3>
-                    <p className="text-gray-500 text-[12px] font-semibold">{appointments.length} תורים קבועים</p>
+                    <p className="text-gray-500 text-[13px] font-semibold">{appointments.length} תורים קבועים</p>
                   </div>
                 </div>
-                <button onClick={() => goToPortalView("appointments")} className="text-[#1e40af] text-[12px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
+                <button onClick={() => goToPortalView("appointments")} className="text-[#1e40af] text-[13px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
                   הכל
                 </button>
               </div>
@@ -1843,8 +1733,8 @@ export function ClientPortal() {
                   <div className="rounded-[24px] bg-gray-50 border border-gray-100 p-5 text-center">
                     <Calendar className="w-9 h-9 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-900 text-[14px] font-black">אין תור קרוב</p>
-                    <p className="text-gray-500 text-[12px] leading-5 mt-1">אפשר לקבוע תור חדש בלחיצה אחת.</p>
-                    <button onClick={() => setIsBookingOpen(true)} className="mt-4 w-full rounded-2xl bg-[#1e40af] text-white py-3 text-[13px] font-black cursor-pointer">
+                    <p className="text-gray-500 text-[13px] leading-5 mt-1">אפשר לקבוע תור חדש בלחיצה אחת.</p>
+                    <button onClick={openOwnerBooking} className="mt-4 w-full rounded-2xl bg-[#1e40af] text-white py-3 text-[13px] font-black cursor-pointer">
                       קביעת תור
                     </button>
                   </div>
@@ -1856,7 +1746,7 @@ export function ClientPortal() {
                       <img src={appt.petImage} alt={appt.petName} className="w-12 h-12 rounded-2xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-gray-900 text-[14px] font-black truncate">{appt.petName} · {appt.type}</p>
-                        <p className="text-gray-500 text-[12px] font-semibold mt-1">{appt.date} · {appt.time}</p>
+                        <p className="text-gray-500 text-[13px] font-semibold mt-1">{appt.date} · {appt.time}</p>
                       </div>
                       <button onClick={() => goToPortalView("appointments")} className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-500 cursor-pointer">
                         <ChevronLeft className="w-5 h-5" />
@@ -1874,29 +1764,29 @@ export function ClientPortal() {
                   <Heart className="w-5 h-5" />
                 </div>
                 <p className="text-gray-900 text-[14px] font-black">החיות שלי</p>
-                <p className="text-gray-500 text-[12px] font-semibold mt-1">{pets.length} חיות רשומות</p>
+                <p className="text-gray-500 text-[13px] font-semibold mt-1">{pets.length} חיות רשומות</p>
               </button>
               <button onClick={() => goToPortalView("digital")} className="rounded-[26px] bg-white border border-gray-100 p-4 text-right shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
                 <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1e40af] mb-3">
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <p className="text-gray-900 text-[14px] font-black">מרפאה דיגיטלית</p>
-                <p className="text-gray-500 text-[12px] font-semibold mt-1">{activeDigitalCount} שיחות פעילות</p>
+                <p className="text-gray-500 text-[13px] font-semibold mt-1">{activeDigitalCount} שיחות פעילות</p>
               </button>
             </section>
 
             <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-3 border-b border-orange-100/70 bg-gradient-to-l from-orange-50/90 via-amber-50/40 to-white p-5">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center">
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-gray-900 text-[16px] font-black">מרכז עדכונים</h3>
-                    <p className="text-gray-500 text-[12px] font-semibold">{unreadNotificationsCount > 0 ? `${unreadNotificationsCount} חדשים` : "הכול מעודכן"}</p>
+                    <p className="text-gray-500 text-[13px] font-semibold">{unreadNotificationsCount > 0 ? `${unreadNotificationsCount} חדשים` : "הכול מעודכן"}</p>
                   </div>
                 </div>
-                <button onClick={() => goToPortalView("notifications")} className="text-[#1e40af] text-[12px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
+                <button onClick={() => goToPortalView("notifications")} className="text-[#1e40af] text-[13px] font-black rounded-full bg-blue-50 px-3 py-1.5 border border-blue-100 cursor-pointer">
                   הכל
                 </button>
               </div>
@@ -1907,14 +1797,14 @@ export function ClientPortal() {
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <p className="text-gray-900 text-[14px] font-black">הכול מעודכן</p>
-                  <p className="text-gray-500 text-[12px] leading-5 mt-1">אין כרגע עדכונים חדשים.</p>
+                  <p className="text-gray-500 text-[13px] leading-5 mt-1">אין כרגע עדכונים חדשים.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {latestNotifications.map((notif) => {
                     const s = NOTIF_STYLE[notif.type];
                     return (
-                      <button key={notif.id} onClick={() => handleNotificationClick(notif)} className="w-full p-4 flex items-start gap-3 text-right hover:bg-gray-50 transition-colors cursor-pointer">
+                      <button key={notif.id} onClick={() => handleNotificationClick(notif)} className={`w-full p-4 flex items-start gap-3 text-right transition-colors cursor-pointer ${notif.isRead ? "hover:bg-gray-50" : "bg-blue-50/35 hover:bg-blue-50/60"}`}>
                         <div className={`w-11 h-11 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 border border-gray-100`}>
                           <s.Icon className={`w-5 h-5 ${s.iconColor}`} />
                         </div>
@@ -1923,9 +1813,9 @@ export function ClientPortal() {
                             <p className="text-gray-900 text-[14px] font-black truncate">{notif.title}</p>
                             {!notif.isRead && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
                           </div>
-                          <p className="text-gray-500 text-[12px] font-semibold">{notif.petName} · {notif.date}</p>
-                          <p className="text-gray-600 text-[12px] leading-5 mt-1 line-clamp-2">{notif.text}</p>
-                          <span className="inline-flex items-center gap-1 text-[#1e40af] text-[12px] font-black mt-2">
+                          <p className="text-gray-500 text-[13px] font-semibold">{notif.petName} · {notif.date}</p>
+                          <p className="text-gray-600 text-[13px] leading-5 mt-1 line-clamp-2">{notif.text}</p>
+                          <span className="inline-flex items-center gap-1 text-[#1e40af] text-[13px] font-black mt-2">
                             {portalActionLabelForType(notif.type)} <ChevronLeft className="w-3.5 h-3.5" />
                           </span>
                         </div>
@@ -1964,14 +1854,14 @@ export function ClientPortal() {
 
         {activePortalView === "notifications" && (
           <section className="rounded-[30px] bg-white border border-gray-100 shadow-sm overflow-hidden mb-5">
-            <div className="p-5 flex items-center justify-between gap-3 border-b border-gray-100">
+            <div className="flex items-center justify-between gap-3 border-b border-orange-100/70 bg-gradient-to-l from-orange-50/90 via-amber-50/40 to-white p-5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center">
                   <Bell className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-gray-900 text-[17px] font-black">מרכז עדכונים</h2>
-                  <p className="text-gray-500 text-[12px] font-semibold">
+                  <p className="text-gray-500 text-[13px] font-semibold">
                     {portalNotifications.length} עדכונים · {unreadNotificationsCount} חדשים
                   </p>
                 </div>
@@ -1981,7 +1871,7 @@ export function ClientPortal() {
                 type="button"
                 onClick={handleMarkAllNotificationsRead}
                 disabled={unreadNotificationsCount === 0}
-                className="rounded-full bg-blue-50 disabled:bg-gray-50 text-[#1e40af] disabled:text-gray-400 border border-blue-100 disabled:border-gray-100 px-3 py-1.5 text-[12px] font-black cursor-pointer disabled:cursor-not-allowed"
+                className="rounded-full bg-blue-50 disabled:bg-gray-50 text-[#1e40af] disabled:text-gray-400 border border-blue-100 disabled:border-gray-100 px-3 py-1.5 text-[13px] font-black cursor-pointer disabled:cursor-not-allowed"
               >
                 סמן הכל כנקרא
               </button>
@@ -2072,7 +1962,7 @@ export function ClientPortal() {
                           </div>
                           <p className="text-gray-500 text-[12px] mb-1" style={{ fontWeight: 600 }}>{notif.petName}</p>
                           <p className="text-gray-600 text-[13px] mb-3" style={{ lineHeight: 1.6 }}>{notif.text}</p>
-                          <button onClick={() => setIsBookingOpen(true)} className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm" style={{ fontWeight: 500 }}>
+                          <button onClick={openOwnerBooking} className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm" style={{ fontWeight: 500 }}>
                             <Calendar className="w-3 h-3" /> קבע תור
                           </button>
                         </div>
@@ -2401,7 +2291,7 @@ export function ClientPortal() {
               </div>
               <div className="flex items-center gap-3">
                 <span
-                  onClick={(e) => { e.stopPropagation(); setIsBookingOpen(true); }}
+                  onClick={(e) => { e.stopPropagation(); openOwnerBooking(); }}
                   className="flex items-center gap-1.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
                   style={{ fontWeight: 500 }}
                 >
@@ -2417,7 +2307,7 @@ export function ClientPortal() {
                   <div className="text-center py-10 text-gray-500 font-medium">
                     <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-[14px]">אין תורים עתידיים</p>
-                    <button onClick={() => setIsBookingOpen(true)} className="mt-3 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer transition-colors" style={{ fontWeight: 500 }}>קבעו תור חדש</button>
+                    <button onClick={openOwnerBooking} className="mt-3 text-[#1e40af] text-[13px] hover:text-[#1e3a8a] cursor-pointer transition-colors" style={{ fontWeight: 500 }}>קבעו תור חדש</button>
                   </div>
                 ) : (
                   appointments.map((appt) => (
@@ -2749,10 +2639,10 @@ export function ClientPortal() {
               </div>
               <div className="px-5 pb-5">
                 <button
-                  onClick={() => navigate("/login")}
+                  onClick={handlePortalLogout}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 px-5 py-3 text-[14px] font-bold cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" /> התנתקות
+                  <LogOut className="w-4 h-4" /> {isStaffPreview ? "חזרה למערכת" : "התנתקות"}
                 </button>
               </div>
             </div>
@@ -2941,7 +2831,7 @@ export function ClientPortal() {
       )}
 
       <OwnerBookAppointment
-        isOpen={isBookingOpen}
+        isOpen={isBookingOpen && !isStaffPreview}
         onClose={() => setIsBookingOpen(false)}
         pets={pets}
         ownerName={ownerDisplayName}
@@ -2949,69 +2839,6 @@ export function ClientPortal() {
         ownerEmail={ownerProfile?.email || ""}
         onAppointmentCreated={refreshPortalData}
       />
-
-      {/* ── Image Preview Modal ── */}
-      {previewFile && (
-        <ModalOverlay onClose={() => setPreviewFile(null)} maxWidth="max-w-2xl" zIndex="z-[300]">
-          <div className="relative">
-            <button
-              onClick={() => setPreviewFile(null)}
-              className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={previewFile.previewUrl}
-              alt={previewFile.name}
-              className="w-full rounded-2xl object-contain max-h-[70vh]"
-            />
-            <div className="px-5 py-4 border-t border-gray-100">
-              <p className="text-gray-900 text-[14px] truncate" style={{ fontWeight: 600 }}>{previewFile.name}</p>
-              <p className="text-gray-500 font-medium text-[12px]">{previewFile.petName} · {CATEGORY_LABELS[previewFile.category]} · {previewFile.uploadDate}</p>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
-
-      {/* ── Delete Confirm Modal ── */}
-      {deleteConfirmFile && (
-        <ModalOverlay onClose={() => setDeleteConfirmFile(null)} maxWidth="max-w-sm" zIndex="z-[300]">
-          <div className="bg-red-50 px-6 py-5 flex flex-col items-center text-center border-b border-red-100">
-            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-3">
-              <Trash2 className="w-7 h-7 text-red-500" />
-            </div>
-            <h3 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מחיקת קובץ</h3>
-            <p className="text-gray-500 text-[13px]">האם למחוק את הקובץ?</p>
-          </div>
-          <div className="p-6">
-            <div className="bg-gray-50 rounded-xl p-4 mb-5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                <File className="w-5 h-5 text-violet-500" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-gray-900 text-[13px] truncate" style={{ fontWeight: 600 }}>{deleteConfirmFile.name}</p>
-                <p className="text-gray-500 font-medium text-[13px]">{deleteConfirmFile.petName} · {formatFileSize(deleteConfirmFile.size)}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => void handleDeleteFile(deleteConfirmFile)}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2"
-                style={{ fontWeight: 600 }}
-              >
-                <Trash2 className="w-4 h-4" /> {deletingDocumentId === deleteConfirmFile.documentId ? "מוחק..." : "כן, מחקו"}
-              </button>
-              <button
-                onClick={() => setDeleteConfirmFile(null)}
-                className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]"
-                style={{ fontWeight: 500 }}
-              >
-                ביטול
-              </button>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
 
       <div className="portal-floating-ai fixed bottom-5 left-4 z-[240]">
         <ClientPortalAssistant

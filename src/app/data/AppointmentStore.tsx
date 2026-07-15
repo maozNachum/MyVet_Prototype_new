@@ -94,6 +94,60 @@ function buildDateTime(year: number, month: number, day: number, time: string) {
   return new Date(year, month, day, hours || 0, minutes || 0, 0, 0);
 }
 
+export function validateAppointmentWindow(startDate: Date, endDate: Date, requireFuture = true) {
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error("תאריך או שעת התור אינם תקינים");
+  }
+  if (endDate.getTime() <= startDate.getTime()) {
+    throw new Error("שעת הסיום חייבת להיות מאוחרת משעת ההתחלה");
+  }
+  if (requireFuture && startDate.getTime() <= Date.now()) {
+    throw new Error("אפשר לקבוע או להזיז תור רק למועד עתידי");
+  }
+}
+
+export async function ensureNoAppointmentConflict({
+  startDate,
+  endDate,
+  vet,
+  room,
+  mode,
+  excludeId,
+}: {
+  startDate: Date;
+  endDate: Date;
+  vet?: string;
+  room?: string;
+  mode: AppointmentMode;
+  excludeId?: number;
+}) {
+  let query = supabase
+    .from("appointments")
+    .select("appointment_id, vet_name, room, start_time, end_time")
+    .lt("start_time", endDate.toISOString())
+    .gt("end_time", startDate.toISOString());
+
+  if (excludeId) query = query.neq("appointment_id", excludeId);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const normalizedVet = (vet || "").trim();
+  const normalizedRoom = (room || "").trim();
+  const checkVet = Boolean(normalizedVet && !normalizedVet.includes("טרם"));
+  const checkRoom = Boolean(mode === "physical" && normalizedRoom && !["-", "—"].includes(normalizedRoom));
+  const conflict = (data || []).find((row: any) =>
+    (checkVet && String(row.vet_name || "").trim() === normalizedVet) ||
+    (checkRoom && String(row.room || "").trim() === normalizedRoom),
+  );
+
+  if (conflict) {
+    const reason = checkVet && String(conflict.vet_name || "").trim() === normalizedVet
+      ? `הרופא/ה ${normalizedVet} כבר משובצ/ת בזמן הזה`
+      : `החדר ${normalizedRoom} כבר תפוס בזמן הזה`;
+    throw new Error(reason);
+  }
+}
+
 function fullName(first?: string | null, last?: string | null) {
   return `${first || ""} ${last || ""}`.trim();
 }
@@ -173,7 +227,6 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
 
       const mapped: CalendarAppointment[] = rows.map((row: any) => {
         const start = new Date(row.start_time);
-        const end = new Date(row.end_time || row.start_time);
         const pet = petById.get(Number(row.pet_id));
         const owner = pet?.owner_id ? ownerById.get(String(pet.owner_id)) : undefined;
         const appointmentMode = normalizeAppointmentMode(row.appointment_mode);
@@ -278,6 +331,14 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         const startDate = buildDateTime(appt.year, appt.month, appt.day, appt.time);
         const endDate = buildDateTime(appt.year, appt.month, appt.day, appt.endTime || appt.time);
         const appointmentMode = normalizeAppointmentMode(appt.appointmentMode);
+        validateAppointmentWindow(startDate, endDate);
+        await ensureNoAppointmentConflict({
+          startDate,
+          endDate,
+          vet: appt.vet,
+          room: appt.room,
+          mode: appointmentMode,
+        });
 
         const { error: insertError } = await supabase.from("appointments").insert([
           {
@@ -352,8 +413,19 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       setError(null);
 
       try {
+        const current = calendarAppointments.find((appointment) => appointment.id === id);
+        if (!current) throw new Error("התור לא נמצא");
         const startDate = buildDateTime(newYear, newMonth, newDay, newTime);
         const endDate = buildDateTime(newYear, newMonth, newDay, newEndTime || newTime);
+        validateAppointmentWindow(startDate, endDate);
+        await ensureNoAppointmentConflict({
+          startDate,
+          endDate,
+          vet: current.vet,
+          room: current.room,
+          mode: normalizeAppointmentMode(current.appointmentMode),
+          excludeId: id,
+        });
 
         const { error: updateError } = await supabase
           .from("appointments")
@@ -419,6 +491,21 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         if (updates.endTime !== undefined) {
           const endDate = buildDateTime(current.year, current.month, current.day, updates.endTime);
           patch.end_time = endDate.toISOString();
+        }
+
+        const schedulingChanged = updates.time !== undefined || updates.endTime !== undefined || updates.vet !== undefined || updates.room !== undefined || updates.appointmentMode !== undefined;
+        if (schedulingChanged) {
+          const nextStart = buildDateTime(current.year, current.month, current.day, updates.time ?? current.time);
+          const nextEnd = buildDateTime(current.year, current.month, current.day, updates.endTime ?? current.endTime);
+          validateAppointmentWindow(nextStart, nextEnd, updates.time !== undefined || updates.endTime !== undefined);
+          await ensureNoAppointmentConflict({
+            startDate: nextStart,
+            endDate: nextEnd,
+            vet: updates.vet ?? current.vet,
+            room: updates.room ?? current.room,
+            mode: normalizeAppointmentMode(updates.appointmentMode ?? current.appointmentMode),
+            excludeId: id,
+          });
         }
 
         const { error: updateError } = await supabase

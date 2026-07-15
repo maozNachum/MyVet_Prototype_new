@@ -78,7 +78,10 @@ interface MedicalStoreValue {
   isLoading: boolean;
   error: string | null;
   loadMedicalData: () => Promise<void>;
-  addVisit: (visit: Omit<MedicalVisit, "id">) => Promise<MedicalVisit | null>;
+  addVisit: (
+    visit: Omit<MedicalVisit, "id">,
+    options?: { showSuccessToast?: boolean },
+  ) => Promise<MedicalVisit | null>;
   updateVisit: (id: number, updates: Partial<MedicalVisit>) => Promise<void>;
   deleteVisit: (id: number) => Promise<void>;
   addPrescription: (prescription: Omit<Prescription, "id">) => Promise<Prescription | null>;
@@ -266,7 +269,10 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
     loadMedicalData();
   }, [loadMedicalData]);
 
-  const addVisit = useCallback(async (visit: Omit<MedicalVisit, "id">) => {
+  const addVisit = useCallback(async (
+    visit: Omit<MedicalVisit, "id">,
+    options: { showSuccessToast?: boolean } = {},
+  ) => {
     setIsLoading(true);
     setError(null);
 
@@ -301,7 +307,9 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
 
       const mapped = mapVisitRow(data);
       setVisits((prev) => [mapped, ...prev.filter((v) => v.id !== mapped.id)]);
-      toast.success("הביקור הרפואי נשמר בהצלחה");
+      if (options.showSuccessToast !== false) {
+        toast.success("הביקור הרפואי נשמר בהצלחה");
+      }
       return mapped;
     } catch (err: any) {
       console.error("Failed adding medical visit", err);
@@ -394,7 +402,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
           frequency: prescription.frequency,
           duration: prescription.duration,
           start_date: prescription.startDate || new Date().toISOString().slice(0, 10),
-          prescribed_by: null,
+          prescribed_by: prescription.prescribedBy || null,
         })
         .select("*")
         .single();

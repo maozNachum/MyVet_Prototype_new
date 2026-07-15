@@ -129,6 +129,7 @@ export function NewAppointment() {
   const prefilledDate = searchParams.get("date") || "";
   const prefilledTime = searchParams.get("time") || "";
   const prefilledVet = searchParams.get("vet") || "";
+  const prefilledPetId = searchParams.get("pet_id") || "";
   const { addAppointment } = useAppointmentStore();
   const { members: vetStaff, isLoading: isLoadingStaff } = useStaffMembers([
     "vet",
@@ -147,7 +148,7 @@ export function NewAppointment() {
     resolver: zodResolver(appointmentSchema),
     mode: "onChange",
     defaultValues: {
-      patient: "",
+      patient: prefilledPetId,
       date: prefilledDate,
       time: prefilledTime,
       reason: "",

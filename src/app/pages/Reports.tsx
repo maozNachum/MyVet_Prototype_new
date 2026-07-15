@@ -61,14 +61,14 @@ export function Reports() {
   };
 
   return (
-    <main className="max-w-[1400px] mx-auto px-6 py-6 min-h-screen">
+    <main className="max-w-[1400px] mx-auto px-4 py-6 min-h-screen sm:px-6">
       <div className="flex items-center gap-3.5 mb-6">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1e40af] to-[#6366f1] flex items-center justify-center shadow-md shrink-0">
           <BarChart3 className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-gray-900 text-[24px] font-bold">דוחות ותובנות</h1>
-          <p className="text-gray-500 text-[14px]">מבט מהיר על פעילות המרפאה, תשלומים, מלאי ומעקב לקוחות</p>
+          <h1 className="text-gray-900 text-[26px] font-bold">דוחות ותובנות</h1>
+          <p className="text-gray-500 text-[15px]">מבט מהיר על פעילות המרפאה, תשלומים, מלאי ומעקב לקוחות</p>
         </div>
       </div>
 
@@ -112,8 +112,12 @@ export function Reports() {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto justify-end">
-          <button onClick={handleExport} className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 font-semibold shadow-sm">
-            <Download className="w-4 h-4" /> Excel
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl transition-colors cursor-pointer text-[13px] border border-emerald-200 font-semibold shadow-sm"
+            title="ייצוא תקציר הדוח הפעיל לקובץ Excel"
+          >
+            <Download className="w-4 h-4" /> ייצוא תקציר ל־Excel
           </button>
         </div>
       </div>

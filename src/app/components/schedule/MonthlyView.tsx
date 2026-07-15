@@ -128,6 +128,18 @@ export function MonthlyView({
                 >
                   {day}
                 </span>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCreateAppointment(date);
+                  }}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/80 text-blue-700 transition-colors hover:border-blue-200 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                  title="קבע תור ביום זה"
+                  aria-label={`קבע תור ביום ${day}/${currentMonth + 1}/${currentYear}`}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
               </div>
 
               <div className="space-y-0.5">
@@ -143,20 +155,6 @@ export function MonthlyView({
                   </div>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCreateAppointment(date);
-                }}
-                className="absolute inset-x-2 bottom-2 hidden items-center justify-center gap-1 rounded-xl border border-dashed border-blue-200 bg-white/90 px-2 py-2 text-[11px] font-semibold text-blue-700 shadow-sm backdrop-blur-sm transition hover:bg-blue-50 group-hover:flex focus:flex"
-                title="קבע תור ביום זה"
-                aria-label={`קבע תור ביום ${day}/${currentMonth + 1}/${currentYear}`}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                קבע תור ביום זה
-              </button>
             </div>
           );
         })}

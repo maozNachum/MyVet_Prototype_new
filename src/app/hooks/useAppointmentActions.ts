@@ -70,28 +70,40 @@ export function useAppointmentActions() {
     }
   }, []);
 
-  const handleReschedule = useCallback(() => {
+  const handleReschedule = useCallback(async () => {
     if (!selectedAppt || !rescheduleDate || !rescheduleTime) return;
-    store.rescheduleAppointment(
-      selectedAppt.id, rescheduleDate.day, rescheduleDate.month,
-      rescheduleDate.year, rescheduleTime, addMinutes(rescheduleTime, 30), "staff"
-    );
-    setRescheduleSuccess(true);
-    setTimeout(closeModal, 1800);
+    try {
+      await store.rescheduleAppointment(
+        selectedAppt.id, rescheduleDate.day, rescheduleDate.month,
+        rescheduleDate.year, rescheduleTime, addMinutes(rescheduleTime, 30), "staff"
+      );
+      setRescheduleSuccess(true);
+      setTimeout(closeModal, 1800);
+    } catch (error) {
+      console.error("Failed to reschedule appointment", error);
+    }
   }, [selectedAppt, rescheduleDate, rescheduleTime, store, closeModal]);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = useCallback(async () => {
     if (!selectedAppt) return;
-    store.editAppointment(selectedAppt.id, { ...editForm }, "staff");
-    setEditSuccess(true);
-    setTimeout(closeModal, 1800);
+    try {
+      await store.editAppointment(selectedAppt.id, { ...editForm }, "staff");
+      setEditSuccess(true);
+      setTimeout(closeModal, 1800);
+    } catch (error) {
+      console.error("Failed to edit appointment", error);
+    }
   }, [selectedAppt, editForm, store, closeModal]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!selectedAppt) return;
-    store.deleteAppointment(selectedAppt.id, "staff");
-    setDeleteSuccess(true);
-    setTimeout(closeModal, 1800);
+    try {
+      await store.deleteAppointment(selectedAppt.id, "staff");
+      setDeleteSuccess(true);
+      setTimeout(closeModal, 1800);
+    } catch (error) {
+      console.error("Failed to delete appointment", error);
+    }
   }, [selectedAppt, store, closeModal]);
 
   return {

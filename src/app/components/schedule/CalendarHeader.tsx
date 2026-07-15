@@ -70,10 +70,10 @@ export function CalendarHeader({
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
           </div>
-          <h1 className="text-gray-900 text-[22px]" style={{ fontWeight: 700 }}>{title}</h1>
+          <h1 className="text-gray-900 text-[24px]" style={{ fontWeight: 700 }}>{title}</h1>
           <button
             onClick={onToday}
-            className="text-[12px] text-[#1e40af] border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-[13px] text-[#1e40af] border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
             style={{ fontWeight: 500 }}
           >
             היום
@@ -88,7 +88,7 @@ export function CalendarHeader({
               <button
                 key={v.key}
                 onClick={() => { setViewMode(v.key); onCloseSidebar(); }}
-                className={`px-4 py-1.5 rounded-lg text-[13px] transition-all cursor-pointer ${
+                className={`px-4 py-1.5 rounded-lg text-[14px] transition-all cursor-pointer ${
                   viewMode === v.key
                     ? "bg-white shadow-sm text-gray-900"
                     : "text-gray-500 hover:text-gray-700"
@@ -131,7 +131,7 @@ export function CalendarHeader({
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="חיפוש מהיר ביומן — שם חיה, בעלים, סוג טיפול, וטרינר..."
           dir="rtl"
-          className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] text-gray-700 placeholder:text-gray-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
+          className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-[14px] text-gray-700 placeholder:text-gray-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         />
         {searchQuery && (

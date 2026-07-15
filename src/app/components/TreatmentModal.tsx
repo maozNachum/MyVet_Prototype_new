@@ -4,7 +4,6 @@ import {
   Stethoscope,
   Plus,
   Trash2,
-  Check,
   Pill,
   TestTube,
   ClipboardList,
@@ -14,7 +13,6 @@ import {
   Cat,
   Loader2,
   FileText,
-  Activity,
   Syringe,
   Scale,
   AlertTriangle,
@@ -27,9 +25,11 @@ import {
   type DifferentialLikelihood,
 } from "../data/MedicalStore";
 import { useLabStore } from "../data/LabStore";
-import { getStaffLabel } from "../data/staffAuth";
+import { getStaffName } from "../data/staffAuth";
 import { supabase } from "../../services/supabaseClient";
 import { VisitPostSaveActionsModal } from "./VisitPostSaveActionsModal";
+
+const VACCINATIONS_CHANGED_EVENT = "myvet:vaccinations-changed";
 
 interface TreatmentModalProps {
   isOpen: boolean;
@@ -218,18 +218,6 @@ function getEntryTypeConfig(entryType: EntryType) {
   return entryTypes.find((item) => item.id === entryType) || entryTypes[0];
 }
 
-function urgencyLabel(value: UrgencyLevel) {
-  return severityOptions.find((option) => option.value === value)?.label || "רגיל";
-}
-
-function statusLabel(value: MedicalProblemStatus) {
-  return problemStatusOptions.find((option) => option.value === value)?.label || "פעיל";
-}
-
-function likelihoodLabel(value: DifferentialLikelihood) {
-  return likelihoodOptions.find((option) => option.value === value)?.label || "אפשרית";
-}
-
 function scrollToFirstError(errors: ValidationErrors) {
   const firstField = Object.keys(errors)[0];
   if (!firstField) return;
@@ -261,7 +249,7 @@ export function TreatmentModal({
     loadMedicalData,
   } = useMedicalStore();
   const { addLabOrder } = useLabStore();
-  const currentVet = getStaffLabel();
+  const currentVet = getStaffName();
 
   const [entryType, setEntryType] = useState<EntryType>("full_exam");
   const [visitDate, setVisitDate] = useState(todayInputValue());
@@ -627,6 +615,9 @@ export function TreatmentModal({
     if (!patientId) return;
 
     setIsSubmitting(true);
+    let medicalVisitSaved = false;
+    let savedVisitId: number | null = null;
+    let persistenceComplete = false;
 
     try {
       const payload = buildVisitPayload();
@@ -647,22 +638,63 @@ export function TreatmentModal({
         followUpRequired: payload.followUpRequired,
         followUpNotes: payload.followUpNotes,
         entryData: buildEntryData(),
-      });
+      }, { showSuccessToast: false });
 
       if (!savedVisit) return;
+      medicalVisitSaved = true;
+      savedVisitId = savedVisit.id;
+
+      if (entryType === "vaccination") {
+        const { error: vaccinationError } = await supabase
+          .from("vaccinations")
+          .insert({
+            pet_id: patientId,
+            owner_id: ownerId || null,
+            visit_id: savedVisit.id,
+            vaccine_name: vaccineName.trim(),
+            given_date: visitDate,
+            next_due_date: nextDueDate || null,
+            administered_by: currentVet,
+            entry_method: "manual",
+            notes: notes.trim() || null,
+          })
+          .select("vaccination_id")
+          .single();
+
+        if (vaccinationError) {
+          // The schema has no transaction/RPC for creating both records together.
+          // Roll back the visit we just created so the two sources do not diverge.
+          const { error: rollbackError } = await supabase
+            .from("medical_visits")
+            .delete()
+            .eq("visit_id", savedVisit.id);
+
+          if (!rollbackError) {
+            medicalVisitSaved = false;
+            await loadMedicalData();
+          }
+
+          throw vaccinationError;
+        }
+
+        window.dispatchEvent(new CustomEvent(VACCINATIONS_CHANGED_EVENT, {
+          detail: { patientId },
+        }));
+      }
 
       if (entryType === "full_exam" && nonEmpty(physicalExamFindings)) {
-        await addPhysicalExam({
+        const savedExam = await addPhysicalExam({
           visitId: savedVisit.id,
           patientId,
           examDate: new Date(`${visitDate}T12:00:00`).toISOString(),
           findings: physicalExamFindings.trim(),
         });
+        if (!savedExam) throw new Error("PHYSICAL_EXAM_SAVE_FAILED");
       }
 
       if (entryType === "full_exam") {
         for (const problem of cleanProblems) {
-          await addMedicalProblem({
+          const savedProblem = await addMedicalProblem({
             visitId: savedVisit.id,
             patientId,
             problemText: problem.problemText.trim(),
@@ -670,22 +702,24 @@ export function TreatmentModal({
             status: problem.status,
             notes: problem.notes.trim(),
           });
+          if (!savedProblem) throw new Error("MEDICAL_PROBLEM_SAVE_FAILED");
         }
 
         for (const diagnosis of cleanDifferentials) {
-          await addDifferentialDiagnosis({
+          const savedDiagnosis = await addDifferentialDiagnosis({
             visitId: savedVisit.id,
             patientId,
             diagnosisText: diagnosis.diagnosisText.trim(),
             likelihood: diagnosis.likelihood,
             notes: diagnosis.notes.trim(),
           });
+          if (!savedDiagnosis) throw new Error("DIFFERENTIAL_DIAGNOSIS_SAVE_FAILED");
         }
       }
 
       if (entryType === "full_exam" || entryType === "prescription_only") {
         for (const prescription of cleanPrescriptions) {
-          await addPrescription({
+          const savedPrescription = await addPrescription({
             patientId,
             visitId: savedVisit.id,
             medication: prescription.medication.trim(),
@@ -695,12 +729,13 @@ export function TreatmentModal({
             startDate: visitDate,
             prescribedBy: currentVet,
           });
+          if (!savedPrescription) throw new Error("PRESCRIPTION_SAVE_FAILED");
         }
       }
 
       if (entryType === "full_exam" || entryType === "lab") {
         for (const lab of cleanLabs) {
-          await addLabOrder({
+          const savedLab = await addLabOrder({
             patientId,
             visitId: savedVisit.id,
             petName,
@@ -713,6 +748,7 @@ export function TreatmentModal({
             notes: lab.notes.trim(),
             urgent: lab.urgent,
           });
+          if (!savedLab) throw new Error("LAB_ORDER_SAVE_FAILED");
         }
       }
 
@@ -726,6 +762,7 @@ export function TreatmentModal({
         if (updateWeightError) throw updateWeightError;
       }
 
+      persistenceComplete = true;
       await loadMedicalData();
       setSavedVisitContext({
         visitId: savedVisit.id,
@@ -746,10 +783,40 @@ export function TreatmentModal({
         prescriptions: cleanPrescriptions,
         labs: cleanLabs,
       });
-      toast.success("הרשומה הרפואית נשמרה");
+      toast.success(entryType === "vaccination" ? "הרשומה נשמרה והחיסון נוסף לפנקס" : "הרשומה הרפואית נשמרה");
     } catch (error) {
       console.error("Failed saving medical entry", error);
-      toast.error("אירעה שגיאה בשמירת הרשומה הרפואית");
+      let rollbackFailed = false;
+      if (savedVisitId && !persistenceComplete) {
+        const childTables = [
+          "lab_orders",
+          "prescriptions",
+          "differential_diagnoses",
+          "medical_problems",
+          "physical_exams",
+          "vaccinations",
+        ];
+        const rollbackResults = await Promise.all(
+          childTables.map((table) => supabase.from(table).delete().eq("visit_id", savedVisitId)),
+        );
+        const { error: visitRollbackError } = await supabase
+          .from("medical_visits")
+          .delete()
+          .eq("visit_id", savedVisitId);
+        rollbackFailed = rollbackResults.some((result) => Boolean(result.error)) || Boolean(visitRollbackError);
+        medicalVisitSaved = rollbackFailed;
+        await loadMedicalData();
+      }
+
+      if (rollbackFailed) {
+        toast.error("חלק מנתוני הרשומה נשמרו. אין לשמור שוב לפני בדיקת התיק.");
+      } else if (entryType === "vaccination" && medicalVisitSaved) {
+        toast.error("הרשומה הרפואית נשמרה, אך החיסון לא נוסף לפנקס. אין לשמור שוב לפני בדיקה.");
+      } else if (entryType === "vaccination") {
+        toast.error("לא הצלחנו לשמור את החיסון והרשומה הרפואית");
+      } else {
+        toast.error("אירעה שגיאה בשמירת הרשומה הרפואית");
+      }
     } finally {
       setIsSubmitting(false);
     }

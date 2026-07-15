@@ -21,19 +21,19 @@ const dashboardActions: AiQuickAction[] = [
   { label: "סכם תובנות", prompt: "סכם את מצב המרפאה, הגבייה, המלאי, המעבדה והפניות בשורה תחתונה ושלוש פעולות." },
 ];
 
-export function DashboardAssistant() {
+export function DashboardAssistant({ attentionCount = 0 }: { attentionCount?: number }) {
   const role = staffRole();
 
   return (
     <AiAssistantCard
       mode="dashboard"
       title="VetBot"
-      compactTitle="עוזר יומי"
-      subtitle="עוזר להבין מה דורש טיפול, איפה ללחוץ ומה כדאי לבדוק בהמשך היום."
+      compactTitle="VetBot"
+      subtitle="ממקד את מה שדורש טיפול ומה כדאי לבדוק בהמשך היום."
       userRole={role}
       quickActions={dashboardActions}
       buildContext={() => buildDashboardContext(role)}
-      privacyNote="אפשר לשאול מה חשוב עכשיו או איך להגיע לכל פעולה במערכת."
+      attentionCount={attentionCount}
     />
   );
 }
@@ -50,13 +50,12 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
   return (
     <AiAssistantCard
       mode="schedule"
-      title="עוזר יומן תורים"
-      compactTitle="עוזר שיבוץ"
-      subtitle="עוזר לזהות עומסים, חלונות פנויים ותורים שדורשים טיפול."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מזהה עומסים, חלונות פנויים ותורים שדורשים טיפול."
       userRole={role}
       quickActions={scheduleActions}
       buildContext={() => buildScheduleContext({ appointments, viewMode, activeVet, role })}
-      privacyNote="אפשר לשאול על עומסים, שיבוצים ותורים שדורשים תשומת לב."
     />
   );
 }
@@ -73,13 +72,12 @@ export function InventoryAssistant({ items }: { items: any[] }) {
   return (
     <AiAssistantCard
       mode="inventory"
-      title="עוזר מלאי"
-      compactTitle="עוזר מלאי"
-      subtitle="עוזר לזהות חוסרים, פריטים קריטיים וסדר עדיפויות להזמנה."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מזהה חוסרים, פריטים קריטיים וסדר עדיפויות להזמנה."
       userRole={role}
       quickActions={inventoryActions}
       buildContext={() => buildInventoryContext({ items, role })}
-      privacyNote="אפשר לשאול על חוסרים, הזמנות וסדר עדיפויות במלאי."
     />
   );
 }
@@ -97,14 +95,13 @@ export function DigitalCareAssistant({ conversation, messages, attachments }: { 
   return (
     <AiAssistantCard
       mode="digital-care"
-      title="עוזר מרפאה דיגיטלית"
-      compactTitle="עוזר שיחה"
-      subtitle="עוזר לסכם שיחה, להכין טיוטת תשובה ולהבין מה הפעולה הבאה."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מסכם שיחות, מכין טיוטות ומציע את הפעולה הבאה."
       userRole={role}
-      disabledReason={!conversation ? "בחר שיחה כדי להפעיל את העוזר." : null}
+      disabledReason={!conversation ? "בחר שיחה כדי להפעיל את VetBot." : null}
       quickActions={digitalActions}
       buildContext={() => buildDigitalCareContext({ conversation, messages, attachments, role })}
-      privacyNote="העוזר מכין טיוטה בלבד. הצוות מחליט מה לשלוח."
     />
   );
 }
@@ -122,14 +119,13 @@ export function MedicalRecordAssistant({ patient, visits, activeHospitalization 
   return (
     <AiAssistantCard
       mode="medical-record"
-      title="עוזר תיק רפואי"
-      compactTitle="עוזר רפואי"
-      subtitle="עוזר לסכם ביקור, לנסח הנחיות ולבדוק אם חסרים פרטים ברשומה."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מסכם ביקורים, מנסח הנחיות ומזהה פרטים חסרים."
       userRole={role}
       disabledReason={disabledReason}
       quickActions={medicalActions}
       buildContext={() => buildMedicalRecordContext({ patient, visits, activeHospitalization, role })}
-      privacyNote="העוזר מסייע בכתיבה וסיכום. החלטה רפואית נשארת אצל הצוות."
     />
   );
 }
@@ -146,13 +142,12 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
   return (
     <AiAssistantCard
       mode="clients"
-      title="עוזר לקוחות"
-      compactTitle="עוזר שירות"
-      subtitle="עוזר לזהות פעולות שירות ומעקב ללקוחות."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מזהה פעולות שירות ומעקב נדרשות ללקוחות."
       userRole={role}
       quickActions={clientsActions}
       buildContext={() => buildClientsSummaryContext({ clients, role })}
-      privacyNote="אפשר לשאול על פעולות שירות ומעקב."
     />
   );
 }
@@ -161,7 +156,7 @@ const portalActions: AiQuickAction[] = [
   { label: "איך קובעים תור?", prompt: "הסבר לי איך לקבוע תור דרך הפורטל, צעד אחר צעד." },
   { label: "איך פותחים פנייה?", prompt: "הסבר לי איך לפתוח פנייה לצוות במרפאה הדיגיטלית." },
   { label: "איך מצטרפים לווידאו?", prompt: "הסבר לי איך מצטרפים לשיחת וידאו אם הצוות שלח קישור." },
-  { label: "איפה המסמכים?", prompt: "הסבר איפה לראות ולהעלות מסמכים בפורטל." },
+  { label: "איפה רואים קבצים?", prompt: "הסבר שקבצים מהמרפאה מופיעים בתוך הפנייה במרפאה הדיגיטלית, וחיסונים מופיעים בפנקס החיסונים של החיה." },
   { label: "עזור לנסח הודעה", prompt: "עזור לי לנסח הודעה קצרה לצוות המרפאה. אל תיתן אבחנה, טיפול או מינון." },
 ];
 
@@ -183,13 +178,12 @@ export function ClientPortalAssistant({
   return (
     <AiAssistantCard
       mode="portal"
-      title="עזרה באתר"
-      compactTitle="עזרה באתר"
-      subtitle="עוזר למצוא פעולות בפורטל: תורים, פניות, מסמכים ושיחת וידאו."
+      title="VetBot"
+      compactTitle="VetBot"
+      subtitle="מכוון לתורים, פניות, קבצים ושיחות וידאו בפורטל."
       userRole="owner"
       quickActions={portalActions}
       buildContext={() => buildPortalContext({ pets, appointments, notifications, digitalConversations, billingItems })}
-      privacyNote="אפשר לשאול איך לבצע פעולות בפורטל. לשאלות רפואיות יש לפתוח פנייה לצוות."
     />
   );
 }

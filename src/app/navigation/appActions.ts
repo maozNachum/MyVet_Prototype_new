@@ -28,7 +28,7 @@ export type AppActionIconKey =
   | "clipboard"
   | "price";
 
-export type AppActionRole = "clinic_admin" | StaffType | "owner" | "unknown";
+export type AppActionRole = StaffType | "owner" | "unknown";
 
 export type AppAction = {
   id: string;
@@ -99,7 +99,7 @@ export const APP_ACTIONS: AppAction[] = [
     id: "patients.add-record",
     title: "הוסף רשומה רפואית",
     description: "הוספת ביקור, חיסון, שקילה, מרשם, מעבדה, מעקב או הערה.",
-    route: "/patients?action=add-record",
+    route: "/patients",
     iconKey: "clipboard",
     group: "care",
     roles: ["clinic_admin", "vet", "nurse"],
@@ -109,13 +109,13 @@ export const APP_ACTIONS: AppAction[] = [
   {
     id: "patients.medical-summary",
     title: "סכם תיק רפואי",
-    description: "שימוש בעוזר התיק הרפואי כדי לסכם ביקורים ולנסח הנחיות.",
+    description: "שימוש ב־VetBot בתיק הרפואי כדי לסכם ביקורים ולנסח הנחיות.",
     route: "/patients",
     iconKey: "stethoscope",
     group: "care",
     roles: ["clinic_admin", "vet", "nurse"],
-    aliases: ["עוזר רפואי", "סיכום ביקור", "סכם תיק", "הנחיות לבעלים"],
-    guide: ["פתח תיק חיה", "לחץ עוזר רפואי", "בחר סכם ביקורים או נסח הנחיות"],
+    aliases: ["VetBot", "סיכום ביקור", "סכם תיק", "הנחיות לבעלים"],
+    guide: ["פתח תיק חיה", "לחץ VetBot", "בחר סכם ביקורים או נסח הנחיות"],
   },
   {
     id: "clients.open",
@@ -161,7 +161,7 @@ export const APP_ACTIONS: AppAction[] = [
     id: "digital.video-summary",
     title: "סכם שיחת וידאו לתיק רפואי",
     description: "שמירת סיכום שיחת וידאו כתיעוד בתיק החיה.",
-    route: "/digital-care?focus=video-summary",
+    route: "/digital-care?filter=video",
     iconKey: "video",
     group: "care",
     roles: ["clinic_admin", "vet", "nurse"],
@@ -262,7 +262,7 @@ export const APP_ACTIONS: AppAction[] = [
     group: "reports",
     roles: ["clinic_admin", "vet", "secretary"],
     aliases: ["דוחות", "תובנות", "BI", "גבייה", "מגמות", "reports"],
-    guide: ["לחץ דוחות בסרגל העליון", "בחר תחום דוח", "השתמש בעוזר הדוחות לקבלת תובנות"],
+    guide: ["לחץ דוחות בסרגל העליון", "בחר תחום דוח", "השתמש ב־VetBot לקבלת תובנות"],
   },
   {
     id: "portal.open",

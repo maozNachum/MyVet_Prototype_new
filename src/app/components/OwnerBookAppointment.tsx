@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Clock, X, Check, Dog, Cat, PawPrint, Loader2, AlertCircle, Building2, Video } from "lucide-react";
 import { VISIT_TYPES, BOOKING_VISIT_TYPE_KEYS } from "../data/categoryConfig";
 import { addMinutes } from "../data/calendar-constants";
@@ -273,7 +273,7 @@ export function OwnerBookAppointment({
               <p className="text-white/60 text-[12px]">{!isSubmitted && `שלב ${step} מתוך 3`}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors"><X className="w-5 h-5" /></button>
+          <button type="button" onClick={handleClose} aria-label="סגור חלון" className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         {!isSubmitted && (

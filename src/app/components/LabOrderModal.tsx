@@ -196,7 +196,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors">
+          <button type="button" onClick={onClose} aria-label="סגור חלון" className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

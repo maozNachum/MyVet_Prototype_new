@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
-  ShieldCheck,
   Sparkles,
   CalendarClock,
   CreditCard,
@@ -31,6 +30,8 @@ import {
   petName,
 } from "../../data/reportMetrics";
 import { toast } from "sonner";
+import { askAiAssistant } from "../ai/aiClient";
+import { getStaffType } from "../../data/staffAuth";
 
 export type ReportInsightContext =
   "overview" | "revenue" | "staff" | "inventory" | "medical" | "compliance";
@@ -281,23 +282,6 @@ function sortInsights(insights: InsightItem[]): InsightItem[] {
     if (severityDiff !== 0) return severityDiff;
     return b.score - a.score;
   });
-}
-
-function getContextTitle(context?: ReportInsightContext) {
-  switch (context) {
-    case "revenue":
-      return "תובנות חכמות — תשלומים וגבייה";
-    case "staff":
-      return "תובנות חכמות — תורים וצוות";
-    case "inventory":
-      return "תובנות חכמות — מלאי";
-    case "medical":
-      return "תובנות חכמות — פעילות רפואית";
-    case "compliance":
-      return "תובנות חכמות — מעקב לקוחות";
-    default:
-      return "תובנות חכמות — תמונת מצב";
-  }
 }
 
 function getActionUrl(category: InsightCategory) {
@@ -830,17 +814,7 @@ export function AIInsightsPanel({
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "agent",
-      text: "אני כאן כדי לעזור להבין את הדוחות: מה דורש טיפול, איפה יש חריגה ומה הפעולה הבאה שכדאי לבצע.",
-      createdAt: new Date().toLocaleTimeString("he-IL", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"chat" | "insights">("chat");
@@ -1006,36 +980,28 @@ export function AIInsightsPanel({
         metric: insight.metric,
       }));
 
-      const { data, error } = await supabase.functions.invoke(
-        "ai-insights-chat",
-        {
-          body: {
-            question,
-            context: contextLabel(context),
-            dateRange,
-            dateRangeLabel: rangeLabel,
-            insights: payloadInsights,
-            history: chatMessages
-              .filter((message) => message.role === "user" || message.role === "agent")
-              .slice(-8)
-              .map((message) => ({
-                role: message.role,
-                text: message.text,
-              })),
-          },
+      const result = await askAiAssistant({
+        mode: "reports",
+        question,
+        userRole: getStaffType(),
+        context: {
+          screen: "reports",
+          reportContext: contextLabel(context),
+          dateRange,
+          dateRangeLabel: rangeLabel,
+          insights: payloadInsights,
+          expectedAnswerStyle: "תשובה ניהולית קצרה המבוססת רק על התובנות המצורפות.",
         },
-      );
+        history: chatMessages
+          .filter((message) => message.role === "user" || message.role === "agent")
+          .slice(-8)
+          .map((message) => ({
+            role: message.role === "user" ? "user" as const : "assistant" as const,
+            content: message.text,
+          })),
+      });
 
-      if (error) throw error;
-
-      const answerText = typeof data?.answer === "string" && data.answer.trim()
-        ? data.answer.trim()
-        : "לא התקבלה תשובה מסוכן התובנות.";
-      const finalAnswer = data?.truncated
-        ? `${answerText}
-
-הערה: התשובה נחתכה בגלל מגבלת אורך. אפשר לכתוב "תמשיך מאיפה שעצרת".`
-        : answerText;
+      const finalAnswer = result.answer || "לא התקבלה תשובה מ־VetBot.";
 
       setChatMessages((prev) => [
         ...prev,
@@ -1247,8 +1213,7 @@ export function AIInsightsPanel({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h2 className="text-slate-950 text-[15px] font-black">סוכן תובנות</h2>
-                  <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">עוזר חכם</span>
+                  <h2 className="text-slate-950 text-[15px] font-black">VetBot לדוחות</h2>
                   <span className="hidden sm:inline-flex text-[11px] text-slate-400 font-semibold">{contextLabel(context)} · {rangeLabel} · עודכן {generatedAt}</span>
                 </div>
 
@@ -1286,17 +1251,10 @@ export function AIInsightsPanel({
 
               <button
                 type="button"
-                onClick={() => openDrawer("chat")}
-                className="border border-blue-100 bg-white text-[#1e40af] hover:bg-blue-50 hover:border-blue-200 rounded-2xl px-4 py-3 text-[12px] font-black cursor-pointer shadow-sm flex items-center gap-2"
+                onClick={() => openDrawer(drawerTab)}
+                className="rounded-2xl border border-[#1e40af] bg-[#1e40af] px-4 py-3 text-[12px] font-black text-white shadow-md shadow-blue-700/15 transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] cursor-pointer flex items-center gap-2"
               >
-                פתח סוכן תובנות <MessageCircle className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => openDrawer("insights")}
-                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl px-4 py-3 text-[12px] font-black cursor-pointer flex items-center gap-2"
-              >
-                כל התובנות <ArrowLeft className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" /> מרכז VetBot ותובנות
               </button>
             </div>
           </div>
@@ -1310,7 +1268,7 @@ export function AIInsightsPanel({
             className="absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px] pointer-events-auto"
             type="button"
             onClick={() => setShowAll(false)}
-            aria-label="סגור סוכן תובנות"
+            aria-label="סגור VetBot"
           />
 
           <aside className="absolute left-0 top-0 flex h-full w-full max-w-[460px] flex-col border-r border-gray-100 bg-white shadow-2xl pointer-events-auto overflow-hidden animate-in slide-in-from-left duration-200">
@@ -1322,11 +1280,10 @@ export function AIInsightsPanel({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-white text-[18px] font-black">סוכן תובנות</h3>
-                      <span className="text-[10px] bg-white/10 text-white border border-white/15 px-2 py-0.5 rounded-full font-bold">עוזר חכם</span>
+                      <h3 className="text-white text-[18px] font-black">VetBot לדוחות</h3>
                     </div>
                     <p className="text-white/70 text-[12px] font-semibold mt-0.5 truncate">
-                      {getContextTitle(context)} · {rangeLabel} · עודכן {generatedAt}
+                      {contextLabel(context)} · {rangeLabel}
                     </p>
                   </div>
                 </div>
@@ -1339,29 +1296,7 @@ export function AIInsightsPanel({
                 </button>
               </div>
 
-              <div className="border-b border-gray-100 bg-blue-50/70 px-5 py-3">
-                <div className="flex items-start gap-2 text-[12px] font-medium leading-5 text-blue-800">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>סוכן התובנות מסייע בניתוח דוחות ותפעול המרפאה. הוא לא מחליף החלטה רפואית או ניהולית.</span>
-                </div>
-              </div>
-
-              <div className="px-4 pt-4 pb-4 grid grid-cols-3 gap-2">
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-2">
-                  <p className="text-slate-400 text-[10px] font-black">סה״כ</p>
-                  <p className="text-slate-950 text-[18px] font-black">{insights.length}</p>
-                </div>
-                <div className="rounded-2xl bg-red-50 border border-red-100 px-3 py-2">
-                  <p className="text-red-400 text-[10px] font-black">קריטי</p>
-                  <p className="text-red-700 text-[18px] font-black">{criticalCount}</p>
-                </div>
-                <div className="rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2">
-                  <p className="text-amber-500 text-[10px] font-black">חשוב</p>
-                  <p className="text-amber-700 text-[18px] font-black">{warningCount}</p>
-                </div>
-              </div>
-
-              <div className="px-4 pb-3 flex gap-2">
+              <div className="px-4 py-4 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setDrawerTab("chat")}
@@ -1414,7 +1349,7 @@ export function AIInsightsPanel({
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <span className="font-black text-[10px] opacity-80">
-                          {message.role === "user" ? "אתה" : message.role === "system" ? "מערכת" : "סוכן תובנות"}
+                          {message.role === "user" ? "אתה" : message.role === "system" ? "מערכת" : "VetBot"}
                         </span>
                         <span className="text-[10px] opacity-60">{message.createdAt}</span>
                       </div>
@@ -1427,7 +1362,7 @@ export function AIInsightsPanel({
                   {isChatLoading && (
                     <div className="ml-auto max-w-[86%] rounded-3xl rounded-br-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2 text-slate-500 text-[12px] font-bold">
-                        <RefreshCw className="w-4 h-4 animate-spin" /> סוכן התובנות מנתח את הדוח...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> VetBot מנתח את הדוח...
                       </div>
                     </div>
                   )}
@@ -1446,7 +1381,7 @@ export function AIInsightsPanel({
                         }
                       }}
                       rows={2}
-                      placeholder="שאל את סוכן התובנות על הדוחות..."
+                      placeholder="שאל את VetBot על הדוחות..."
                       className="flex-1 resize-none border-0 bg-transparent px-2 py-2 text-[13px] leading-5 focus:outline-none placeholder:text-slate-400"
                     />
                     <button
@@ -1458,9 +1393,6 @@ export function AIInsightsPanel({
                       {isChatLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="mt-2 text-[10px] leading-4 text-slate-400 font-medium">
-                    סוכן התובנות מסייע בניתוח תפעולי בלבד. החלטות רפואיות נשארות בידי הווטרינר.
-                  </p>
                 </footer>
               </>
             ) : (

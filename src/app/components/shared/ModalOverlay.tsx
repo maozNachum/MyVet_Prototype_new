@@ -43,7 +43,7 @@ export function ModalHeader({
         {icon}
         <h3 className="text-white text-[17px]" style={{ fontWeight: 600 }}>{title}</h3>
       </div>
-      <button onClick={onClose} className="text-white/60 hover:text-white cursor-pointer p-1">
+      <button type="button" onClick={onClose} aria-label="סגור חלון" className="text-white/60 hover:text-white cursor-pointer p-1">
         <X className="w-5 h-5" />
       </button>
     </div>

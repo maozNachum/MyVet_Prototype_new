@@ -241,7 +241,13 @@ export function PriceList() {
         toast.success("השירות נוסף למחירון");
       }
 
-      closeModal();
+      // closeModal intentionally ignores user-initiated closes while saving.
+      // The successful save path must reset the modal explicitly before finally
+      // releases the saving lock.
+      setIsModalOpen(false);
+      setEditingService(null);
+      setForm(emptyForm);
+      setFormError("");
       await loadServices();
     } catch (error: any) {
       console.error("price list save error", error);
@@ -272,15 +278,15 @@ export function PriceList() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8" dir="rtl">
+    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8" dir="rtl">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 rounded-2xl p-3">
             <Tag className="w-6 h-6 text-[#1e40af]" />
           </div>
           <div>
-            <h1 className="text-gray-900 text-[24px] font-bold">מחירון מרפאה</h1>
-            <p className="text-gray-500 text-[14px] mt-1">ניהול מחירי שירותים לביקורים, מעבדה, אשפוז וייעוץ</p>
+            <h1 className="text-gray-900 text-[26px] font-bold">מחירון מרפאה</h1>
+            <p className="text-gray-500 text-[15px] mt-1">ניהול מחירי שירותים לביקורים, מעבדה, אשפוז וייעוץ</p>
           </div>
         </div>
 

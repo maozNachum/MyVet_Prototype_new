@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   AlertCircle,
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
+  ArrowRight,
   CalendarPlus,
-  Circle,
   Clock,
   FileText,
   Image as ImageIcon,
@@ -25,7 +27,8 @@ import {
 import { supabase } from "../../services/supabaseClient";
 import { publishDigitalMessageToOwner } from "../../services/portalNotifications";
 import { DigitalCareAssistant } from "../components/ai/PageAssistants";
-import { getStaffName } from "../data/staffAuth";
+import { inferOperationalUrgency } from "../components/ai/aiProactiveEngine";
+import { getStaffId, getStaffName } from "../data/staffAuth";
 import { toast } from "sonner";
 
 const CHAT_BUCKET = "chat-attachments";
@@ -33,6 +36,7 @@ const DEFAULT_STAFF_NAME = "צוות המרפאה";
 
 type ConversationStatus = "open" | "waiting_owner" | "waiting_staff" | "closed";
 type ConversationPriority = "low" | "normal" | "high" | "urgent";
+type WorkView = "needs_action" | "waiting_owner" | "activity" | "archive";
 type SenderType = "owner" | "staff" | "system";
 type MessageType = "text" | "file" | "image" | "video_link" | "system";
 type VideoStatus = "scheduled" | "active" | "completed" | "cancelled";
@@ -129,7 +133,7 @@ const statusMeta: Record<
   { label: string; className: string }
 > = {
   open: {
-    label: "פתוחה",
+    label: "דורש טיפול",
     className: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   waiting_owner: {
@@ -141,7 +145,7 @@ const statusMeta: Record<
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
   closed: {
-    label: "נסגרה",
+    label: "בארכיון",
     className: "bg-gray-50 text-gray-600 border-gray-200",
   },
 };
@@ -151,9 +155,9 @@ const priorityMeta: Record<
   { label: string; className: string; dot: string }
 > = {
   low: {
-    label: "נמוכה",
-    className: "bg-gray-50 text-gray-600 border-gray-200",
-    dot: "bg-gray-300",
+    label: "רגילה",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+    dot: "bg-blue-400",
   },
   normal: {
     label: "רגילה",
@@ -161,9 +165,9 @@ const priorityMeta: Record<
     dot: "bg-blue-400",
   },
   high: {
-    label: "גבוהה",
-    className: "bg-orange-50 text-orange-700 border-orange-200",
-    dot: "bg-orange-400",
+    label: "דחופה",
+    className: "bg-red-50 text-red-700 border-red-200",
+    dot: "bg-red-500",
   },
   urgent: {
     label: "דחופה",
@@ -171,6 +175,28 @@ const priorityMeta: Record<
     dot: "bg-red-500",
   },
 };
+
+function isUrgentPriority(priority: ConversationPriority) {
+  return priority === "urgent" || priority === "high";
+}
+
+function deriveConversationStatus(
+  currentStatus: ConversationStatus,
+  lastMessage?: MessageRow,
+  unreadStaff = 0,
+): ConversationStatus {
+  if (currentStatus === "closed") return "closed";
+  if (unreadStaff > 0 || lastMessage?.sender_type === "owner") {
+    return "waiting_staff";
+  }
+  if (
+    lastMessage?.sender_type === "staff" ||
+    lastMessage?.sender_type === "system"
+  ) {
+    return "waiting_owner";
+  }
+  return "open";
+}
 
 function ownerDisplayName(owner?: OwnerRow) {
   if (!owner) return "לקוח לא ידוע";
@@ -248,6 +274,24 @@ function isGoogleMeetUrl(value: string) {
 
 function sortConversations(list: ConversationVM[]) {
   return [...list].sort((a, b) => {
+    if (a.status !== "closed" || b.status !== "closed") {
+      if (a.unreadStaff !== b.unreadStaff) return b.unreadStaff - a.unreadStaff;
+
+      const priorityRank: Record<ConversationPriority, number> = {
+        urgent: 4,
+        high: 3,
+        normal: 2,
+        low: 1,
+      };
+      if (priorityRank[a.priority] !== priorityRank[b.priority]) {
+        return priorityRank[b.priority] - priorityRank[a.priority];
+      }
+
+      const aNeedsStaff = a.status === "waiting_staff" ? 1 : 0;
+      const bNeedsStaff = b.status === "waiting_staff" ? 1 : 0;
+      if (aNeedsStaff !== bNeedsStaff) return bNeedsStaff - aNeedsStaff;
+    }
+
     const aDate = new Date(
       a.last_message_at || a.updated_at || a.created_at,
     ).getTime();
@@ -297,6 +341,8 @@ export function DigitalCare() {
   const [searchParams] = useSearchParams();
   const routeFilter = searchParams.get("filter");
   const routePriority = searchParams.get("priority");
+  const routePetId = Number(searchParams.get("pet_id")) || null;
+  const routeOwnerId = searchParams.get("owner_id")?.trim() || null;
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [pets, setPets] = useState<PetRow[]>([]);
   const [conversations, setConversations] = useState<ConversationVM[]>([]);
@@ -305,9 +351,10 @@ export function DigitalCare() {
   const [videoSessions, setVideoSessions] = useState<VideoSessionRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | ConversationStatus>(
-    "all",
+  const [workView, setWorkView] = useState<WorkView>(
+    routeFilter === "video" ? "activity" : "needs_action",
   );
+  const [showClientDetails, setShowClientDetails] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -345,30 +392,42 @@ export function DigitalCare() {
   const showUrgentOnly = routeFilter === "urgent" || routePriority === "urgent";
 
   const metrics = useMemo(() => {
-    const open = conversations.filter((c) => c.status === "open").length;
-    const waitingStaff = conversations.filter(
-      (c) => c.status === "waiting_staff",
+    const needsAction = conversations.filter((c) =>
+      ["open", "waiting_staff"].includes(c.status),
     ).length;
-    const unread = conversations.reduce((sum, c) => sum + c.unreadStaff, 0);
+    const waitingOwner = conversations.filter(
+      (c) => c.status === "waiting_owner",
+    ).length;
+    const activity = conversations.filter((c) => c.status !== "closed").length;
+    const archive = conversations.filter((c) => c.status === "closed").length;
+    const unread = conversations.reduce(
+      (sum, c) => sum + (c.status === "closed" ? 0 : c.unreadStaff),
+      0,
+    );
     const video = conversations.filter(
       (c) => c.hasOpenVideo && c.status !== "closed",
     ).length;
-    return { open, waitingStaff, unread, video };
+    return { needsAction, waitingOwner, activity, archive, unread, video };
   }, [conversations]);
 
   const filteredConversations = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortConversations(conversations).filter((conversation) => {
-      if (showOpenOnly && conversation.status !== "open") return false;
-      if (showVideoOnly && !conversation.hasOpenVideo) return false;
+      if (showOpenOnly && !["open", "waiting_staff"].includes(conversation.status)) return false;
+      if (showVideoOnly && (conversation.status === "closed" || !conversation.hasOpenVideo)) return false;
       if (
         showUrgentOnly &&
-        !(
-          conversation.priority === "urgent" || conversation.priority === "high"
-        )
+        (conversation.status === "closed" ||
+          !(conversation.priority === "urgent" || conversation.priority === "high"))
       )
         return false;
-      if (statusFilter !== "all" && conversation.status !== statusFilter)
+      if (workView === "needs_action" && !["open", "waiting_staff"].includes(conversation.status))
+        return false;
+      if (workView === "waiting_owner" && conversation.status !== "waiting_owner")
+        return false;
+      if (workView === "activity" && conversation.status === "closed")
+        return false;
+      if (workView === "archive" && conversation.status !== "closed")
         return false;
       if (!q) return true;
       const haystack = [
@@ -386,7 +445,7 @@ export function DigitalCare() {
   }, [
     conversations,
     search,
-    statusFilter,
+    workView,
     showOpenOnly,
     showVideoOnly,
     showUrgentOnly,
@@ -448,6 +507,12 @@ export function DigitalCare() {
         ownersData.map((owner) => [owner.owner_id, owner]),
       );
       const petMap = new Map(petsData.map((pet) => [Number(pet.pet_id), pet]));
+      const automaticCorrections: Array<{
+        conversationId: number;
+        patch: Partial<
+          Pick<ConversationRow, "status" | "priority" | "closed_at">
+        >;
+      }> = [];
       const vm = conversationsData.map((conversation) => {
         const convMessages = messagesData.filter(
           (msg) => msg.conversation_id === conversation.conversation_id,
@@ -462,8 +527,42 @@ export function DigitalCare() {
             session.status !== "completed" &&
             session.status !== "cancelled",
         );
+        const automaticStatus = deriveConversationStatus(
+          conversation.status,
+          lastMessage,
+          unreadStaff,
+        );
+        const detectedUrgency = inferOperationalUrgency(
+          conversation.subject,
+          ...convMessages.slice(-6).map((message) => message.message_text),
+        );
+        const normalizedPriority: ConversationPriority =
+          isUrgentPriority(conversation.priority) || detectedUrgency === "urgent"
+            ? "urgent"
+            : "normal";
+        const patch: Partial<
+          Pick<ConversationRow, "status" | "priority" | "closed_at">
+        > = {};
+
+        if (automaticStatus !== conversation.status) {
+          patch.status = automaticStatus;
+        }
+        if (normalizedPriority !== conversation.priority) {
+          patch.priority = normalizedPriority;
+        }
+        if (automaticStatus !== "closed" && conversation.closed_at) {
+          patch.closed_at = null;
+        }
+        if (Object.keys(patch).length > 0) {
+          automaticCorrections.push({
+            conversationId: conversation.conversation_id,
+            patch,
+          });
+        }
         return {
           ...conversation,
+          status: automaticStatus,
+          priority: normalizedPriority,
           owner: ownerMap.get(conversation.owner_id),
           pet: conversation.pet_id
             ? petMap.get(Number(conversation.pet_id))
@@ -474,14 +573,49 @@ export function DigitalCare() {
         } as ConversationVM;
       });
 
+      if (automaticCorrections.length > 0) {
+        const correctionResults = await Promise.all(
+          automaticCorrections.map(({ conversationId, patch }) =>
+            supabase
+              .from("conversations")
+              .update(patch)
+              .eq("conversation_id", conversationId),
+          ),
+        );
+        correctionResults.forEach(({ error: correctionError }) => {
+          if (correctionError) {
+            console.error(
+              "Failed synchronizing automatic conversation status",
+              correctionError,
+            );
+          }
+        });
+      }
+
       setOwners(ownersData);
       setPets(petsData);
       setConversations(vm);
       const sorted = sortConversations(vm);
-      const preferredConversation = sorted.find((conversation) => {
-        if (routeFilter === "open") return conversation.status === "open";
-        if (routeFilter === "video") return Boolean(conversation.hasOpenVideo);
-        if (routeFilter === "urgent" || routePriority === "urgent")
+      const hasDirectTarget = Boolean(routePetId || routeOwnerId);
+      const hasRouteFilter = Boolean(showOpenOnly || showVideoOnly || showUrgentOnly);
+      const directConversation = sorted.find((conversation) => (
+        routePetId ? Number(conversation.pet_id) === routePetId : false
+      )) || sorted.find((conversation) => (
+        routeOwnerId ? conversation.owner_id === routeOwnerId : false
+      ));
+      if (showVideoOnly) {
+        setWorkView("activity");
+      } else if (directConversation?.status === "closed") {
+        setWorkView("archive");
+      } else if (directConversation?.status === "waiting_owner") {
+        setWorkView("waiting_owner");
+      } else if (directConversation) {
+        setWorkView("needs_action");
+      }
+      const filteredRouteConversation = sorted.find((conversation) => {
+        if (showOpenOnly) return ["open", "waiting_staff"].includes(conversation.status);
+        if (showVideoOnly) return conversation.status !== "closed" && Boolean(conversation.hasOpenVideo);
+        if (showUrgentOnly)
           return (
             conversation.status !== "closed" &&
             (conversation.priority === "urgent" ||
@@ -489,10 +623,30 @@ export function DigitalCare() {
           );
         return true;
       });
-      if (!selectedId || routeFilter || routePriority)
+      const defaultConversation = sorted.find((conversation) => {
+        if (workView === "needs_action")
+          return ["open", "waiting_staff"].includes(conversation.status);
+        if (workView === "waiting_owner")
+          return conversation.status === "waiting_owner";
+        if (workView === "archive") return conversation.status === "closed";
+        return conversation.status !== "closed";
+      });
+      const preferredConversation =
+        directConversation ||
+        (!hasDirectTarget && hasRouteFilter
+          ? filteredRouteConversation
+          : undefined);
+      if ((routePetId || routeOwnerId) && !directConversation) {
+        const targetPet = routePetId ? petMap.get(routePetId) : undefined;
+        const targetOwner = routeOwnerId ? ownerMap.get(routeOwnerId) : undefined;
+        setSearch(targetPet ? petDisplayName(targetPet) : targetOwner ? ownerDisplayName(targetOwner) : routeOwnerId || "");
+      }
+      if (!selectedId || routeFilter || routePriority || routePetId || routeOwnerId)
         setSelectedId(
-          preferredConversation?.conversation_id ||
-            sorted[0]?.conversation_id ||
+          preferredConversation?.conversation_id ??
+            (hasDirectTarget || hasRouteFilter
+              ? null
+              : defaultConversation?.conversation_id) ??
             null,
         );
     } catch (err) {
@@ -532,19 +686,23 @@ export function DigitalCare() {
       setAttachments((attachmentsResult.data || []) as AttachmentRow[]);
       setVideoSessions((videoResult.data || []) as VideoSessionRow[]);
 
-      await supabase
+      const { error: markReadError } = await supabase
         .from("messages")
         .update({ is_read_by_staff: true })
         .eq("conversation_id", conversationId)
         .eq("sender_type", "owner");
 
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.conversation_id === conversationId
-            ? { ...conversation, unreadStaff: 0 }
-            : conversation,
-        ),
-      );
+      if (markReadError) {
+        console.error("Failed marking conversation as read", markReadError);
+      } else {
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.conversation_id === conversationId
+              ? { ...conversation, unreadStaff: 0 }
+              : conversation,
+          ),
+        );
+      }
     } catch (err) {
       console.error("Failed loading messages", err);
       setError("לא הצלחנו לטעון את השיחה");
@@ -554,11 +712,26 @@ export function DigitalCare() {
   }
 
   useEffect(() => {
-    void loadData();
-  }, [routeFilter, routePriority]);
+    if (showVideoOnly) setWorkView("activity");
+    else if (showOpenOnly || showUrgentOnly) setWorkView("needs_action");
+  }, [showOpenOnly, showUrgentOnly, showVideoOnly]);
 
   useEffect(() => {
-    if (selectedId) loadConversationDetails(selectedId);
+    void loadData();
+  }, [routeFilter, routePriority, routePetId, routeOwnerId]);
+
+  useEffect(() => {
+    if (selectedId) {
+      void loadConversationDetails(selectedId);
+      return;
+    }
+    setMessages([]);
+    setAttachments([]);
+    setVideoSessions([]);
+  }, [selectedId]);
+
+  useEffect(() => {
+    setShowClientDetails(false);
   }, [selectedId]);
 
   useEffect(() => {
@@ -588,12 +761,82 @@ export function DigitalCare() {
     );
   }
 
+  function keepStaffReplyVisible() {
+    if (workView !== "needs_action") return;
+    setWorkView("waiting_owner");
+    if (routeFilter || routePriority || routePetId || routeOwnerId) {
+      navigate("/digital-care", { replace: true });
+    }
+  }
+
+  async function handlePriorityChange(priority: "normal" | "urgent") {
+    if (!selectedConversation) return;
+    try {
+      await updateConversation(selectedConversation.conversation_id, {
+        priority,
+      });
+      toast.success(
+        priority === "urgent"
+          ? "השיחה סומנה כדחופה"
+          : "השיחה סומנה ברמת דחיפות רגילה",
+      );
+    } catch (err) {
+      console.error("Failed updating conversation priority", err);
+      toast.error("לא הצלחנו לעדכן את רמת הדחיפות");
+    }
+  }
+
+  async function archiveSelectedConversation() {
+    if (!selectedConversation || selectedConversation.status === "closed") return;
+    try {
+      await updateConversation(selectedConversation.conversation_id, {
+        status: "closed",
+        closed_at: new Date().toISOString(),
+      });
+      setSelectedId(null);
+      setShowClientDetails(false);
+      toast.success("השיחה הועברה לארכיון");
+    } catch (err) {
+      console.error("Failed archiving conversation", err);
+      toast.error("לא הצלחנו להעביר את השיחה לארכיון");
+    }
+  }
+
+  async function restoreSelectedConversation() {
+    if (!selectedConversation || selectedConversation.status !== "closed") return;
+    const restoredStatus = deriveConversationStatus(
+      "open",
+      selectedConversation.lastMessage,
+      selectedConversation.unreadStaff,
+    );
+    try {
+      await updateConversation(selectedConversation.conversation_id, {
+        status: restoredStatus,
+        closed_at: null,
+      });
+      setSelectedId(null);
+      setShowClientDetails(false);
+      toast.success(
+        restoredStatus === "waiting_staff"
+          ? "השיחה הוחזרה וממתינה לטיפול הצוות"
+          : restoredStatus === "waiting_owner"
+            ? "השיחה הוחזרה וממתינה לתגובת הלקוח"
+            : "השיחה הוחזרה לפעילות",
+      );
+    } catch (err) {
+      console.error("Failed restoring conversation", err);
+      toast.error("לא הצלחנו להחזיר את השיחה לפעילות");
+    }
+  }
+
   async function sendMessage(text?: string, type: MessageType = "text") {
     if (!selectedConversation) return;
     const content = (text ?? messageText).trim();
     if (!content) return;
     setSending(true);
     setError(null);
+    let createdMessageId: number | null = null;
+    let persistenceComplete = false;
     try {
       const now = new Date().toISOString();
       const { data, error: insertError } = await supabase
@@ -601,7 +844,7 @@ export function DigitalCare() {
         .insert({
           conversation_id: selectedConversation.conversation_id,
           sender_type: "staff",
-          sender_staff_id: null,
+          sender_staff_id: getStaffId(),
           sender_name: DEFAULT_STAFF_NAME,
           message_text: content,
           message_type: type,
@@ -611,15 +854,19 @@ export function DigitalCare() {
         .select()
         .single();
       if (insertError) throw insertError;
+      createdMessageId = Number((data as MessageRow).message_id);
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
         .update({
           status: "waiting_owner",
+          closed_at: null,
           last_message_at: now,
           updated_at: now,
         })
         .eq("conversation_id", selectedConversation.conversation_id);
+      if (conversationUpdateError) throw conversationUpdateError;
+      persistenceComplete = true;
 
       const inserted = data as MessageRow;
       setMessages((prev) => [...prev, inserted]);
@@ -629,6 +876,7 @@ export function DigitalCare() {
             ? {
                 ...conversation,
                 status: "waiting_owner",
+                closed_at: null,
                 last_message_at: now,
                 updated_at: now,
                 lastMessage: inserted,
@@ -636,6 +884,7 @@ export function DigitalCare() {
             : conversation,
         ),
       );
+      keepStaffReplyVisible();
       await publishDigitalMessageToOwner({
         ownerId: selectedConversation.owner_id,
         petId: selectedConversation.pet_id,
@@ -644,6 +893,9 @@ export function DigitalCare() {
       });
       setMessageText("");
     } catch (err) {
+      if (createdMessageId && !persistenceComplete) {
+        await supabase.from("messages").delete().eq("message_id", createdMessageId);
+      }
       console.error("Failed sending message", err);
       setError("שליחת ההודעה נכשלה");
     } finally {
@@ -655,6 +907,9 @@ export function DigitalCare() {
     if (!selectedConversation) return;
     setSending(true);
     setError(null);
+    let uploadedFilePath: string | null = null;
+    let createdAttachmentMessageId: number | null = null;
+    let persistenceComplete = false;
     try {
       const filePath = buildSafeChatPath(
         selectedConversation.conversation_id,
@@ -667,6 +922,7 @@ export function DigitalCare() {
           upsert: false,
         });
       if (uploadError) throw uploadError;
+      uploadedFilePath = filePath;
 
       const messageType = getMessageType(file);
       const messageLabel =
@@ -676,7 +932,7 @@ export function DigitalCare() {
         .insert({
           conversation_id: selectedConversation.conversation_id,
           sender_type: "staff",
-          sender_staff_id: null,
+          sender_staff_id: getStaffId(),
           sender_name: DEFAULT_STAFF_NAME,
           message_text: `${messageLabel}: ${file.name}`,
           message_type: messageType,
@@ -688,6 +944,7 @@ export function DigitalCare() {
       if (messageError) throw messageError;
 
       const insertedMessage = messageData as MessageRow;
+      createdAttachmentMessageId = Number(insertedMessage.message_id);
       const { data: attachmentData, error: attachmentError } = await supabase
         .from("message_attachments")
         .insert({
@@ -706,14 +963,17 @@ export function DigitalCare() {
       if (attachmentError) throw attachmentError;
 
       const now = new Date().toISOString();
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
         .update({
           status: "waiting_owner",
+          closed_at: null,
           last_message_at: now,
           updated_at: now,
         })
         .eq("conversation_id", selectedConversation.conversation_id);
+      if (conversationUpdateError) throw conversationUpdateError;
+      persistenceComplete = true;
 
       setMessages((prev) => [...prev, insertedMessage]);
       setAttachments((prev) => [...prev, attachmentData as AttachmentRow]);
@@ -723,6 +983,7 @@ export function DigitalCare() {
             ? {
                 ...conversation,
                 status: "waiting_owner",
+                closed_at: null,
                 last_message_at: now,
                 updated_at: now,
                 lastMessage: insertedMessage,
@@ -730,6 +991,7 @@ export function DigitalCare() {
             : conversation,
         ),
       );
+      keepStaffReplyVisible();
       await publishDigitalMessageToOwner({
         ownerId: selectedConversation.owner_id,
         petId: selectedConversation.pet_id,
@@ -738,6 +1000,13 @@ export function DigitalCare() {
         fileAttached: true,
       });
     } catch (err) {
+      if (!persistenceComplete) {
+        if (createdAttachmentMessageId) {
+          await supabase.from("message_attachments").delete().eq("message_id", createdAttachmentMessageId);
+          await supabase.from("messages").delete().eq("message_id", createdAttachmentMessageId);
+        }
+        if (uploadedFilePath) await supabase.storage.from(CHAT_BUCKET).remove([uploadedFilePath]);
+      }
       console.error("Failed uploading chat attachment", err);
       setError("העלאת הקובץ לשיחה נכשלה. בדוק הרשאות Storage או שם Bucket");
     } finally {
@@ -747,13 +1016,21 @@ export function DigitalCare() {
   }
 
   async function openAttachment(attachment: AttachmentRow) {
+    const popup = window.open("", "_blank");
     try {
       const { data, error: signedError } = await supabase.storage
         .from(CHAT_BUCKET)
         .createSignedUrl(attachment.file_path, 60 * 10);
       if (signedError) throw signedError;
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      if (!data?.signedUrl) throw new Error("SIGNED_URL_MISSING");
+      if (popup) {
+        popup.opener = null;
+        popup.location.href = data.signedUrl;
+      } else {
+        window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (err) {
+      popup?.close();
       console.error("Failed opening attachment", err);
       setError("לא הצלחנו לפתוח את הקובץ");
     }
@@ -777,7 +1054,7 @@ export function DigitalCare() {
           pet_id: petId,
           subject: newConversation.subject.trim() || "פנייה כללית",
           priority: newConversation.priority,
-          status: "open",
+          status: "waiting_owner",
           last_message_at: new Date().toISOString(),
         })
         .select()
@@ -785,7 +1062,7 @@ export function DigitalCare() {
       if (insertError) throw insertError;
 
       const created = data as ConversationRow;
-      await supabase.from("messages").insert({
+      const { error: openingMessageError } = await supabase.from("messages").insert({
         conversation_id: created.conversation_id,
         sender_type: "system",
         sender_name: "מערכת",
@@ -794,6 +1071,10 @@ export function DigitalCare() {
         is_read_by_owner: false,
         is_read_by_staff: true,
       });
+      if (openingMessageError) {
+        await supabase.from("conversations").delete().eq("conversation_id", created.conversation_id);
+        throw openingMessageError;
+      }
 
       setIsNewModalOpen(false);
       setNewConversation({
@@ -802,8 +1083,17 @@ export function DigitalCare() {
         subject: "",
         priority: "normal",
       });
-      await loadData();
-      setSelectedId(created.conversation_id);
+      setWorkView("waiting_owner");
+      const hasRouteContext = Boolean(
+        routeFilter || routePriority || routePetId || routeOwnerId,
+      );
+      if (hasRouteContext) {
+        setSelectedId(created.conversation_id);
+        navigate("/digital-care", { replace: true });
+      } else {
+        await loadData();
+        setSelectedId(created.conversation_id);
+      }
     } catch (err) {
       console.error("Failed creating conversation", err);
       setError("פתיחת השיחה נכשלה");
@@ -850,16 +1140,20 @@ export function DigitalCare() {
     setSending(true);
     setError(null);
     setMeetLinkError(null);
+    const meetingPopup = window.open("", "_blank");
+    const pendingRequest = videoSessions.find(
+      (session) =>
+        !session.meeting_url &&
+        session.status !== "completed" &&
+        session.status !== "cancelled",
+    );
+    let savedSessionId: number | null = null;
+    let createdMeetMessageId: number | null = null;
+    let persistenceComplete = false;
+    let meetingOpened = false;
 
     try {
       const now = new Date().toISOString();
-      const pendingRequest = videoSessions.find(
-        (session) =>
-          !session.meeting_url &&
-          session.status !== "completed" &&
-          session.status !== "cancelled",
-      );
-
       const videoQuery = pendingRequest
         ? supabase
             .from("video_sessions")
@@ -879,7 +1173,7 @@ export function DigitalCare() {
               conversation_id: selectedConversation.conversation_id,
               owner_id: selectedConversation.owner_id,
               pet_id: selectedConversation.pet_id,
-              staff_id: null,
+              staff_id: getStaffId(),
               meeting_url: meetingUrl,
               status: "scheduled",
               scheduled_at: now,
@@ -890,59 +1184,126 @@ export function DigitalCare() {
 
       const { data, error: videoError } = await videoQuery;
       if (videoError) throw videoError;
+      savedSessionId = Number((data as VideoSessionRow).session_id);
 
-      const { error: messageError } = await supabase.from("messages").insert({
-        conversation_id: selectedConversation.conversation_id,
-        sender_type: "system",
-        sender_name: "מערכת MyVet",
-        message_text: `קישור לשיחת Google Meet עם צוות המרפאה: ${meetingUrl}`,
-        message_type: "video_link",
-        is_read_by_owner: false,
-        is_read_by_staff: true,
-      });
+      const { data: meetMessage, error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversation.conversation_id,
+          sender_type: "system",
+          sender_name: "מערכת MyVet",
+          message_text: `קישור לשיחת Google Meet עם צוות המרפאה: ${meetingUrl}`,
+          message_type: "video_link",
+          is_read_by_owner: false,
+          is_read_by_staff: true,
+        })
+        .select("*")
+        .single();
       if (messageError) throw messageError;
+      const insertedMeetMessage = meetMessage as MessageRow;
+      createdMeetMessageId = Number(insertedMeetMessage.message_id);
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
         .update({
           status: "waiting_owner",
+          closed_at: null,
           last_message_at: now,
           updated_at: now,
         })
         .eq("conversation_id", selectedConversation.conversation_id);
+      if (conversationUpdateError) throw conversationUpdateError;
+      persistenceComplete = true;
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          conversation.conversation_id === selectedConversation.conversation_id
+            ? {
+                ...conversation,
+                status: "waiting_owner",
+                closed_at: null,
+                last_message_at: now,
+                updated_at: now,
+                lastMessage: insertedMeetMessage,
+                hasOpenVideo: true,
+              }
+            : conversation,
+        ),
+      );
+      keepStaffReplyVisible();
 
       const session = data as VideoSessionRow;
-      await publishDigitalMessageToOwner({
-        ownerId: selectedConversation.owner_id,
-        petId: selectedConversation.pet_id,
-        conversationId: selectedConversation.conversation_id,
-        subject: selectedConversation.subject,
-        videoLink: true,
-      });
-      setVideoSessions((prev) => [session, ...prev]);
+      setVideoSessions((prev) => [
+        session,
+        ...prev.filter((item) => item.session_id !== session.session_id),
+      ]);
       setVideoModal(session);
       setIsMeetLinkModalOpen(false);
       setMeetLinkInput("");
+      await openMeetSession(session, meetingPopup);
+      meetingOpened = true;
+      try {
+        await publishDigitalMessageToOwner({
+          ownerId: selectedConversation.owner_id,
+          petId: selectedConversation.pet_id,
+          conversationId: selectedConversation.conversation_id,
+          subject: selectedConversation.subject,
+          videoLink: true,
+        });
+      } catch (notificationError) {
+        console.error("Failed notifying owner about video session", notificationError);
+        toast.warning(
+          "השיחה נפתחה והקישור נשמר, אך ההתראה ללקוח לא נשלחה.",
+        );
+      }
       await loadConversationDetails(selectedConversation.conversation_id);
-      await loadData();
     } catch (err) {
+      if (!meetingOpened) meetingPopup?.close();
       console.error("Failed creating Google Meet session", err);
-      setError("שמירת קישור Google Meet נכשלה");
+      let rollbackFailed = false;
+      if (!persistenceComplete) {
+        if (createdMeetMessageId) {
+          const { error: messageRollbackError } = await supabase.from("messages").delete().eq("message_id", createdMeetMessageId);
+          rollbackFailed = rollbackFailed || Boolean(messageRollbackError);
+        }
+        if (savedSessionId) {
+          if (pendingRequest) {
+            const { error: sessionRollbackError } = await supabase
+              .from("video_sessions")
+              .update({
+                meeting_url: pendingRequest.meeting_url || null,
+                status: pendingRequest.status,
+                scheduled_at: pendingRequest.scheduled_at || null,
+                notes: pendingRequest.notes || null,
+              })
+              .eq("session_id", savedSessionId);
+            rollbackFailed = rollbackFailed || Boolean(sessionRollbackError);
+          } else {
+            const { error: sessionRollbackError } = await supabase.from("video_sessions").delete().eq("session_id", savedSessionId);
+            rollbackFailed = rollbackFailed || Boolean(sessionRollbackError);
+          }
+        }
+      }
+      setError(rollbackFailed ? "קישור הווידאו נשמר חלקית. יש לבדוק את השיחה לפני ניסיון נוסף." : "שמירת קישור Google Meet נכשלה");
     } finally {
       setSending(false);
     }
   }
 
-  async function openMeetSession(session: VideoSessionRow) {
+  async function openMeetSession(
+    session: VideoSessionRow,
+    existingPopup?: Window | null,
+  ) {
     if (!session.meeting_url) return;
+    const popup = existingPopup ?? window.open("", "_blank");
 
     try {
       if (session.status === "scheduled") {
         const startedAt = new Date().toISOString();
-        await supabase
+        const { error: startSessionError } = await supabase
           .from("video_sessions")
           .update({ status: "active", started_at: startedAt })
           .eq("session_id", session.session_id);
+        if (startSessionError) throw startSessionError;
         setVideoSessions((prev) =>
           prev.map((item) =>
             item.session_id === session.session_id
@@ -954,9 +1315,15 @@ export function DigitalCare() {
       }
     } catch (err) {
       console.error("Failed updating video session status", err);
+      setError("השיחה נפתחה, אך סטטוס הווידאו לא עודכן. יש לרענן ולנסות שוב.");
     }
 
-    window.open(session.meeting_url, "_blank", "noopener,noreferrer");
+    if (popup) {
+      popup.opener = null;
+      popup.location.href = session.meeting_url;
+    } else {
+      window.open(session.meeting_url, "_blank", "noopener,noreferrer");
+    }
   }
 
   async function endVideoSession() {
@@ -1023,6 +1390,10 @@ export function DigitalCare() {
 
     setSavingSummary(true);
     setError(null);
+    let createdVisitId: number | null = null;
+    let createdMessageId: number | null = null;
+    let sessionWasUpdated = false;
+    let persistenceComplete = false;
 
     try {
       const now = new Date().toISOString();
@@ -1057,7 +1428,7 @@ export function DigitalCare() {
           attachments: "0",
           visit_type: "video_consultation",
           urgency_level:
-            selectedConversation.priority === "urgent" ? "serious" : "normal",
+            isUrgentPriority(selectedConversation.priority) ? "serious" : "normal",
           chief_complaint: selectedConversation.subject || "שיחת וידאו",
           final_diagnosis: null,
           follow_up_required: Boolean(videoSummary.followUpRequired),
@@ -1079,8 +1450,9 @@ export function DigitalCare() {
         .single();
 
       if (visitError) throw visitError;
+      createdVisitId = Number(data.visit_id);
 
-      await supabase
+      const { error: sessionUpdateError } = await supabase
         .from("video_sessions")
         .update({
           status: "completed",
@@ -1088,21 +1460,31 @@ export function DigitalCare() {
           notes: summaryText,
         })
         .eq("session_id", summaryModalSession.session_id);
+      if (sessionUpdateError) throw sessionUpdateError;
+      sessionWasUpdated = true;
 
-      await supabase.from("messages").insert({
-        conversation_id: selectedConversation.conversation_id,
-        sender_type: "system",
-        sender_name: "מערכת MyVet",
-        message_text: `סיכום שיחת וידאו נשמר בתיק הרפואי. מספר רשומה: ${data?.visit_id ?? "חדש"}`,
-        message_type: "system",
-        is_read_by_owner: false,
-        is_read_by_staff: true,
-      });
+      const { data: summaryMessage, error: summaryMessageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversation.conversation_id,
+          sender_type: "system",
+          sender_name: "מערכת MyVet",
+          message_text: `סיכום שיחת וידאו נשמר בתיק הרפואי. מספר רשומה: ${data?.visit_id ?? "חדש"}`,
+          message_type: "system",
+          is_read_by_owner: false,
+          is_read_by_staff: true,
+        })
+        .select("message_id")
+        .single();
+      if (summaryMessageError) throw summaryMessageError;
+      createdMessageId = Number(summaryMessage.message_id);
 
-      await supabase
+      const { error: conversationUpdateError } = await supabase
         .from("conversations")
         .update({ updated_at: now, last_message_at: now })
         .eq("conversation_id", selectedConversation.conversation_id);
+      if (conversationUpdateError) throw conversationUpdateError;
+      persistenceComplete = true;
 
       setVideoSessions((prev) =>
         prev.map((session) =>
@@ -1125,8 +1507,33 @@ export function DigitalCare() {
       await loadData();
     } catch (err) {
       console.error("Failed saving video summary to medical record", err);
-      setError("שמירת סיכום שיחת הווידאו לתיק הרפואי נכשלה");
-      toast.error("לא הצלחנו לשמור את הסיכום לתיק הרפואי");
+      let rollbackFailed = false;
+      if (!persistenceComplete) {
+        if (createdMessageId) {
+          const { error: messageRollbackError } = await supabase.from("messages").delete().eq("message_id", createdMessageId);
+          rollbackFailed = rollbackFailed || Boolean(messageRollbackError);
+        }
+        if (sessionWasUpdated) {
+          const { error: sessionRollbackError } = await supabase
+            .from("video_sessions")
+            .update({
+              status: summaryModalSession.status,
+              ended_at: summaryModalSession.ended_at || null,
+              notes: summaryModalSession.notes || null,
+            })
+            .eq("session_id", summaryModalSession.session_id);
+          rollbackFailed = rollbackFailed || Boolean(sessionRollbackError);
+        }
+        if (createdVisitId) {
+          const { error: visitRollbackError } = await supabase.from("medical_visits").delete().eq("visit_id", createdVisitId);
+          rollbackFailed = rollbackFailed || Boolean(visitRollbackError);
+        }
+      }
+      const errorMessage = rollbackFailed
+        ? "חלק מסיכום הווידאו נשמר. יש לבדוק את התיק לפני ניסיון נוסף."
+        : "שמירת סיכום שיחת הווידאו לתיק הרפואי נכשלה";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSavingSummary(false);
     }
@@ -1143,23 +1550,52 @@ export function DigitalCare() {
     return map;
   }, [attachments]);
 
+  const workTabs: Array<{
+    key: WorkView;
+    label: string;
+    count: number;
+    hint: string;
+  }> = [
+    {
+      key: "needs_action",
+      label: "דורש טיפול",
+      count: metrics.needsAction,
+      hint: "פניות שמחכות לתגובת הצוות",
+    },
+    {
+      key: "waiting_owner",
+      label: "ממתין ללקוח",
+      count: metrics.waitingOwner,
+      hint: "השיחה אצל הלקוח",
+    },
+    {
+      key: "activity",
+      label: "כל הפעילות",
+      count: metrics.activity,
+      hint: "כל השיחות הפעילות",
+    },
+    {
+      key: "archive",
+      label: "ארכיון",
+      count: metrics.archive,
+      hint: "שיחות שהסתיימו",
+    },
+  ];
+
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#f6f8fb] px-6 py-8"
+      className="min-h-screen bg-transparent px-4 py-7 sm:px-6 sm:py-8"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
       <div className="max-w-[1500px] mx-auto space-y-6">
         <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[12px] font-semibold mb-3">
-              <MessageCircle className="w-3.5 h-3.5" /> מרפאה דיגיטלית
-            </div>
             <h1 className="text-gray-900 text-[30px] font-bold mb-1">
               מרפאה דיגיטלית
             </h1>
             <p className="text-gray-500 text-[15px] font-medium">
-              צ׳אט, קבצים, שיחות וידאו וקישור מהיר לתיקי החיות.
+              כל השיחות שדורשות טיפול, מעקב וארכיון — במקום אחד.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -1189,145 +1625,195 @@ export function DigitalCare() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.25fr)_repeat(3,minmax(180px,1fr))] gap-4">
-          <DigitalCareCommandCard
-            open={metrics.open}
-            waitingStaff={metrics.waitingStaff}
-            unread={metrics.unread}
-            video={metrics.video}
-            onShowWaiting={() => setStatusFilter("waiting_staff")}
-            onShowVideo={() => navigate("/digital-care?filter=video")}
-            onNewConversation={() => setIsNewModalOpen(true)}
-          />
-          <MetricCard
-            icon={<MessageCircle className="w-5 h-5" />}
-            title="שיחות פתוחות"
-            value={metrics.open}
-            tone="blue"
-            subtitle="שיחות בסטטוס פתוחה"
-          />
-          <MetricCard
-            icon={<Clock className="w-5 h-5" />}
-            title="ממתינות לצוות"
-            value={metrics.waitingStaff}
-            tone="amber"
-            subtitle="כדאי להתחיל מהן"
-          />
-          <MetricCard
-            icon={<Circle className="w-5 h-5" />}
-            title="הודעות שלא נקראו"
-            value={metrics.unread}
-            tone="emerald"
-            subtitle="הודעות חדשות מלקוחות"
-          />
-        </section>
+        <section className="overflow-hidden rounded-[28px] border border-blue-100/80 bg-white shadow-xl shadow-blue-950/[0.05]">
+          <div className="border-b border-gray-100 bg-gradient-to-l from-blue-50/80 via-white to-white p-3 sm:p-4">
+            <div
+              role="tablist"
+              aria-label="סינון שיחות המרפאה הדיגיטלית"
+              className="grid grid-cols-2 gap-2 lg:grid-cols-4"
+            >
+              {workTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={workView === tab.key}
+                  onClick={() => {
+                    setWorkView(tab.key);
+                    setSelectedId(null);
+                    if (routeFilter || routePriority || routePetId || routeOwnerId) {
+                      navigate("/digital-care");
+                    }
+                  }}
+                  className={`group flex min-h-[66px] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-right transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    workView === tab.key
+                      ? "border-[#1e40af] bg-[#1e40af] text-white shadow-md shadow-blue-500/15"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/50"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-extrabold">
+                      {tab.label}
+                    </span>
+                    <span
+                      className={`mt-0.5 hidden text-[12px] font-medium sm:block ${
+                        workView === tab.key ? "text-blue-100" : "text-gray-400"
+                      }`}
+                    >
+                      {tab.hint}
+                    </span>
+                  </span>
+                  <span
+                    className={`flex h-8 min-w-8 shrink-0 items-center justify-center rounded-xl px-2 text-[13px] font-extrabold ${
+                      workView === tab.key
+                        ? "bg-white/15 text-white"
+                        : tab.key === "needs_action" && tab.count > 0
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <section className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)_330px] gap-5 items-start">
-          <aside className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden min-h-[680px]">
-            <div className="p-4 border-b border-gray-100 space-y-3">
+          <div className="grid min-h-[680px] grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)]">
+          <aside className={`${selectedConversation ? "hidden xl:block" : "block"} overflow-hidden border-b border-gray-100 bg-white xl:border-b-0 xl:border-l`}>
+            <div className="space-y-3 border-b border-gray-100 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-[16px] font-extrabold text-gray-900">
+                    {workTabs.find((tab) => tab.key === workView)?.label}
+                  </h2>
+                  <p className="mt-0.5 text-[12px] font-medium text-gray-400">
+                    {filteredConversations.length} שיחות מוצגות
+                    {metrics.unread > 0 ? ` · ${metrics.unread} הודעות חדשות` : ""}
+                  </p>
+                </div>
+                {metrics.video > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/digital-care?filter=video")}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 px-2.5 py-2 text-[12px] font-bold text-purple-700 hover:bg-purple-100"
+                  >
+                    <Video className="h-3.5 w-3.5" /> {metrics.video} וידאו
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <label htmlFor="digital-care-search" className="sr-only">
+                  חיפוש בשיחות
+                </label>
                 <input
+                  id="digital-care-search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="חיפוש לקוח, חיה, טלפון או נושא..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl pr-10 pl-4 py-3 text-[13px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pr-10 pl-4 text-[14px] outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
                 />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: "all", label: "הכל" },
-                  { key: "open", label: "פתוחות" },
-                  { key: "waiting_staff", label: "ממתינות" },
-                  { key: "closed", label: "סגורות" },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() =>
-                      setStatusFilter(item.key as "all" | ConversationStatus)
-                    }
-                    className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all cursor-pointer ${statusFilter === item.key ? "bg-[#1e40af] text-white border-[#1e40af]" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
               </div>
             </div>
 
-            <div className="max-h-[610px] overflow-y-auto">
+            <div className="max-h-[660px] overflow-y-auto overscroll-contain">
               {loading ? (
                 <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" /> טוען שיחות...
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="text-center py-16 px-5">
-                  <MessageCircle className="w-10 h-10 mx-auto text-gray-200 mb-3" />
+                <div className="px-5 py-16 text-center">
+                  {workView === "archive" ? (
+                    <Archive className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+                  ) : (
+                    <MessageCircle className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+                  )}
                   <p className="text-gray-500 text-[14px] font-semibold">
-                    לא נמצאו שיחות
+                    {workView === "archive" ? "הארכיון נקי" : "לא נמצאו שיחות"}
                   </p>
                   <p className="text-gray-400 text-[12px] mt-1">
-                    פתח שיחה חדשה או שנה סינון.
+                    {workView === "archive"
+                      ? "שיחות שתסיימו יופיעו כאן, בלי למחוק את ההיסטוריה."
+                      : "אפשר לשנות תצוגה, לחפש או לפתוח שיחה חדשה."}
                   </p>
                 </div>
               ) : (
                 filteredConversations.map((conversation) => (
-                  <button
-                    key={conversation.conversation_id}
-                    onClick={() => setSelectedId(conversation.conversation_id)}
-                    className={`w-full text-right px-4 py-4 border-b border-gray-50 hover:bg-blue-50/40 transition-all cursor-pointer ${selectedId === conversation.conversation_id ? "bg-blue-50/70 border-r-4 border-r-[#1e40af]" : "border-r-4 border-r-transparent"}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="relative shrink-0">
-                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-[#1e40af] flex items-center justify-center font-bold text-[13px]">
-                          {ownerDisplayName(conversation.owner).slice(0, 2)}
-                        </div>
-                        {conversation.unreadStaff > 0 && (
-                          <span className="absolute -top-1 -left-1 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white">
-                            {conversation.unreadStaff}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="text-gray-900 text-[14px] font-bold truncate">
-                            {ownerDisplayName(conversation.owner)}
-                          </h3>
-                          <span className="text-gray-400 text-[11px] shrink-0">
-                            {formatDateTime(
-                              conversation.last_message_at ||
-                                conversation.updated_at,
-                            )}
-                          </span>
-                        </div>
-                        <p className="text-gray-500 text-[12px] truncate mb-2">
-                          {petDisplayName(conversation.pet)} ·{" "}
-                          {conversation.subject}
-                        </p>
-                        <p className="text-gray-600 text-[12px] truncate mb-2">
-                          {conversation.lastMessage?.message_text ||
-                            "אין הודעות עדיין"}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${statusMeta[conversation.status].className}`}
-                          >
-                            {statusMeta[conversation.status].label}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${priorityMeta[conversation.priority].className}`}
-                          >
-                            {priorityMeta[conversation.priority].label}
-                          </span>
-                        </div>
-                      </div>
+                   <button
+                     key={conversation.conversation_id}
+                     type="button"
+                     aria-current={selectedId === conversation.conversation_id ? "true" : undefined}
+                     onClick={() => setSelectedId(conversation.conversation_id)}
+                     className={`w-full border-b border-gray-100 border-r-4 px-4 py-4 text-right transition-all focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+                       selectedId === conversation.conversation_id
+                         ? "border-r-[#1e40af] bg-blue-50/80"
+                         : "border-r-transparent bg-white hover:bg-slate-50"
+                     } ${conversation.status === "closed" ? "opacity-80" : ""}`}
+                   >
+                     <div className="flex items-start gap-3.5">
+                       <div className="relative shrink-0">
+                         <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-[13px] font-extrabold ${
+                           conversation.status === "closed"
+                             ? "bg-gray-100 text-gray-500"
+                             : "bg-gradient-to-br from-blue-100 to-indigo-100 text-[#1e40af]"
+                         }`}>
+                           {ownerDisplayName(conversation.owner).slice(0, 2)}
+                         </div>
+                         {conversation.unreadStaff > 0 && (
+                           <span className="absolute -top-1 -left-1 flex h-[19px] min-w-[19px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-extrabold text-white">
+                             {conversation.unreadStaff}
+                           </span>
+                         )}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex items-center justify-between gap-2 mb-1">
+                           <h3 className={`truncate text-[14px] ${conversation.unreadStaff > 0 ? "font-extrabold text-gray-950" : "font-bold text-gray-800"}`}>
+                             {ownerDisplayName(conversation.owner)}
+                           </h3>
+                            <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-gray-400">
+                             <Clock className="h-3 w-3" />
+                             {formatDateTime(conversation.last_message_at || conversation.updated_at)}
+                           </span>
+                         </div>
+                         <p className="mb-1 truncate text-[12px] font-bold text-gray-700">
+                           {conversation.subject}
+                         </p>
+                          <p className="mb-2 truncate text-[12px] text-gray-500">
+                           {petDisplayName(conversation.pet)} · {" "}
+                           {conversation.lastMessage?.message_text ||
+                             "אין הודעות עדיין"}
+                         </p>
+                         <div className="flex flex-wrap items-center gap-1.5">
+                           <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusMeta[conversation.status].className}`}
+                           >
+                             {statusMeta[conversation.status].label}
+                           </span>
+                           {isUrgentPriority(conversation.priority) && (
+                             <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${priorityMeta.urgent.className}`}
+                             >
+                               <span className={`h-1.5 w-1.5 rounded-full ${priorityMeta.urgent.dot}`} />
+                               {priorityMeta.urgent.label}
+                             </span>
+                           )}
+                           {conversation.unreadStaff > 0 && (
+                              <span className="text-[11px] font-extrabold text-red-600">
+                               חדש מהלקוח
+                             </span>
+                           )}
+                         </div>
+                       </div>
                     </div>
                   </button>
                 ))
               )}
-            </div>
+           </div>
           </aside>
 
-          <main className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden min-h-[680px] flex flex-col">
+          <div className={`${selectedConversation ? "block" : "hidden xl:block"} min-w-0 bg-white ${showClientDetails ? "xl:grid xl:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
+          <main className={`${showClientDetails ? "hidden xl:flex" : "flex"} min-h-[680px] min-w-0 flex-col overflow-hidden bg-white`}>
             {!selectedConversation ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
                 <MessageCircle className="w-14 h-14 text-gray-200 mb-4" />
@@ -1340,59 +1826,124 @@ export function DigitalCare() {
               </div>
             ) : (
               <>
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4 bg-white sticky top-0 z-10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1e40af] flex items-center justify-center">
+                <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-gray-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-5 2xl:flex-row 2xl:items-center 2xl:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label="חזרה לרשימת השיחות"
+                      onClick={() => setSelectedId(null)}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 xl:hidden"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#1e40af]">
                       <User className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-gray-900 text-[17px] font-bold truncate">
+                      <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-[17px] font-extrabold text-gray-900">
                         {selectedConversation.subject}
                       </h2>
-                      <p className="text-gray-500 text-[13px] truncate">
+                        {selectedConversation.unreadStaff > 0 && (
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-extrabold text-red-600">
+                            {selectedConversation.unreadStaff} חדשות
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-[13px] font-medium text-gray-500">
                         {ownerDisplayName(selectedOwner)} ·{" "}
                         {petDisplayName(selectedPet)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <select
-                      value={selectedConversation.status}
-                      onChange={(e) =>
-                        updateConversation(
-                          selectedConversation.conversation_id,
-                          {
-                            status: e.target.value as ConversationStatus,
-                            closed_at:
-                              e.target.value === "closed"
-                                ? new Date().toISOString()
-                                : null,
-                          },
-                        )
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <div
+                      title={
+                        selectedConversation.status === "closed"
+                          ? "השיחה נשמרת בארכיון עד להחזרתה לפעילות"
+                          : "הסטטוס מתעדכן אוטומטית לפי ההודעה האחרונה בשיחה"
                       }
-                      className="border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-semibold outline-none"
+                      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-bold ${statusMeta[selectedConversation.status].className}`}
                     >
-                      <option value="open">פתוחה</option>
-                      <option value="waiting_owner">ממתין ללקוח</option>
-                      <option value="waiting_staff">ממתין לצוות</option>
-                      <option value="closed">סגורה</option>
-                    </select>
-                    <button
-                      onClick={startVideoSession}
-                      className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl px-3 py-2 text-[12px] font-semibold cursor-pointer"
-                    >
-                      <Video className="w-4 h-4" /> וידאו
-                    </button>
+                      <span>{statusMeta[selectedConversation.status].label}</span>
+                      <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-extrabold opacity-80">
+                        {selectedConversation.status === "closed"
+                          ? "נשמר"
+                          : "אוטומטי"}
+                      </span>
+                    </div>
+                    {selectedConversation.status === "closed" ? (
+                      <button
+                        type="button"
+                        onClick={() => void restoreSelectedConversation()}
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-bold text-[#1e40af] hover:bg-blue-100"
+                      >
+                        <ArchiveRestore className="h-4 w-4" /> החזר לפעילות
+                      </button>
+                    ) : (
+                      <>
+                        <div className={`inline-flex items-center gap-2 rounded-xl border bg-white px-2 py-1 ${isUrgentPriority(selectedConversation.priority) ? "border-red-200" : "border-gray-200"}`}>
+                          <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-extrabold text-blue-700">זיהוי אוטומטי</span>
+                          <label htmlFor="conversation-priority" className="sr-only">רמת דחיפות</label>
+                          <select
+                            id="conversation-priority"
+                            value={isUrgentPriority(selectedConversation.priority) ? "urgent" : "normal"}
+                            onChange={(e) => void handlePriorityChange(e.target.value as "normal" | "urgent")}
+                            className={`bg-transparent px-1 py-1 text-[12px] font-bold outline-none ${isUrgentPriority(selectedConversation.priority) ? "text-red-700" : "text-gray-700"}`}
+                            title="VetBot מזהה ביטויי חירום אוטומטית; הצוות יכול לתקן במקרה הצורך"
+                          >
+                            <option value="normal">רגילה</option>
+                            <option value="urgent">דחופה</option>
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={startVideoSession}
+                          className="flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-[12px] font-bold text-purple-700 hover:bg-purple-100"
+                        >
+                          <Video className="w-4 h-4" /> וידאו
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void archiveSelectedConversation()}
+                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-3 py-2 text-[12px] font-bold text-white shadow-sm shadow-emerald-600/15 transition-colors hover:border-emerald-700 hover:bg-emerald-700"
+                        >
+                          <Archive className="h-4 w-4" /> העבר לארכיון
+                        </button>
+                      </>
+                    )}
                     {videoSessions.length > 0 && (
                       <button
+                        type="button"
                         onClick={() => openVideoSummaryModal(videoSessions[0])}
-                        className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-[12px] font-semibold cursor-pointer"
+                        className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-bold text-emerald-700 hover:bg-emerald-100"
                       >
                         <Save className="w-4 h-4" /> סכם לתיק
                       </button>
                     )}
+                    <button
+                      type="button"
+                      aria-pressed={showClientDetails}
+                      onClick={() => setShowClientDetails((current) => !current)}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-bold ${
+                        showClientDetails
+                          ? "border-blue-200 bg-blue-50 text-[#1e40af]"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <User className="h-4 w-4" /> פרטי לקוח
+                    </button>
                   </div>
                 </div>
+
+                {selectedConversation.status === "closed" && (
+                  <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-4 py-3 text-[12px] font-semibold text-blue-800 sm:px-5">
+                    <span>
+                      השיחה בארכיון. ההיסטוריה נשמרת וניתן להחזיר אותה לפעילות בכל עת.
+                    </span>
+                    <Archive className="h-4 w-4 shrink-0" />
+                  </div>
+                )}
 
                 <div
                   ref={messagesScrollRef}
@@ -1492,6 +2043,25 @@ export function DigitalCare() {
                   <div />
                 </div>
 
+                {selectedConversation.status === "closed" ? (
+                  <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-4 py-4 text-center sm:flex-row sm:text-right">
+                    <div>
+                      <p className="text-[13px] font-bold text-gray-700">
+                        השיחה נמצאת בארכיון
+                      </p>
+                      <p className="text-[12px] text-gray-500">
+                        כדי לשלוח הודעה או קובץ, יש להחזיר אותה לפעילות.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void restoreSelectedConversation()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#1e40af] px-4 py-2.5 text-[12px] font-bold text-white hover:bg-[#1e3a8a]"
+                    >
+                      <ArchiveRestore className="h-4 w-4" /> החזר לפעילות
+                    </button>
+                  </div>
+                ) : (
                 <div className="border-t border-gray-100 bg-white p-4">
                   <input
                     ref={fileInputRef}
@@ -1536,11 +2106,31 @@ export function DigitalCare() {
                     </button>
                   </div>
                 </div>
+                )}
               </>
             )}
           </main>
 
-          <aside className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 min-h-[680px]">
+          {showClientDetails && (
+          <aside className="min-h-[680px] border-t border-gray-100 bg-slate-50/70 p-5 xl:border-t-0 xl:border-r">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-extrabold text-gray-900">
+                  פרטי לקוח וחיה
+                </h3>
+                <p className="text-[11px] font-medium text-gray-400">
+                  הקשר מהיר בלי לצאת מהשיחה
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="סגור פרטי לקוח"
+                onClick={() => setShowClientDetails(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             {!selectedConversation ? (
               <div className="text-center py-16">
                 <User className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -1618,7 +2208,7 @@ export function DigitalCare() {
                   </Link>
                   {selectedOwner && (
                     <Link
-                      to={`/portal?owner_id=${selectedOwner.owner_id}`}
+                      to={`/owner-preview?owner_id=${selectedOwner.owner_id}`}
                       className="flex items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50"
                     >
                       פתח פורטל לקוח <ArrowLeft className="w-4 h-4" />
@@ -1678,6 +2268,9 @@ export function DigitalCare() {
               </div>
             )}
           </aside>
+          )}
+          </div>
+          </div>
         </section>
       </div>
 
@@ -1765,25 +2358,9 @@ export function DigitalCare() {
                   className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:border-blue-400"
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 text-[13px] font-semibold mb-2">
-                  עדיפות
-                </label>
-                <select
-                  value={newConversation.priority}
-                  onChange={(e) =>
-                    setNewConversation((prev) => ({
-                      ...prev,
-                      priority: e.target.value as ConversationPriority,
-                    }))
-                  }
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:border-blue-400"
-                >
-                  <option value="low">נמוכה</option>
-                  <option value="normal">רגילה</option>
-                  <option value="high">גבוהה</option>
-                  <option value="urgent">דחופה</option>
-                </select>
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
+                <p className="text-[13px] font-bold text-blue-900">הדחיפות נקבעת אוטומטית</p>
+                <p className="mt-1 text-[12px] leading-5 text-blue-700">לאחר פתיחת השיחה VetBot בודק את הנושא וההודעות. הצוות עדיין יכול לתקן את הסיווג.</p>
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
@@ -1858,11 +2435,6 @@ export function DigitalCare() {
                   </p>
                 )}
               </div>
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-blue-800 text-[13px] leading-6">
-                טיפ: בפרויקט הדמו אנחנו לא יוצרים קישור אוטומטית דרך Google API.
-                הצוות יוצר את הקישור, והמערכת שומרת אותו כך ששני הצדדים ייכנסו
-                לאותה שיחה.
-              </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
               <button
@@ -1870,7 +2442,9 @@ export function DigitalCare() {
                 disabled={sending || !meetLinkInput.trim()}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl py-3 text-[14px] font-bold cursor-pointer"
               >
-                שמור ושלח ללקוח
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Video className="h-4 w-4" /> שמור, שלח ופתח שיחה
+                </span>
               </button>
               <button
                 onClick={() => setIsMeetLinkModalOpen(false)}
@@ -2141,120 +2715,6 @@ export function DigitalCare() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function DigitalCareCommandCard({
-  open,
-  waitingStaff,
-  unread,
-  video,
-  onShowWaiting,
-  onShowVideo,
-  onNewConversation,
-}: {
-  open: number;
-  waitingStaff: number;
-  unread: number;
-  video: number;
-  onShowWaiting: () => void;
-  onShowVideo: () => void;
-  onNewConversation: () => void;
-}) {
-  return (
-    <div className="md:col-span-2 xl:col-span-1 relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-[#1e40af] via-[#2563eb] to-[#0f766e] p-5 text-white shadow-lg shadow-blue-500/15">
-      <div className="absolute -left-12 -top-12 w-32 h-32 rounded-full bg-white/10" />
-      <div className="absolute left-6 bottom-6 w-16 h-16 rounded-full bg-white/10" />
-
-      <div className="relative z-10 flex flex-col h-full min-h-[128px] justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[12px] font-bold mb-3">
-            <MessageCircle className="w-3.5 h-3.5" /> MyVet Online
-          </div>
-          <h2 className="text-[20px] font-extrabold leading-tight mb-1">
-            מענה לפניות, וידאו ותיעוד במקום אחד
-          </h2>
-          <p className="text-blue-50/90 text-[13px] leading-6 font-medium max-w-md">
-            מתחילים משיחות שממתינות לצוות, ממשיכים לווידאו כשצריך, ובסוף שומרים
-            סיכום לתיק הרפואי.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onShowWaiting}
-            className="rounded-2xl bg-white text-[#1e40af] hover:bg-blue-50 px-3.5 py-2 text-[12px] font-extrabold transition-colors cursor-pointer"
-          >
-            {waitingStaff > 0
-              ? `${waitingStaff} ממתינות לצוות`
-              : "אין המתנה לצוות"}
-          </button>
-          <button
-            type="button"
-            onClick={onShowVideo}
-            className="rounded-2xl bg-white/12 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-[12px] font-bold transition-colors cursor-pointer"
-          >
-            {video > 0 ? `${video} שיחות וידאו פתוחות` : "וידאו"}
-          </button>
-          <button
-            type="button"
-            onClick={onNewConversation}
-            className="rounded-2xl bg-white/12 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-[12px] font-bold transition-colors cursor-pointer"
-          >
-            פנייה חדשה
-          </button>
-        </div>
-      </div>
-
-      <div className="absolute left-5 top-5 hidden 2xl:flex items-center gap-2 text-white/80 text-[12px] font-bold">
-        <span>{open} פתוחות</span>
-        <span className="w-1 h-1 rounded-full bg-white/60" />
-        <span>{unread} חדשות</span>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({
-  icon,
-  title,
-  value,
-  tone,
-  subtitle,
-}: {
-  icon: ReactNode;
-  title: string;
-  value: number;
-  tone: "blue" | "red" | "amber" | "emerald";
-  subtitle?: string;
-}) {
-  const tones = {
-    blue: "bg-blue-50 text-blue-700 border-blue-100",
-    red: "bg-red-50 text-red-700 border-red-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-100",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  };
-
-  return (
-    <div className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex items-center gap-4 min-h-[138px] hover:shadow-md hover:-translate-y-0.5 transition-all">
-      <div
-        className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${tones[tone]}`}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-gray-500 text-[13px] font-semibold">{title}</p>
-        <p className="text-gray-900 text-[28px] font-extrabold leading-tight mt-1">
-          {value}
-        </p>
-        {subtitle && (
-          <p className="text-gray-400 text-[11px] font-semibold mt-1 truncate">
-            {subtitle}
-          </p>
-        )}
-      </div>
     </div>
   );
 }

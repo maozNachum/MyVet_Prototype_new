@@ -1,0 +1,5 @@
+project_id = "myvet"
+
+[functions.ai-assistant]
+verify_jwt = true
+

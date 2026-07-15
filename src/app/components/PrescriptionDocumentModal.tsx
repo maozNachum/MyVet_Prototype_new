@@ -108,7 +108,7 @@ export function PrescriptionDocumentModal({
                 <p className="text-gray-500 text-[12px] font-medium">תצוגה מקצועית לשליחה או הדפסה לבעל החיה</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-500">
+            <button type="button" onClick={onClose} aria-label="סגור חלון" className="p-2 hover:bg-gray-100 rounded-xl text-gray-500">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -130,7 +130,7 @@ export function PrescriptionDocumentModal({
           <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between bg-white prescription-no-print">
             <p className="text-[12px] text-gray-500 font-medium">המרשם מוצג כטיוטת מסמך. רופא/ה צריך/ה לאשר לפני מסירה ללקוח.</p>
             <div className="flex items-center gap-2">
-              <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-[13px] hover:bg-gray-50">
+              <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-[13px] hover:bg-gray-50">
                 סגור
               </button>
               <button onClick={handlePrint} className="px-4 py-2.5 rounded-xl bg-[#1e40af] text-white font-semibold text-[13px] hover:bg-blue-800 flex items-center gap-2">

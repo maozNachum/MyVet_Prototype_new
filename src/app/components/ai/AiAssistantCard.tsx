@@ -12,19 +12,19 @@ type Props = {
   buildContext: () => unknown | Promise<unknown>;
   userRole?: AiUserRole;
   disabledReason?: string | null;
-  privacyNote?: string;
+  attentionCount?: number;
 };
 
 export function AiAssistantCard({
   mode,
   title,
   subtitle,
-  compactTitle = "עוזר",
+  compactTitle = "VetBot",
   quickActions,
   buildContext,
   userRole = "unknown",
   disabledReason,
-  privacyNote,
+  attentionCount = 0,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const disabled = Boolean(disabledReason);
@@ -47,6 +47,11 @@ export function AiAssistantCard({
             <Sparkles className="h-3.5 w-3.5" />
           </span>
           <span>{compactTitle}</span>
+          {attentionCount > 0 && !disabled && (
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-extrabold text-red-700 ring-1 ring-red-100" aria-label={`${attentionCount} נושאים לבדיקה`}>
+              {attentionCount > 99 ? "99+" : attentionCount}
+            </span>
+          )}
           <ChevronLeft className="h-4 w-4 opacity-70 transition-transform group-hover:-translate-x-0.5" />
         </button>
       </div>
@@ -60,7 +65,6 @@ export function AiAssistantCard({
         quickActions={quickActions}
         buildContext={buildContext}
         userRole={userRole}
-        privacyNote={privacyNote}
       />
     </>
   );
