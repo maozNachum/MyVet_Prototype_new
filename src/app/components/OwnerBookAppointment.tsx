@@ -99,17 +99,16 @@ async function loadRealAvailability(): Promise<DaySlots[]> {
   const lastDay = week[week.length - 1];
   const rangeEnd = buildSlotDateTime(lastDay.fullDateISO, "23:59");
 
-  const { data, error } = await supabase
-    .from("appointments")
-    .select("start_time, end_time")
-    .gte("start_time", rangeStart.toISOString())
-    .lte("start_time", rangeEnd.toISOString());
+  const { data, error } = await supabase.rpc("myvet_booked_slots", {
+    range_start: rangeStart.toISOString(),
+    range_end: rangeEnd.toISOString(),
+  });
 
   if (error) throw error;
 
-  const appointments = ((data || []) as AppointmentRow[]).map((row) => {
-    const start = row.start_time ? new Date(row.start_time) : null;
-    const end = row.end_time ? new Date(row.end_time) : start ? new Date(start.getTime() + 30 * 60 * 1000) : null;
+  const appointments = ((data || []) as Array<{ slot_start: string; slot_end: string | null }>).map((row) => {
+    const start = row.slot_start ? new Date(row.slot_start) : null;
+    const end = row.slot_end ? new Date(row.slot_end) : start ? new Date(start.getTime() + 30 * 60 * 1000) : null;
     return { start, end };
   });
 
@@ -222,9 +221,6 @@ export function OwnerBookAppointment({
 
       const notesToSave = [
         notes,
-        ownerName ? `בעלים: ${ownerName}` : "",
-        ownerPhone ? `טלפון: ${ownerPhone}` : "",
-        ownerEmail ? `אימייל: ${ownerEmail}` : "",
         `סוג תור: ${selectedAppointmentMode === "video" ? "וידאו" : "פיזי"}`,
         "נקבע דרך פורטל לקוחות",
       ]

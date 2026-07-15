@@ -6,7 +6,9 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test:privacy": "node --experimental-strip-types --test tests/aiPrivacy.test.ts"
+    "test:privacy": "node --experimental-strip-types --test tests/aiPrivacy.test.ts",
+    "test:vetbot": "node --experimental-strip-types --test tests/aiPrivacy.test.ts tests/vetbotSecurity.test.ts",
+    "test:anon-access": "node scripts/verify-anonymous-access.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

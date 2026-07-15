@@ -1,20 +1,22 @@
+import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
-import { Layout } from "./pages/Layout";
-import { Login } from "./pages/Login";
-import { Dashboard } from "./pages/Dashboard";
-import { AppointmentSchedule } from "./pages/AppointmentSchedule";
-import { NewAppointment } from "./pages/NewAppointment";
-import { Patients } from "./pages/Patients";
-import { Clients } from "./pages/Clients";
-import { Inventory } from "./pages/Inventory";
-import { ClientPortal } from "./pages/ClientPortal";
-import { Reports } from "./pages/Reports";
-import { DigitalCare } from "./pages/DigitalCare";
-import { Hospitalizations } from "./pages/Hospitalizations";
-import { LabOrders } from "./pages/LabOrders";
-import { PriceList } from "./pages/PriceList";
-import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { canAccessReportsPage } from "./data/staffAuth";
+
+const Layout = lazy(() => import("./pages/Layout").then((module) => ({ default: module.Layout })));
+const Login = lazy(() => import("./pages/Login").then((module) => ({ default: module.Login })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })));
+const AppointmentSchedule = lazy(() => import("./pages/AppointmentSchedule").then((module) => ({ default: module.AppointmentSchedule })));
+const NewAppointment = lazy(() => import("./pages/NewAppointment").then((module) => ({ default: module.NewAppointment })));
+const Patients = lazy(() => import("./pages/Patients").then((module) => ({ default: module.Patients })));
+const Clients = lazy(() => import("./pages/Clients").then((module) => ({ default: module.Clients })));
+const Inventory = lazy(() => import("./pages/Inventory").then((module) => ({ default: module.Inventory })));
+const ClientPortal = lazy(() => import("./pages/ClientPortal").then((module) => ({ default: module.ClientPortal })));
+const Reports = lazy(() => import("./pages/Reports").then((module) => ({ default: module.Reports })));
+const DigitalCare = lazy(() => import("./pages/DigitalCare").then((module) => ({ default: module.DigitalCare })));
+const Hospitalizations = lazy(() => import("./pages/Hospitalizations").then((module) => ({ default: module.Hospitalizations })));
+const LabOrders = lazy(() => import("./pages/LabOrders").then((module) => ({ default: module.LabOrders })));
+const PriceList = lazy(() => import("./pages/PriceList").then((module) => ({ default: module.PriceList })));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then((module) => ({ default: module.PrivacyPolicy })));
 
 function ReportsRoute() {
   return canAccessReportsPage() ? <Reports /> : <Navigate to="/" replace />;

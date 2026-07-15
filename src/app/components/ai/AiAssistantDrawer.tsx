@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router";
 import { askAiAssistant, recordAiFeedback } from "./aiClient";
 import { buildLocalProactiveBriefing } from "./aiProactiveEngine";
@@ -43,6 +43,7 @@ export function AiAssistantDrawer({
   const [memorySummary, setMemorySummary] = useState("");
   const [feedbackByMessage, setFeedbackByMessage] = useState<Record<number, boolean>>({});
   const [error, setError] = useState<string | null>(null);
+  const [lastFailedQuestion, setLastFailedQuestion] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<unknown>(null);
@@ -91,6 +92,7 @@ export function AiAssistantDrawer({
     if (!trimmed || isThinking) return;
 
     setError(null);
+    setLastFailedQuestion("");
     setInput("");
     const nextMessages: AiChatMessage[] = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
@@ -111,7 +113,19 @@ export function AiAssistantDrawer({
       setMessages((prev) => [...prev, { role: "assistant", content: result.answer, result }]);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || "לא הצלחנו לקבל תשובה מ־VetBot");
+      const fallback = buildLocalProactiveBriefing(mode, contextRef.current);
+      if (fallback) {
+        const fallbackResult: AiAssistantResult = {
+          ...fallback,
+          answer: "החיבור לשירות החיצוני אינו זמין כרגע. הנה תמונת מצב מקומית שנוצרה בתוך MyVet בלבד.",
+          summary: "לא נשלח מידע לספק AI בתשובה החלופית הזו.",
+        };
+        setMessages((prev) => [...prev, { role: "assistant", content: fallbackResult.answer, result: fallbackResult }]);
+        setError("אפשר להמשיך לעבוד עם התובנות המקומיות או להחזיר את השאלה ולנסות שוב.");
+      } else {
+        setError(err?.message || "לא הצלחנו לקבל תשובה מ־VetBot");
+      }
+      setLastFailedQuestion(trimmed);
     } finally {
       setIsThinking(false);
       window.setTimeout(() => inputRef.current?.focus(), 50);
@@ -210,9 +224,24 @@ export function AiAssistantDrawer({
             )}
 
             {error && (
-              <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-medium leading-6 text-red-700">
+              <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium leading-6 text-amber-900">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
+                <div className="min-w-0 flex-1">
+                  <span>{error}</span>
+                  {lastFailedQuestion && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInput(lastFailedQuestion);
+                        setError(null);
+                        window.setTimeout(() => inputRef.current?.focus(), 0);
+                      }}
+                      className="mt-2 flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-[12px] font-bold text-amber-900 hover:bg-amber-100"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> החזר את השאלה
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             <div ref={endRef} />

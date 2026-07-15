@@ -501,30 +501,20 @@ export function ClientPortal() {
         if (ownerByAuthError) throw ownerByAuthError;
         ownerData = ownerByAuth;
 
-        // גיבוי חשוב לדמו: אם קיימת שורת owner לפי email אבל auth_user_id עדיין לא התחבר,
-        // מחברים אותה אוטומטית למשתמש המחובר.
+        // קישור מאובטח מתבצע בשרת לפי האימייל המאומת שב-JWT. הדפדפן אינו
+        // מקבל הרשאה לחפש רשומות לקוח לפי כתובת אימייל.
         if (!ownerData && authUser.email) {
-          const { data: ownerByEmail, error: ownerByEmailError } = await supabase
-            .from("owners")
-            .select(ownerSelect)
-            .eq("email", authUser.email)
-            .maybeSingle();
-
-          if (ownerByEmailError) throw ownerByEmailError;
-
-          if (ownerByEmail) {
-            ownerData = ownerByEmail;
-
-            if (!ownerByEmail.auth_user_id) {
-              const { error: linkOwnerError } = await supabase
-                .from("owners")
-                .update({ auth_user_id: authUser.id })
-                .eq("owner_id", ownerByEmail.owner_id);
-
-              if (linkOwnerError) {
-                console.warn("Owner was found by email but auth_user_id could not be linked:", linkOwnerError);
-              }
-            }
+          const { data: claimedOwnerId, error: claimOwnerError } = await supabase.rpc("claim_owner_profile");
+          if (claimOwnerError) {
+            console.warn("Owner profile could not be linked securely:", claimOwnerError.code);
+          } else if (claimedOwnerId) {
+            const { data: claimedOwner, error: claimedOwnerError } = await supabase
+              .from("owners")
+              .select(ownerSelect)
+              .eq("auth_user_id", authUser.id)
+              .maybeSingle();
+            if (claimedOwnerError) throw claimedOwnerError;
+            ownerData = claimedOwner;
           }
         }
 
@@ -1232,8 +1222,9 @@ export function ClientPortal() {
         .from("messages")
         .insert({
           conversation_id: selectedConversationId,
-          sender_type: "system",
-          sender_name: "מערכת MyVet",
+          sender_type: "owner",
+          sender_owner_id: ownerProfile.owner_id,
+          sender_name: ownerDisplayName,
           message_text: "בעל החיה ביקש שיחת וידאו. צוות המרפאה ייצור קישור Google Meet וישלח אותו כאן.",
           message_type: "system",
           is_read_by_owner: true,
@@ -1365,35 +1356,16 @@ export function ClientPortal() {
     if (blockStaffPreviewMutation()) return;
     if (!paymentToPay) return;
 
-    try {
-      setPayingPaymentId(paymentToPay.id);
-
-      const { error } = await supabase
-        .from("payments")
-        .update({
-          status: "paid",
-          payment_method: "credit",
-          paid_at: new Date().toISOString(),
-          notes: paymentToPay.notes
-            ? `${paymentToPay.notes} | שולם דרך פורטל בעלים`
-            : "שולם דרך פורטל בעלים",
-        })
-        .eq("payment_id", paymentToPay.id);
-
-      if (error) throw error;
-
-      await refreshPortalData();
-      setPaymentSuccess(true);
-      setTimeout(() => {
-        setPaymentSuccess(false);
-        setPaymentToPay(null);
-      }, 1800);
-    } catch (error) {
-      console.error("Failed to complete demo payment", error);
-      toast.error("לא הצלחנו להשלים את התשלום כרגע. נסה שוב או פנה למרפאה.");
-    } finally {
+    setPayingPaymentId(paymentToPay.id);
+    // מסך הדגמה בלבד: סטטוס תשלום אמיתי חייב להתעדכן מ-webhook
+    // מאומת של ספק סליקה, ולעולם לא ישירות מדפדפן הלקוח.
+    setPaymentSuccess(true);
+    toast.success("סימולציית התשלום הושלמה. לא בוצע חיוב אמיתי.");
+    window.setTimeout(() => {
+      setPaymentSuccess(false);
+      setPaymentToPay(null);
       setPayingPaymentId(null);
-    }
+    }, 1800);
   };
 
   const allPayments = Object.values(paymentsByPet).flat() as PaymentSummary[];

@@ -4,3 +4,4 @@ dist/
 .env.local
 .vscode/
 node_modules
+supabase/.temp/

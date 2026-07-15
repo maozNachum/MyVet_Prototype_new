@@ -28,3 +28,23 @@ test("VetBot drops sensitive object fields and keeps aggregate facts", () => {
   assert.ok(protectedPayload.report.total >= 5);
   assert.ok(protectedPayload.report.categories.includes("sensitive-field"));
 });
+
+test("VetBot sanitizes identifiers inside nested messages and arrays", () => {
+  const protectedPayload = protectAiPayload({
+    history: [
+      { role: "user", content: "צרו קשר עם 052-1234567 או test@clinic.example" },
+      { role: "assistant", content: "קישור פרטי: https://example.com/case/123" },
+    ],
+    context: {
+      totals: { openConversations: 4 },
+      customer: { fullName: "לקוח לדוגמה", idNumber: "123456782" },
+    },
+  });
+
+  const serialized = JSON.stringify(protectedPayload.value);
+  assert.doesNotMatch(serialized, /052-1234567/);
+  assert.doesNotMatch(serialized, /test@clinic\.example/);
+  assert.doesNotMatch(serialized, /example\.com\/case/);
+  assert.doesNotMatch(serialized, /123456782/);
+  assert.match(serialized, /openConversations/);
+});

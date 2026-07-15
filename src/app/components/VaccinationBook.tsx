@@ -206,7 +206,19 @@ export function VaccinationBook({
         .order("given_date", { ascending: false });
 
       if (error) throw error;
-      setRecords((data || []) as VaccinationRecord[]);
+      const rows = (data || []) as VaccinationRecord[];
+      const protectedRows = await Promise.all(rows.map(async (record) => {
+        if (!record.sticker_image_path) return { ...record, sticker_image_url: null };
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(record.sticker_image_path, 60 * 10);
+        if (signedError) {
+          console.warn("Vaccination sticker URL was not created", signedError.message);
+          return { ...record, sticker_image_url: null };
+        }
+        return { ...record, sticker_image_url: signedData.signedUrl || null };
+      }));
+      setRecords(protectedRows);
     } catch (error) {
       console.error("Failed to load vaccination book", error);
       setRecords([]);
@@ -356,8 +368,7 @@ export function VaccinationBook({
 
     if (uploadError) throw uploadError;
 
-    const { data } = supabase.storage.from("documents").getPublicUrl(path);
-    return { path, url: data.publicUrl || null };
+    return { path, url: null };
   }
 
   async function saveVaccination() {
@@ -397,7 +408,9 @@ export function VaccinationBook({
         administered_by: form.administered_by.trim() || null,
         entry_method: entryMethod,
         sticker_image_path: image.path || editingRecord?.sticker_image_path || null,
-        sticker_image_url: image.url || editingRecord?.sticker_image_url || null,
+        // Signed URLs are generated only when the record is loaded and are
+        // never persisted as durable public links.
+        sticker_image_url: null,
         notes: form.notes.trim() || null,
       };
 
