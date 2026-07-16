@@ -8,6 +8,8 @@ const migration = readFileSync("supabase/migrations/202607150001_vetbot_privacy.
 const rlsMigration = readFileSync("supabase/migrations/202607150002_myvet_rls_hardening.sql", "utf8");
 const availabilityMigration = readFileSync("supabase/migrations/20260716145453_clinic_booking_availability.sql", "utf8");
 const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181935_reliable_realtime_and_payment_settlement.sql", "utf8");
+const actionMigration = readFileSync("supabase/migrations/20260716193200_vetbot_action_orchestration.sql", "utf8");
+const actionEngine = readFileSync("supabase/functions/_shared/vetbotActions.ts", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
@@ -15,14 +17,34 @@ const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx",
 const appointmentStoreSource = readFileSync("src/app/data/AppointmentStore.tsx", "utf8");
 const dashboardSource = readFileSync("src/app/pages/Dashboard.tsx", "utf8");
 const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
+const vetbotAnswerSource = readFileSync("src/app/components/ai/AiStructuredAnswer.tsx", "utf8");
 const themeSource = readFileSync("src/styles/theme.css", "utf8");
 
-test("VetBot server exposes no autonomous database write tools", () => {
-  assert.doesNotMatch(edgeFunction, /\.update\s*\(/);
-  assert.doesNotMatch(edgeFunction, /\.upsert\s*\(/);
-  assert.doesNotMatch(edgeFunction, /\.delete\s*\(/);
+test("VetBot writes only through expiring human-approved action requests", () => {
   assert.match(edgeFunction, /vetbot_audit_logs/);
   assert.match(edgeFunction, /requiresConfirmation:\s*true/);
+  assert.match(edgeFunction, /actionDecision/);
+  assert.match(actionMigration, /expires_at timestamptz not null default \(now\(\) \+ interval '10 minutes'\)/);
+  assert.match(actionMigration, /actor_id = auth\.uid\(\)/);
+  assert.match(actionMigration, /status <> 'pending'/);
+  assert.match(actionMigration, /current_role <> request_row\.actor_role/);
+  assert.match(actionMigration, /revoke all on function public\.myvet_execute_vetbot_action\(uuid\) from anon/);
+  assert.match(actionEngine, /status: "needs_confirmation"/);
+  assert.match(actionEngine, /decision: "approve" \| "reject"/);
+});
+
+test("VetBot asks for missing action details and blocks dangerous operations", () => {
+  assert.match(actionEngine, /status: "needs_details"/);
+  assert.match(actionEngine, /type: "forbidden"/);
+  assert.match(actionEngine, /process a payment|תשלומים/);
+  assert.match(edgeFunction, /missingFields/);
+  assert.match(edgeFunction, /Never claim an action was executed/);
+});
+
+test("VetBot does not display source labels in answers", () => {
+  assert.doesNotMatch(vetbotAnswerSource, />מקור:\s*\{item\.source\}/);
+  assert.match(vetbotAnswerSource, /מקור\\s\*:/);
+  assert.match(edgeFunction, /Never output a source line/);
 });
 
 test("VetBot retries incomplete structured Gemini output without logging content", () => {

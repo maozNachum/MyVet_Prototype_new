@@ -165,6 +165,8 @@ export function buildScheduleContext({ appointments, viewMode, activeVet, role }
       busiestHours: Object.entries(byHour).sort((a, b) => b[1] - a[1]).slice(0, 5),
     },
     appointments: appointments.slice(0, 90).map((appt) => ({
+      appointmentRef: Number(appt.id || appt.appointment_id) || undefined,
+      patientRef: Number(appt.petId || appt.pet_id) || undefined,
       date: appt.date || `${appt.year}-${String((appt.month ?? 0) + 1).padStart(2, "0")}-${String(appt.day).padStart(2, "0")}`,
       time: appt.time,
       endTime: appt.endTime,
@@ -219,6 +221,7 @@ export function buildDigitalCareContext({ conversation, messages, attachments, r
     roleFocus: buildRoleFocus(role),
     conversation: conversation
       ? {
+          conversationRef: Number(conversation.conversation_id || conversation.id) || undefined,
           status: conversation.status,
           priority: conversation.priority,
           subject: compactText(conversation.subject || "", 240),
@@ -244,6 +247,7 @@ export function buildMedicalRecordContext({ patient, visits, activeHospitalizati
     screen: "medical-record",
     role,
     roleFocus: buildRoleFocus(role),
+    selectedPatientRef: Number(patient?.pet?.pet_id || patient?.pet?.id || patient?.pet_id || patient?.id) || undefined,
     petSummary: {
       species: patient?.pet?.species,
       gender: patient?.pet?.gender,

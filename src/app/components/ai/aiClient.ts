@@ -5,6 +5,8 @@ import type {
   AiAssistantRequest,
   AiAssistantResponse,
   AiAssistantResult,
+  AiActionDecisionRequest,
+  AiActionPlan,
   AiConfidence,
   AiSuggestedAction,
   AiUrgency,
@@ -131,6 +133,7 @@ function normalizeResponse(
     confidence: normalizeConfidence(data.confidence),
     findings,
     suggestedActions: normalizeSuggestedActions(data.suggestedActions, request.userRole),
+    actionPlan: normalizeActionPlan(data.actionPlan),
     usedTools: Array.isArray(data.usedTools)
       ? data.usedTools.slice(0, 8).map((item) => redactSensitiveText(String(item)).slice(0, 80))
       : [],
@@ -144,6 +147,28 @@ function normalizeResponse(
       externalProcessing: data.privacy?.externalProcessing !== false,
       noticeVersion: VETBOT_PRIVACY_NOTICE_VERSION,
     },
+  };
+}
+
+function normalizeActionPlan(value: unknown): AiActionPlan | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const raw = value as Partial<AiActionPlan>;
+  const allowedStatuses = new Set(["needs_details", "needs_confirmation", "blocked", "executed", "rejected", "failed"]);
+  const allowedTypes = new Set(["book_appointment", "reschedule_appointment", "cancel_appointment", "adjust_inventory", "archive_conversation", "restore_conversation", "set_conversation_priority", "set_lab_urgency", "block_booking_time", "draft_message", "navigate", "forbidden", "none"]);
+  if (!allowedStatuses.has(String(raw.status)) || !allowedTypes.has(String(raw.type))) return undefined;
+  return {
+    requestId: typeof raw.requestId === "string" ? raw.requestId.slice(0, 80) : undefined,
+    type: raw.type as AiActionPlan["type"],
+    status: raw.status as AiActionPlan["status"],
+    title: redactSensitiveText(String(raw.title || "פעולת VetBot")).slice(0, 100),
+    summary: redactSensitiveText(String(raw.summary || "")).slice(0, 320),
+    missingFields: Array.isArray(raw.missingFields) ? raw.missingFields.slice(0, 8).map((item) => redactSensitiveText(String(item)).slice(0, 60)) : [],
+    details: Array.isArray(raw.details) ? raw.details.slice(0, 8).map((item) => ({
+      label: redactSensitiveText(String(item?.label || "פרט")).slice(0, 50),
+      value: redactSensitiveText(String(item?.value || "")).slice(0, 140),
+    })) : [],
+    destructive: Boolean(raw.destructive),
+    confirmationLabel: raw.confirmationLabel ? redactSensitiveText(String(raw.confirmationLabel)).slice(0, 60) : undefined,
   };
 }
 
@@ -175,6 +200,25 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<AiAss
     total: protectedPayload.report.total,
     categories: protectedPayload.report.categories,
   });
+}
+
+export async function decideAiAction(request: AiActionDecisionRequest): Promise<AiAssistantResult> {
+  const { data, error } = await supabase.functions.invoke<AiAssistantResponse>("ai-assistant", {
+    body: {
+      mode: request.mode,
+      actionDecision: { requestId: request.requestId, decision: request.decision },
+    },
+  });
+  if (error) {
+    const detail = await edgeErrorMessage(error);
+    throw new Error(friendlyEdgeError(detail));
+  }
+  if (!data?.answer) throw new Error("VetBot לא החזיר את מצב הפעולה. נסה שוב.");
+  return normalizeResponse(data, {
+    mode: request.mode,
+    question: "",
+    userRole: request.userRole,
+  }, { total: 0, categories: [] });
 }
 
 export async function recordAiFeedback({

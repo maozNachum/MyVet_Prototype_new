@@ -37,6 +37,33 @@ export interface AiSuggestedAction {
   requiresConfirmation: true;
 }
 
+export type AiActionType =
+  | "book_appointment"
+  | "reschedule_appointment"
+  | "cancel_appointment"
+  | "adjust_inventory"
+  | "archive_conversation"
+  | "restore_conversation"
+  | "set_conversation_priority"
+  | "set_lab_urgency"
+  | "block_booking_time"
+  | "draft_message"
+  | "navigate"
+  | "forbidden"
+  | "none";
+
+export interface AiActionPlan {
+  requestId?: string;
+  type: AiActionType;
+  status: "needs_details" | "needs_confirmation" | "blocked" | "executed" | "rejected" | "failed";
+  title: string;
+  summary: string;
+  missingFields: string[];
+  details: Array<{ label: string; value: string }>;
+  destructive?: boolean;
+  confirmationLabel?: string;
+}
+
 export interface AiPrivacyMeta {
   mode: "strict-minimization";
   piiRemoved: boolean;
@@ -52,6 +79,7 @@ export interface AiAssistantResult {
   confidence: AiConfidence;
   findings: AiFinding[];
   suggestedActions: AiSuggestedAction[];
+  actionPlan?: AiActionPlan;
   usedTools: string[];
   memorySummary?: string;
   privacy: AiPrivacyMeta;
@@ -72,6 +100,13 @@ export interface AiAssistantRequest {
   userRole?: AiUserRole;
   privacyMode?: "strict-minimization";
   noticeVersion?: string;
+}
+
+export interface AiActionDecisionRequest {
+  mode: AiAssistantMode;
+  requestId: string;
+  decision: "approve" | "reject";
+  userRole?: AiUserRole;
 }
 
 /** Backward compatible: existing Edge Functions may still return only `answer`. */

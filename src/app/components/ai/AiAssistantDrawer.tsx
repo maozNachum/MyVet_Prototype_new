@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, Loader2, RefreshCw, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router";
-import { askAiAssistant, recordAiFeedback } from "./aiClient";
+import { askAiAssistant, decideAiAction, recordAiFeedback } from "./aiClient";
 import { buildLocalProactiveBriefing } from "./aiProactiveEngine";
 import { AiStructuredAnswer } from "./AiStructuredAnswer";
 import type {
   AiAssistantMode,
   AiAssistantResult,
+  AiActionPlan,
   AiChatMessage,
   AiQuickAction,
   AiSuggestedAction,
@@ -45,6 +46,7 @@ export function AiAssistantDrawer({
   const [feedbackByMessage, setFeedbackByMessage] = useState<Record<number, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [lastFailedQuestion, setLastFailedQuestion] = useState("");
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<unknown>(null);
@@ -90,7 +92,7 @@ export function AiAssistantDrawer({
 
   async function send(question: string) {
     const trimmed = question.trim();
-    if (!trimmed || isThinking) return;
+    if (!trimmed || isThinking || actionLoadingId) return;
 
     setError(null);
     setLastFailedQuestion("");
@@ -140,6 +142,24 @@ export function AiAssistantDrawer({
   function handleFeedback(index: number, result: AiAssistantResult, helpful: boolean) {
     setFeedbackByMessage((prev) => ({ ...prev, [index]: helpful }));
     void recordAiFeedback({ mode, helpful, usedTools: result.usedTools });
+  }
+
+  async function handleActionDecision(plan: AiActionPlan, decision: "approve" | "reject") {
+    if (!plan.requestId || actionLoadingId) return;
+    setError(null);
+    setActionLoadingId(plan.requestId);
+    try {
+      const result = await decideAiAction({ mode, requestId: plan.requestId, decision, userRole });
+      setMessages((prev) => [...prev, { role: "assistant", content: result.answer, result }]);
+      if (result.actionPlan?.status === "executed") {
+        contextRef.current = await buildContext();
+        window.dispatchEvent(new CustomEvent("myvet:vetbot-action", { detail: { actionType: plan.type } }));
+      }
+    } catch (actionError: any) {
+      setError(actionError instanceof Error ? actionError.message : "לא הצלחנו לעדכן את הפעולה.");
+    } finally {
+      setActionLoadingId(null);
+    }
   }
 
   return createPortal(
@@ -211,7 +231,14 @@ export function AiAssistantDrawer({
                     {isUser ? (
                       <p className="whitespace-pre-wrap font-medium leading-7 text-white">{message.content}</p>
                     ) : message.result ? (
-                      <AiStructuredAnswer result={message.result} onAction={handleAction} feedback={feedbackByMessage[index]} onFeedback={(helpful) => handleFeedback(index, message.result!, helpful)} />
+                      <AiStructuredAnswer
+                        result={message.result}
+                        onAction={handleAction}
+                        onActionDecision={handleActionDecision}
+                        actionLoadingId={actionLoadingId}
+                        feedback={feedbackByMessage[index]}
+                        onFeedback={(helpful) => handleFeedback(index, message.result!, helpful)}
+                      />
                     ) : (
                       <p className="whitespace-pre-wrap font-medium leading-7 text-slate-800">{message.content}</p>
                     )}
@@ -271,7 +298,7 @@ export function AiAssistantDrawer({
             />
             <div className="flex items-center justify-between gap-3 pt-1">
               <p className="text-[11px] text-gray-400">Enter לשליחה · המידע עובר צמצום אוטומטי</p>
-              <button type="button" onClick={() => send(input)} disabled={!input.trim() || isThinking} aria-label="שליחה ל-VetBot" className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-[#1e40af] text-white transition-colors hover:bg-[#1e3a8a] disabled:cursor-not-allowed disabled:bg-gray-300">
+              <button type="button" onClick={() => send(input)} disabled={!input.trim() || isThinking || Boolean(actionLoadingId)} aria-label="שליחה ל-VetBot" className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-[#1e40af] text-white transition-colors hover:bg-[#1e3a8a] disabled:cursor-not-allowed disabled:bg-gray-300">
                 {isThinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
             </div>
