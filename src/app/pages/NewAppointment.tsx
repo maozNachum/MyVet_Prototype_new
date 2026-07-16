@@ -67,7 +67,6 @@ function fullName(first?: string | null, last?: string | null) {
 
 function urgencyToColor(urgency: string) {
   if (urgency === "urgent") return "red";
-  if (urgency === "high") return "amber";
   return "blue";
 }
 
@@ -646,8 +645,7 @@ export function NewAppointment() {
                     }`}
                   >
                     <option value="normal">רגיל</option>
-                    <option value="high">גבוה</option>
-                    <option value="urgent">דחוף</option>
+                    <option value="urgent">חירום</option>
                   </select>
                   {errors.urgency && (
                     <p className="text-red-500 text-sm mt-1">

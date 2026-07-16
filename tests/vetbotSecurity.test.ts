@@ -5,8 +5,10 @@ import { readFileSync } from "node:fs";
 const edgeFunction = readFileSync("supabase/functions/ai-assistant/index.ts", "utf8");
 const migration = readFileSync("supabase/migrations/202607150001_vetbot_privacy.sql", "utf8");
 const rlsMigration = readFileSync("supabase/migrations/202607150002_myvet_rls_hardening.sql", "utf8");
+const availabilityMigration = readFileSync("supabase/migrations/20260716145453_clinic_booking_availability.sql", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
+const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
 
 test("VetBot server exposes no autonomous database write tools", () => {
@@ -47,11 +49,23 @@ test("Owner linking uses the verified JWT email only on the server", () => {
   assert.doesNotMatch(portalSource, /\.eq\("email",\s*authUser\.email\)/);
 });
 
-test("Owner booking reads occupied slots without duplicating contact details", () => {
-  assert.match(bookingSource, /rpc\("myvet_booked_slots"/);
+test("Owner booking uses clinic-controlled slots and an atomic booking RPC", () => {
+  assert.match(bookingSource, /rpc\("myvet_available_slots"/);
+  assert.match(bookingSource, /rpc\("myvet_owner_book_appointment"/);
+  assert.match(availabilityMigration, /clinic_booking_hours/);
+  assert.match(availabilityMigration, /clinic_booking_blocks/);
+  assert.match(availabilityMigration, /myvet_slot_is_bookable/);
+  assert.match(availabilityMigration, /pg_advisory_xact_lock/);
+  assert.match(availabilityMigration, /drop policy if exists "myvet_owner_appointments_insert"/);
   assert.doesNotMatch(bookingSource, /בעלים:\s*\$\{ownerName\}/);
   assert.doesNotMatch(bookingSource, /טלפון:\s*\$\{ownerPhone\}/);
   assert.doesNotMatch(bookingSource, /אימייל:\s*\$\{ownerEmail\}/);
+});
+
+test("Appointment urgency offers only normal or emergency", () => {
+  assert.match(newAppointmentSource, /<option value="normal">/);
+  assert.match(newAppointmentSource, /<option value="urgent">/);
+  assert.doesNotMatch(newAppointmentSource, /<option value="high">/);
 });
 
 test("Demo payments never change billing records from the browser", () => {

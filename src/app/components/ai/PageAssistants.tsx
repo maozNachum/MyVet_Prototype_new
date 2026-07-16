@@ -46,6 +46,11 @@ const scheduleActions: AiQuickAction[] = [
 
 export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appointments: any[]; viewMode: string; activeVet: string }) {
   const role = staffRole();
+  const attentionCount = appointments.filter((appointment) => {
+    const color = String(appointment.color || "").toLowerCase();
+    const notes = String(appointment.notes || "").toLowerCase();
+    return color === "red" || notes.includes("חירום") || !appointment.vet || (appointment.appointmentMode !== "video" && !appointment.room);
+  }).length;
 
   return (
     <AiAssistantCard
@@ -56,6 +61,7 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
       userRole={role}
       quickActions={scheduleActions}
       buildContext={() => buildScheduleContext({ appointments, viewMode, activeVet, role })}
+      attentionCount={attentionCount}
     />
   );
 }

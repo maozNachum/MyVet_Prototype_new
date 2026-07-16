@@ -10,7 +10,8 @@ import { DailyView } from "../components/schedule/DailyView";
 import { CalendarSidebar } from "../components/schedule/CalendarSidebar";
 import { DeptFilterPanel } from "../components/schedule/DeptFilterPanel";
 import { AppointmentActionModal } from "../components/schedule/AppointmentActionModal";
-import { Stethoscope, Users } from "lucide-react";
+import { ClinicAvailabilitySettings } from "../components/schedule/ClinicAvailabilitySettings";
+import { Clock3, Stethoscope, Users } from "lucide-react";
 import { useStaffMembers, uniqueNames } from "../data/staffDirectory";
 import { ScheduleAssistant } from "../components/ai/PageAssistants";
 
@@ -29,6 +30,7 @@ export function AppointmentSchedule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDepts, setActiveDepts] = useState<Set<string>>(new Set());
   const [activeVet, setActiveVet] = useState<string>("all");
+  const [showAvailabilitySettings, setShowAvailabilitySettings] = useState(false);
 
   const toggleDept = (dept: string) => {
     setActiveDepts((prev) => {
@@ -224,11 +226,16 @@ export function AppointmentSchedule() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         assistantAction={
-          <ScheduleAssistant
-            appointments={filteredAppointments}
-            viewMode={nav.viewMode}
-            activeVet={activeVet}
-          />
+          <>
+            <button type="button" onClick={() => setShowAvailabilitySettings(true)} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-[13px] font-bold text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50">
+              <Clock3 className="h-4 w-4" /> זמינות ללקוחות
+            </button>
+            <ScheduleAssistant
+              appointments={filteredAppointments}
+              viewMode={nav.viewMode}
+              activeVet={activeVet}
+            />
+          </>
         }
       />
 
@@ -401,6 +408,7 @@ export function AppointmentSchedule() {
           openAction={actions.openAction}
         />
       )}
+      <ClinicAvailabilitySettings isOpen={showAvailabilitySettings} onClose={() => setShowAvailabilitySettings(false)} />
     </main>
   );
 }

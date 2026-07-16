@@ -35,11 +35,6 @@ interface OwnerBookAppointmentProps {
   onAppointmentCreated?: () => Promise<void> | void;
 }
 
-type AppointmentRow = {
-  start_time: string | null;
-  end_time: string | null;
-};
-
 type AppointmentMode = "physical" | "video";
 
 const treatmentTypes = BOOKING_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
@@ -61,6 +56,20 @@ function formatShortDate(date: Date) {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
 }
 
+function formatIsraelSlot(start: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(start);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value || "";
+  return { date: `${value("year")}-${value("month")}-${value("day")}`, time: `${value("hour")}:${value("minute")}` };
+}
+
 function buildSlotDateTime(dateISO: string, time: string) {
   const [year, month, day] = dateISO.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
@@ -70,12 +79,10 @@ function buildSlotDateTime(dateISO: string, time: string) {
 function getOpeningHours(date: Date) {
   const day = date.getDay();
   if (day === 6) return [];
-  if (day === 5) return ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
-  return ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
-}
-
-function overlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-  return aStart < bEnd && bStart < aEnd;
+  const end = day === 5 ? "14:00" : "17:00";
+  const slots: string[] = [];
+  for (let current = "08:00"; current < end; current = addMinutes(current, 30)) slots.push(current);
+  return slots;
 }
 
 function createBaseWeek(): DaySlots[] {
@@ -95,34 +102,27 @@ function createBaseWeek(): DaySlots[] {
 
 async function loadRealAvailability(): Promise<DaySlots[]> {
   const week = createBaseWeek();
-  const rangeStart = buildSlotDateTime(week[0].fullDateISO, "00:00");
   const lastDay = week[week.length - 1];
-  const rangeEnd = buildSlotDateTime(lastDay.fullDateISO, "23:59");
 
-  const { data, error } = await supabase.rpc("myvet_booked_slots", {
-    range_start: rangeStart.toISOString(),
-    range_end: rangeEnd.toISOString(),
+  const { data, error } = await supabase.rpc("myvet_available_slots", {
+    range_start: week[0].fullDateISO,
+    range_end: lastDay.fullDateISO,
   });
 
   if (error) throw error;
 
-  const appointments = ((data || []) as Array<{ slot_start: string; slot_end: string | null }>).map((row) => {
-    const start = row.slot_start ? new Date(row.slot_start) : null;
-    const end = row.slot_end ? new Date(row.slot_end) : start ? new Date(start.getTime() + 30 * 60 * 1000) : null;
-    return { start, end };
-  });
-
   const now = new Date();
+  const availableByDate = new Map<string, TimeSlot[]>();
+  for (const row of (data || []) as Array<{ slot_start: string; slot_end: string }>) {
+    const start = new Date(row.slot_start);
+    if (start <= now) continue;
+    const israelSlot = formatIsraelSlot(start);
+    availableByDate.set(israelSlot.date, [...(availableByDate.get(israelSlot.date) || []), { time: israelSlot.time, available: true }]);
+  }
 
   return week.map((day) => ({
     ...day,
-    slots: day.slots.map((slot) => {
-      const slotStart = buildSlotDateTime(day.fullDateISO, slot.time);
-      const slotEnd = buildSlotDateTime(day.fullDateISO, addMinutes(slot.time, 30));
-      const isPast = slotStart <= now;
-      const isTaken = appointments.some((appt) => appt.start && appt.end && overlap(slotStart, slotEnd, appt.start, appt.end));
-      return { ...slot, available: !isPast && !isTaken };
-    }),
+    slots: availableByDate.get(day.fullDateISO) || [],
   }));
 }
 
@@ -227,20 +227,14 @@ export function OwnerBookAppointment({
         .filter(Boolean)
         .join("\n");
 
-      const { error } = await supabase.from("appointments").insert([
-        {
-          pet_id: selectedPet,
-          start_time: startDate.toISOString(),
-          end_time: endDate.toISOString(),
-          department: "כללי",
-          vet_name: "טרם שובץ",
-          room: selectedAppointmentMode === "video" ? "דיגיטל" : "טרם שובץ",
-          appointment_type: selectedTreatmentData?.label || selectedTreatment,
-          appointment_mode: selectedAppointmentMode,
-          color: "blue",
-          notes: notesToSave || null,
-        },
-      ]);
+      const { error } = await supabase.rpc("myvet_owner_book_appointment", {
+        requested_pet_id: selectedPet,
+        requested_start: startDate.toISOString(),
+        requested_end: endDate.toISOString(),
+        requested_type: selectedTreatmentData?.label || selectedTreatment,
+        requested_mode: selectedAppointmentMode,
+        requested_notes: notesToSave || null,
+      });
 
       if (error) throw error;
 

@@ -785,7 +785,7 @@ export function Dashboard() {
             <button type="button" onClick={() => loadDashboardData(false)} className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
               <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
             </button>
-            <DashboardAssistant />
+            <DashboardAssistant attentionCount={clinicAttentionCount} />
             {isSecretary ? (
               <button type="button" onClick={() => navigate("/appointments/new")} className="h-9 px-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                 <CalendarPlus className="w-4 h-4" /> קבע תור
