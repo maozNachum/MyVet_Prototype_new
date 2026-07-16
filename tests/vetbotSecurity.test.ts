@@ -10,6 +10,8 @@ const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
+const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
+const themeSource = readFileSync("src/styles/theme.css", "utf8");
 
 test("VetBot server exposes no autonomous database write tools", () => {
   assert.doesNotMatch(edgeFunction, /\.update\s*\(/);
@@ -60,6 +62,21 @@ test("Owner booking uses clinic-controlled slots and an atomic booking RPC", () 
   assert.doesNotMatch(bookingSource, /בעלים:\s*\$\{ownerName\}/);
   assert.doesNotMatch(bookingSource, /טלפון:\s*\$\{ownerPhone\}/);
   assert.doesNotMatch(bookingSource, /אימייל:\s*\$\{ownerEmail\}/);
+});
+
+test("Owner cannot select a slot already occupied by their own appointment", () => {
+  assert.match(bookingSource, /ownerBookedRanges/);
+  assert.match(bookingSource, /overlaps\(start, end, booking\.start, booking\.end\)/);
+  assert.match(bookingSource, /loadRealAvailability\(appointments\)/);
+  assert.match(bookingSource, /השעה שבחרתם נתפסה כעת/);
+  assert.match(portalSource, /appointments=\{appointments\}/);
+});
+
+test("VetBot uses the site typography and the application canvas keeps blue contrast", () => {
+  assert.match(vetbotDrawerSource, /myvet-vetbot/);
+  assert.match(themeSource, /\.myvet-vetbot[\s\S]*font-family:\s*"Heebo"/);
+  assert.match(themeSource, /--background:\s*#eef6ff/);
+  assert.match(themeSource, /linear-gradient\(180deg, #eaf4ff/);
 });
 
 test("Appointment urgency offers only normal or emergency", () => {

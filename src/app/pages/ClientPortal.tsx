@@ -63,6 +63,7 @@ interface Pet {
 interface FutureAppointment {
   id: number; petName: string; petType: "dog" | "cat" | "other"; petImage: string;
   date: string; time: string; type: string; vet: string; room: string; notes: string;
+  start_time: string; end_time: string | null;
 }
 
 interface DigitalConversation {
@@ -702,6 +703,8 @@ export function ClientPortal() {
             vet: row.vet_name || "טרם שובץ",
             room: row.room || "—",
             notes: row.notes || "",
+            start_time: row.start_time,
+            end_time: row.end_time || null,
           };
         });
       }
@@ -2842,6 +2845,7 @@ export function ClientPortal() {
         ownerName={ownerDisplayName}
         ownerPhone={ownerProfile?.phone || ""}
         ownerEmail={ownerProfile?.email || ""}
+        appointments={appointments}
         onAppointmentCreated={refreshPortalData}
       />
 

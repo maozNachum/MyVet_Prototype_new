@@ -25,6 +25,11 @@ interface OwnerPortalPet {
   breed: string;
 }
 
+interface OwnerAppointmentSlot {
+  start_time?: string | null;
+  end_time?: string | null;
+}
+
 interface OwnerBookAppointmentProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,6 +37,7 @@ interface OwnerBookAppointmentProps {
   ownerName?: string;
   ownerPhone?: string;
   ownerEmail?: string;
+  appointments?: OwnerAppointmentSlot[];
   onAppointmentCreated?: () => Promise<void> | void;
 }
 
@@ -39,6 +45,7 @@ type AppointmentMode = "physical" | "video";
 
 const treatmentTypes = BOOKING_VISIT_TYPE_KEYS.map((id) => ({ id, ...VISIT_TYPES[id] }));
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const EMPTY_APPOINTMENTS: OwnerAppointmentSlot[] = [];
 const APPOINTMENT_MODE_OPTIONS: Array<{ value: AppointmentMode; title: string; subtitle: string; icon: typeof Building2 }> = [
   { value: "physical", title: "תור פיזי", subtitle: "הגעה למרפאה", icon: Building2 },
   { value: "video", title: "תור וידאו", subtitle: "המשך טיפול במרפאה הדיגיטלית", icon: Video },
@@ -100,7 +107,11 @@ function createBaseWeek(): DaySlots[] {
   });
 }
 
-async function loadRealAvailability(): Promise<DaySlots[]> {
+function overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
+  return startA < endB && startB < endA;
+}
+
+async function loadRealAvailability(ownerAppointments: OwnerAppointmentSlot[] = []): Promise<DaySlots[]> {
   const week = createBaseWeek();
   const lastDay = week[week.length - 1];
 
@@ -112,10 +123,18 @@ async function loadRealAvailability(): Promise<DaySlots[]> {
   if (error) throw error;
 
   const now = new Date();
+  const ownerBookedRanges = ownerAppointments.flatMap((appointment) => {
+    if (!appointment.start_time) return [];
+    const start = new Date(appointment.start_time);
+    const end = appointment.end_time ? new Date(appointment.end_time) : new Date(start.getTime() + 30 * 60 * 1000);
+    return Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) ? [] : [{ start, end }];
+  });
   const availableByDate = new Map<string, TimeSlot[]>();
   for (const row of (data || []) as Array<{ slot_start: string; slot_end: string }>) {
     const start = new Date(row.slot_start);
+    const end = new Date(row.slot_end);
     if (start <= now) continue;
+    if (ownerBookedRanges.some((booking) => overlaps(start, end, booking.start, booking.end))) continue;
     const israelSlot = formatIsraelSlot(start);
     availableByDate.set(israelSlot.date, [...(availableByDate.get(israelSlot.date) || []), { time: israelSlot.time, available: true }]);
   }
@@ -133,6 +152,7 @@ export function OwnerBookAppointment({
   ownerName = "",
   ownerPhone = "",
   ownerEmail = "",
+  appointments = EMPTY_APPOINTMENTS,
   onAppointmentCreated,
 }: OwnerBookAppointmentProps) {
   const [step, setStep] = useState(1);
@@ -161,7 +181,7 @@ export function OwnerBookAppointment({
       setIsLoadingSlots(true);
       setSlotError(null);
       try {
-        const nextWeek = await loadRealAvailability();
+        const nextWeek = await loadRealAvailability(appointments);
         if (mounted) setWeek(nextWeek);
       } catch (error) {
         console.error("Failed to load appointment availability", error);
@@ -178,7 +198,7 @@ export function OwnerBookAppointment({
     return () => {
       mounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, appointments]);
 
   const handleClose = () => {
     setStep(1);
@@ -201,10 +221,28 @@ export function OwnerBookAppointment({
     setStep(2);
   };
 
-  const goToStep3 = () => {
+  const goToStep3 = async () => {
     if (!selectedTime) return setValidationError("בחרו שעה פנויה לפני שממשיכים");
-    setValidationError(null);
-    setStep(3);
+    setIsLoadingSlots(true);
+    try {
+      const refreshedWeek = await loadRealAvailability(appointments);
+      const selectedDate = week[selectedDay]?.fullDateISO;
+      const refreshedDay = refreshedWeek.find((day) => day.fullDateISO === selectedDate);
+      const isStillAvailable = refreshedDay?.slots.some((slot) => slot.time === selectedTime && slot.available);
+      setWeek(refreshedWeek);
+      if (!isStillAvailable) {
+        setSelectedTime(null);
+        setValidationError("השעה שבחרתם נתפסה כעת. הזמינות עודכנה—בחרו שעה אחרת.");
+        return;
+      }
+      setValidationError(null);
+      setStep(3);
+    } catch (error) {
+      console.error("Failed to revalidate appointment availability", error);
+      setValidationError("לא הצלחנו לאמת שהשעה עדיין פנויה. נסו שוב בעוד רגע.");
+    } finally {
+      setIsLoadingSlots(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -246,7 +284,11 @@ export function OwnerBookAppointment({
       }, 2200);
     } catch (error) {
       console.error("Supabase appointment insert error:", error);
-      setValidationError("לא הצלחנו לקבוע את התור כרגע. נסה שוב בעוד רגע או פנה לצוות המרפאה.");
+      const refreshedWeek = await loadRealAvailability(appointments).catch(() => null);
+      if (refreshedWeek) setWeek(refreshedWeek);
+      setSelectedTime(null);
+      setStep(2);
+      setValidationError("השעה כבר אינה פנויה. הזמינות עודכנה—בחרו שעה אחרת.");
     } finally {
       setIsSaving(false);
     }
@@ -403,7 +445,7 @@ export function OwnerBookAppointment({
           <div className="border-t border-gray-100 p-4 flex gap-3 shrink-0">
             {step > 1 && <button onClick={() => setStep((prev) => prev - 1)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>חזרה</button>}
             {step === 1 && <button onClick={goToStep2} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>המשך לבחירת מועד</button>}
-            {step === 2 && <button onClick={goToStep3} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>המשך לסיכום</button>}
+            {step === 2 && <button onClick={goToStep3} disabled={isLoadingSlots} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:cursor-wait disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>{isLoadingSlots && <Loader2 className="h-4 w-4 animate-spin" />} המשך לסיכום</button>}
             {step === 3 && <button onClick={handleSubmit} disabled={isSaving} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} קבע תור</button>}
           </div>
         )}

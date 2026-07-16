@@ -12,20 +12,20 @@ function cleanupAnswer(text: string) {
 function AnswerText({ text }: { text: string }) {
   const blocks = cleanupAnswer(text).split(/\n+/).map((line) => line.trim()).filter(Boolean);
   return (
-    <div className="space-y-2.5 break-words text-right leading-7">
+    <div className="space-y-3 break-words text-right text-[15px] font-medium leading-7 text-slate-800">
       {blocks.map((line, index) => {
         const isBullet = /^[-•]\s+/.test(line) || /^\d+[.)]\s+/.test(line);
         const normalized = line.replace(/^[-•]\s+/, "").replace(/^\d+[.)]\s+/, "");
         const isHeading = /^[^:]{2,35}:$/.test(normalized) || /^(שורה תחתונה|מה ראיתי|מה לעשות עכשיו|שים לב|המלצה|סיכום):/.test(normalized);
         if (isBullet) {
           return (
-            <div key={`${line}-${index}`} className="relative pr-5 text-[14px] text-slate-700">
+            <div key={`${line}-${index}`} className="relative pr-5 text-[15px] leading-7 text-slate-800">
               <span className="absolute right-0 top-0 text-[#1e40af]">•</span>
               <span>{normalized}</span>
             </div>
           );
         }
-        return <p key={`${line}-${index}`} className={`${isHeading ? "font-bold text-slate-950" : "text-slate-700"} whitespace-pre-wrap text-[14px]`}>{normalized}</p>;
+        return <p key={`${line}-${index}`} className={`${isHeading ? "font-extrabold text-slate-950" : "text-slate-800"} whitespace-pre-wrap text-[15px] leading-7`}>{normalized}</p>;
       })}
     </div>
   );
