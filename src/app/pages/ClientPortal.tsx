@@ -1540,21 +1540,38 @@ export function ClientPortal() {
       )}
 
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className={`flex-1 mx-auto w-full px-3 pb-28 pt-4 transition-[max-width] sm:px-4 sm:pb-24 sm:pt-7 ${activePortalView === "home" ? "max-w-[560px]" : "max-w-[1040px]"}`}>
-        <div className="mb-6 sm:mb-8 space-y-4">
+      <main className={`flex-1 mx-auto w-full px-3 pb-28 pt-4 transition-[max-width] sm:px-4 md:pb-24 md:pt-7 ${activePortalView === "home" ? "max-w-[560px]" : "max-w-[1040px]"}`}>
+        <div className={`${activePortalView === "home" ? "mb-6 sm:mb-8" : "mb-4 sm:mb-6"} space-y-4`}>
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[13px] font-bold mb-3">
-                <Home className="w-3.5 h-3.5" /> {portalViewLabel(activePortalView)}
-              </div>
-              <h1 className="text-gray-900 text-[25px] sm:text-[28px] mb-1" style={{ fontWeight: 900 }}>
-                שלום, {ownerDisplayName.split(" ")[0] || ownerDisplayName}<span className="inline-block mr-2">👋</span>
-              </h1>
-              <p className="text-gray-500 font-medium text-[13px] sm:text-[14px] leading-6">
-                {activePortalView === "home"
-                  ? "כל מה שחשוב עכשיו במקום אחד, בלי עומס."
-                  : "בחרו פעולה מהתפריט או חזרו לבית לצפייה מהירה."}
-              </p>
+              {activePortalView === "home" ? (
+                <>
+                  <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1e40af] px-3 py-1 rounded-full text-[13px] font-bold mb-3">
+                    <Home className="w-3.5 h-3.5" /> {portalViewLabel(activePortalView)}
+                  </div>
+                  <h1 className="text-gray-900 text-[25px] sm:text-[28px] mb-1" style={{ fontWeight: 900 }}>
+                    שלום, {ownerDisplayName.split(" ")[0] || ownerDisplayName}<span className="inline-block mr-2">👋</span>
+                  </h1>
+                  <p className="text-gray-500 font-medium text-[13px] sm:text-[14px] leading-6">
+                    כל מה שחשוב עכשיו במקום אחד, בלי עומס.
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => goToPortalView("home")}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50"
+                    aria-label="חזרה לדף הבית"
+                  >
+                    <ChevronLeft className="h-5 w-5 rotate-180" />
+                  </button>
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-400">האזור האישי</p>
+                    <h1 className="text-[22px] font-black leading-tight text-gray-950 sm:text-[25px]">{portalViewLabel(activePortalView)}</h1>
+                  </div>
+                </div>
+              )}
             </div>
 
 
@@ -1843,12 +1860,16 @@ export function ClientPortal() {
 {activePortalView === "digital" && (
           <>
           {/* ═══ 2. Digital Clinic ═══ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-sm">
+            <div className="flex items-stretch bg-gradient-to-l from-blue-50/70 via-white to-white">
             <button
+              type="button"
               onClick={() => toggleSection("digital")}
-              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-4 text-right transition-colors hover:bg-blue-50/50 sm:px-6 sm:py-5"
+              aria-expanded={Boolean(openSections.digital)}
+              aria-controls="portal-digital-content"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="bg-blue-50 rounded-xl p-2.5 relative">
                   <MessageCircle className="w-5 h-5 text-[#1e40af]" />
                   {digitalConversations.some((conv) => conv.unreadForOwner > 0) && (
@@ -1857,31 +1878,30 @@ export function ClientPortal() {
                     </span>
                   )}
                 </div>
-                <div className="text-right">
-                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>מרפאה דיגיטלית</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">
+                <div className="min-w-0 text-right">
+                  <h2 className="truncate text-[16px] font-black text-gray-950 sm:text-[17px]">מרפאה דיגיטלית</h2>
+                  <p className="truncate text-[12px] font-semibold text-gray-500">
                     {digitalConversations.length} שיחות · צ׳אט, קבצים ושיחת וידאו
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenSections((prev) => ({ ...prev, digital: true }));
-                    setNewConversationSubject("התייעצות חדשה");
-                  }}
-                  className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-blue-50 px-2.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
-                  style={{ fontWeight: 600 }}
-                >
-                  <PlusCircle className="w-3.5 h-3.5" /> פנייה חדשה
-                </span>
-                <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.digital ? "rotate-180" : ""}`} />
-              </div>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-gray-500 transition-transform duration-200 ${openSections.digital ? "rotate-180" : ""}`} />
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpenSections((prev) => ({ ...prev, digital: true }));
+                setNewConversationSubject("התייעצות חדשה");
+              }}
+              className="m-2 flex shrink-0 items-center gap-1.5 rounded-2xl border border-blue-100 bg-white px-3 text-[12px] font-black text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50 sm:m-3 sm:px-4"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span className="hidden min-[380px]:inline">פנייה חדשה</span>
+            </button>
+            </div>
 
-            {(activePortalView === "digital" || openSections.digital) && (
-              <div className="border-t border-gray-100 bg-gradient-to-b from-blue-50/40 to-white p-4">
+            {openSections.digital && (
+              <div id="portal-digital-content" className="border-t border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-3 sm:p-4">
                 {digitalError && (
                   <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-[13px] font-medium">
                     {digitalError}
@@ -2147,32 +2167,36 @@ export function ClientPortal() {
 {activePortalView === "appointments" && (
           <>
           {/* ═══ 3. Future Appointments ═══ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <button
-              onClick={() => toggleSection("appointments")}
-              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-50 rounded-xl p-2.5"><CalendarClock className="w-5 h-5 text-indigo-500" /></div>
-                <div className="text-right">
-                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>תורים עתידיים</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{appointments.length} תורים קבועים</p>
+          <div className="overflow-hidden rounded-3xl border border-indigo-100 bg-white shadow-sm">
+            <div className="flex items-stretch border-b-0 border-indigo-100 bg-gradient-to-l from-indigo-50/70 via-white to-white">
+              <button
+                type="button"
+                onClick={() => toggleSection("appointments")}
+                className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-4 text-right transition-colors hover:bg-indigo-50/50 sm:px-6 sm:py-5"
+                aria-expanded={Boolean(openSections.appointments)}
+                aria-controls="portal-appointments-content"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="shrink-0 rounded-2xl bg-indigo-100/70 p-2.5"><CalendarClock className="h-5 w-5 text-indigo-600" /></div>
+                  <div className="min-w-0 text-right">
+                    <h2 className="truncate text-[16px] font-black text-gray-950 sm:text-[17px]">תורים עתידיים</h2>
+                    <p className="text-[12px] font-semibold text-gray-500">{appointments.length} תורים קבועים</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  onClick={(e) => { e.stopPropagation(); openOwnerBooking(); }}
-                  className="flex items-center gap-1.5 text-[#1e40af] text-[12px] hover:text-[#1e3a8a] cursor-pointer transition-colors"
-                  style={{ fontWeight: 500 }}
-                >
-                  <CalendarPlus className="w-3.5 h-3.5" /> תור חדש
-                </span>
-                <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.appointments ? "rotate-180" : ""}`} />
-              </div>
-            </button>
+                <ChevronDown className={`h-5 w-5 shrink-0 text-gray-500 transition-transform duration-200 ${openSections.appointments ? "rotate-180" : ""}`} />
+              </button>
+              <button
+                type="button"
+                onClick={openOwnerBooking}
+                className="m-2 flex shrink-0 items-center gap-1.5 rounded-2xl border border-blue-100 bg-white px-3 text-[12px] font-black text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50 sm:m-3 sm:px-4"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                <span className="hidden min-[360px]:inline">תור חדש</span>
+              </button>
+            </div>
 
-            {activePortalView === "appointments" && (
-              <div className="border-t border-gray-100 p-4 space-y-3">
+            {openSections.appointments && (
+              <div id="portal-appointments-content" className="space-y-3 border-t border-indigo-100 p-3 sm:p-4">
                 {appointments.length === 0 ? (
                   <div className="text-center py-10 text-gray-500 font-medium">
                     <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
@@ -2181,7 +2205,7 @@ export function ClientPortal() {
                   </div>
                 ) : (
                   appointments.map((appt) => (
-                    <div key={appt.id} className="rounded-xl border border-gray-100 hover:border-indigo-200 p-4 transition-all hover:shadow-sm group">
+                    <div key={appt.id} className="group rounded-2xl border border-gray-100 bg-white p-3.5 transition-all hover:border-indigo-200 hover:shadow-sm sm:p-4">
                       <div className="flex items-start gap-3.5">
                         <div className="relative shrink-0">
                           <img src={appt.petImage} alt={appt.petName} className="w-11 h-11 rounded-xl object-cover" />
@@ -2201,11 +2225,11 @@ export function ClientPortal() {
                           </div>
                           <p className="text-gray-500 font-medium text-[12px] mb-0.5">{appt.vet}</p>
                           {appt.notes && <p className="text-gray-500 font-medium text-[13px] mt-1" style={{ lineHeight: 1.5 }}>{appt.notes}</p>}
-                          <div className="flex items-center gap-2 mt-3">
-                            <button onClick={() => { setRescheduleAppt(appt); setRescheduleDate(""); setRescheduleTime(""); }} className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[13px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200" style={{ fontWeight: 500 }}>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                            <button onClick={() => { setRescheduleAppt(appt); setRescheduleDate(""); setRescheduleTime(""); }} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-bold text-blue-600 transition-colors hover:bg-blue-100 sm:text-[13px]">
                               <CalendarClock className="w-3 h-3" /> הזז תור
                             </button>
-                            <button onClick={() => setCancelAppt(appt)} className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-[13px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-red-200" style={{ fontWeight: 500 }}>
+                            <button onClick={() => setCancelAppt(appt)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-bold text-red-500 transition-colors hover:bg-red-100 sm:text-[13px]">
                               <Trash2 className="w-3 h-3" /> בטל תור
                             </button>
                           </div>
@@ -2225,45 +2249,56 @@ export function ClientPortal() {
 {activePortalView === "pets" && (
           <>
           {/* ═══ 3. My Pets – Medical Record ═══ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
             <button
+              type="button"
               onClick={() => toggleSection("pets")}
-              className="w-full px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60 transition-colors"
+              className="flex w-full items-center justify-between gap-3 bg-gradient-to-l from-emerald-50/75 via-white to-white px-4 py-4 text-right transition-colors hover:bg-emerald-50/50 sm:px-6 sm:py-5"
+              aria-expanded={Boolean(openSections.pets)}
+              aria-controls="portal-pets-content"
             >
-              <div className="flex items-center gap-3">
-                <div className="bg-green-50 rounded-xl p-2.5"><Heart className="w-5 h-5 text-green-600" /></div>
-                <div className="text-right">
-                  <h2 className="text-gray-900 text-[17px]" style={{ fontWeight: 600 }}>החיות שלי - תיק רפואי</h2>
-                  <p className="text-gray-500 font-medium text-[12px]">{pets.length} חיות רשומות</p>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-2xl bg-emerald-100/70 p-2.5"><Heart className="h-5 w-5 text-emerald-700" /></div>
+                <div className="min-w-0 text-right">
+                  <h2 className="truncate text-[16px] font-black text-gray-950 sm:text-[17px]">החיות שלי</h2>
+                  <p className="text-[12px] font-semibold text-gray-500">{pets.length} חיות רשומות · תיקים רפואיים</p>
                 </div>
               </div>
-              <ChevronDown className={`w-5 h-5 text-gray-500 font-medium transition-transform duration-200 ${openSections.pets ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-5 w-5 shrink-0 text-gray-500 transition-transform duration-200 ${openSections.pets ? "rotate-180" : ""}`} />
             </button>
 
-            {(activePortalView === "pets" || openSections.pets) && (
-              <div className="border-t border-gray-100 p-4 space-y-4">
-                {pets.map((pet) => {
+            {openSections.pets && (
+              <div id="portal-pets-content" className="space-y-4 border-t border-emerald-100 p-3 sm:p-4">
+                {pets.length === 0 ? (
+                  <div className="px-4 py-10 text-center">
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                      <Heart className="h-7 w-7" />
+                    </div>
+                    <p className="text-[15px] font-black text-gray-900">אין חיות רשומות בפורטל</p>
+                    <p className="mt-1 text-[13px] leading-6 text-gray-500">לאחר שיוך החיה לחשבון, התיק הרפואי שלה יופיע כאן.</p>
+                  </div>
+                ) : pets.map((pet) => {
                   const isExpanded = expandedPet === pet.id;
                   const PIcon = pet.type === "dog" ? Dog : Cat;
                   return (
-                    <div key={pet.id} className="rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-sm">
+                    <div key={pet.id} className="overflow-hidden rounded-3xl border border-gray-100 bg-white transition-all hover:border-emerald-100 hover:shadow-sm">
                       {/* ── Pet Card Header ── */}
-                      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:gap-5 sm:p-5">
+                      <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3.5 p-3.5 sm:grid-cols-[84px_minmax(0,1fr)] sm:gap-5 sm:p-5">
                         <div className="relative shrink-0">
-                          <img src={pet.image} alt={pet.name} className="w-[80px] h-[80px] rounded-2xl object-cover shadow-sm" />
+                          <img src={pet.image} alt={pet.name} className="h-[72px] w-[72px] rounded-2xl object-cover shadow-sm sm:h-[84px] sm:w-[84px]" />
                           <div className="absolute -bottom-1.5 -left-1.5 w-7 h-7 bg-white rounded-lg shadow-sm flex items-center justify-center border border-gray-100">
                             <PIcon className="w-4 h-4 text-[#1e40af]" />
                           </div>
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                            <h3 className="text-gray-900 text-[20px]" style={{ fontWeight: 700 }}>{pet.name}</h3>
-                            <span className="bg-gray-100 text-gray-500 text-[12px] px-2.5 py-0.5 rounded-full" style={{ fontWeight: 500 }}>
+                        <div className="contents">
+                          <div className="col-start-2 mb-2 flex min-w-0 flex-wrap items-center gap-2 self-start">
+                            <h3 className="text-[20px] font-black leading-tight text-gray-950">{pet.name}</h3>
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
                               {pet.type === "dog" ? "כלב" : "חתול"}, {pet.breed}, בן {pet.age}
                             </span>
                           </div>
-                          <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-[13px] text-gray-500 mb-4">
+                          <div className="col-start-2 mb-3 grid grid-cols-1 gap-1 self-end text-[12px] text-gray-500 sm:grid-cols-2 sm:gap-x-4">
                             {[
                               { label: "מין", value: pet.gender },
                               { label: "משקל", value: pet.weight },
@@ -2273,19 +2308,19 @@ export function ClientPortal() {
                               <span key={f.label}><span className="text-gray-600" style={{ fontWeight: 500 }}>{f.label}:</span> {f.value}</span>
                             ))}
                           </div>
-                          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                          <div className="col-span-2 mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <button
                               onClick={() => setExpandedPet(isExpanded ? null : pet.id)}
-                              className="flex min-h-11 w-full items-center justify-center gap-2 bg-gradient-to-l from-[#1e40af] to-[#2563eb] hover:from-[#1e3a8a] hover:to-[#1e40af] text-white text-[13px] px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/15 sm:w-auto"
+                              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-4 py-2.5 text-[13px] font-black text-white shadow-md shadow-blue-500/15 transition-all hover:from-[#1e3a8a] hover:to-[#1e40af]"
                               style={{ fontWeight: 600 }}
                             >
                               <FileText className="w-4 h-4" />
                               צפה בתיק הרפואי המלא
-                              <ChevronLeft className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                             </button>
                             <button
                               onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
-                              className="flex min-h-11 w-full items-center justify-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-xl transition-colors cursor-pointer text-[12px] border border-emerald-100 hover:border-emerald-200 sm:w-fit"
+                              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] font-black text-emerald-700 transition-colors hover:bg-emerald-100"
                               style={{ fontWeight: 500 }}
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -2294,7 +2329,7 @@ export function ClientPortal() {
                           </div>
                         </div>
 
-                        <div className="hidden flex-col items-end gap-2 shrink-0 sm:flex">
+                        <div className="hidden">
                           <button
                             type="button"
                             onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
@@ -2509,8 +2544,8 @@ export function ClientPortal() {
                   <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
                     <CheckCircle2 className="h-7 w-7" />
                   </div>
-                  <p className="text-[15px] font-black text-gray-900">אין חיובים להצגה</p>
-                  <p className="mt-1 text-[13px] leading-6 text-gray-500">חיובים חדשים והיסטוריית תשלומים יופיעו כאן.</p>
+                  <p className="text-[16px] font-black text-gray-900">אין תשלומים לשלם כרגע</p>
+                  <p className="mt-1 text-[13px] leading-6 text-gray-500">החשבון מעודכן. חיובים חדשים והיסטוריית תשלומים יופיעו כאן.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
@@ -2594,7 +2629,7 @@ export function ClientPortal() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-[230] border-t border-blue-100 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:hidden" aria-label="ניווט מהיר בפורטל">
+      <nav className="fixed inset-x-0 bottom-0 z-[230] border-t border-blue-100 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl md:hidden" aria-label="ניווט מהיר בפורטל">
         <div className="mx-auto grid max-w-[560px] grid-cols-5 gap-1">
           {PORTAL_NAV_ITEMS.filter((item) => PORTAL_MOBILE_NAV_KEYS.includes(item.key)).map((item) => {
             const Icon = item.icon;
@@ -2810,7 +2845,7 @@ export function ClientPortal() {
         onAppointmentCreated={refreshPortalData}
       />
 
-      <div className="portal-floating-ai fixed bottom-20 left-3 z-[240] sm:bottom-5 sm:left-4">
+      <div className="portal-floating-ai fixed bottom-24 left-3 z-[240] md:bottom-5 md:left-4">
         <ClientPortalAssistant
           pets={pets}
           appointments={appointments}
