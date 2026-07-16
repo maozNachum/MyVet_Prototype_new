@@ -757,7 +757,13 @@ export function Patients() {
                       vet: v.vetName,
                       type: "טיפול רפואי"
                     }));
-                    exportMedicalRecord(selectedPatient as any, formattedHistory as any);
+                    void exportMedicalRecord(
+                      selectedPatient as any,
+                      formattedHistory as any,
+                    ).catch((error) => {
+                      console.error("Failed exporting medical record", error);
+                      toast.error("לא הצלחנו לייצא את התיק הרפואי");
+                    });
                   }}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-[13px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
                 >

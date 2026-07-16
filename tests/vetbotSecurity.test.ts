@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const edgeFunction = readFileSync("supabase/functions/ai-assistant/index.ts", "utf8");
+const corsSource = readFileSync("supabase/functions/_shared/cors.ts", "utf8");
 const migration = readFileSync("supabase/migrations/202607150001_vetbot_privacy.sql", "utf8");
 const rlsMigration = readFileSync("supabase/migrations/202607150002_myvet_rls_hardening.sql", "utf8");
 const availabilityMigration = readFileSync("supabase/migrations/20260716145453_clinic_booking_availability.sql", "utf8");
@@ -21,11 +22,28 @@ test("VetBot server exposes no autonomous database write tools", () => {
   assert.match(edgeFunction, /requiresConfirmation:\s*true/);
 });
 
+test("VetBot retries incomplete structured Gemini output without logging content", () => {
+  assert.match(edgeFunction, /for \(const attempt of \[1, 2\]\)/);
+  assert.match(edgeFunction, /JSON\.parse\(result\.text\)/);
+  assert.match(edgeFunction, /Gemini returned invalid JSON after retry/);
+  assert.match(edgeFunction, /responseLength: result\.text\.length/);
+  assert.doesNotMatch(edgeFunction, /(?:text|content|response):\s*result\.text/);
+  assert.doesNotMatch(edgeFunction, /console\.(?:log|warn|error)\(result\.text\)/);
+});
+
 test("VetBot verifies roles on the server and keeps owner access portal-only", () => {
   assert.match(edgeFunction, /from\("staff"\).*auth_user_id/s);
   assert.match(edgeFunction, /mode === "portal"/);
   assert.match(edgeFunction, /from\("owners"\).*auth_user_id/s);
   assert.match(edgeFunction, /ROLE_NOT_ALLOWED/);
+});
+
+test("VetBot CORS normalizes configured origins and reports rejected origins", () => {
+  assert.match(corsSource, /new URL\(trimmed\)\.origin/);
+  assert.match(corsSource, /ALLOWED_ORIGINS/);
+  assert.match(corsSource, /localOrigin \|\| configured\.includes\(origin\)/);
+  assert.match(corsSource, /VetBot CORS rejected origin/);
+  assert.doesNotMatch(corsSource, /Access-Control-Allow-Origin":\s*"\*"/);
 });
 
 test("VetBot audit schema stores metadata and has no prompt or response columns", () => {

@@ -22,8 +22,16 @@ function friendlyEdgeError(message?: string) {
   if (text.includes("Missing question")) return "חסרה שאלה ל־VetBot.";
   if (text.includes("Forbidden") || text.includes("ROLE_NOT_ALLOWED")) return "אין הרשאה להפעיל את הפעולה הזו ב־VetBot.";
   if (text.includes("PRIVACY_BLOCKED")) return "VetBot עצר את הבקשה כי זוהה בה מידע רגיש שלא ניתן להסיר בבטחה.";
+  if (text.includes("Missing GEMINI_API_KEY")) {
+    return "VetBot לא הוגדר במערכת. יש להגדיר את מפתח Gemini בסודות של Supabase.";
+  }
+  if (text.includes("Gemini request failed: 401") || text.includes("Gemini request failed: 403")) {
+    return "מפתח Gemini של VetBot אינו תקין או שאינו מורשה למודל שנבחר.";
+  }
+  if (text.includes("Gemini request failed: 404")) {
+    return "מודל Gemini שהוגדר עבור VetBot אינו זמין.";
+  }
   if (
-    text.includes("Missing GEMINI_API_KEY") ||
     text.includes("Unauthorized") ||
     text.includes("non-2xx") ||
     text.includes("FunctionsHttpError") ||
@@ -32,6 +40,32 @@ function friendlyEdgeError(message?: string) {
     return "VetBot לא זמין כרגע. נסה שוב בעוד רגע.";
   }
   return "לא הצלחנו לקבל תשובה מ־VetBot כרגע. נסה שוב.";
+}
+
+async function edgeErrorMessage(error: unknown) {
+  const fallback = error instanceof Error ? error.message : String(error || "");
+  const context =
+    typeof error === "object" && error !== null && "context" in error
+      ? error.context
+      : null;
+
+  if (!(context instanceof Response)) return fallback;
+
+  try {
+    const body = await context.clone().json() as {
+      error?: unknown;
+      message?: unknown;
+    };
+    const detail =
+      typeof body.error === "string"
+        ? body.error
+        : typeof body.message === "string"
+          ? body.message
+          : "";
+    return detail || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizeUrgency(value: unknown): AiUrgency {
@@ -128,8 +162,12 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<AiAss
   });
 
   if (error) {
-    console.error("VetBot request failed", { mode: request.mode, message: error.message });
-    throw new Error(friendlyEdgeError(error.message));
+    const detail = await edgeErrorMessage(error);
+    console.error("VetBot request failed", {
+      mode: request.mode,
+      message: detail,
+    });
+    throw new Error(friendlyEdgeError(detail));
   }
   if (!data?.answer) throw new Error("VetBot לא החזיר תשובה תקינה. נסה שוב.");
 

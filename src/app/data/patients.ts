@@ -5,6 +5,7 @@ export interface Pet {
   speciesType: "dog" | "cat" | "bird" | "rabbit" | "hamster" | "other";
   gender: string;
   age: number;
+  birthDate?: string;
   breed: string;
   microchip: string;
   weight: string;

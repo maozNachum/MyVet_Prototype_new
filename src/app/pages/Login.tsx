@@ -565,11 +565,15 @@ export function Login() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center bg-[radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(180deg,#f7faff_0%,#ffffff_100%)] px-6 py-8 lg:py-6">
-        <div className="w-full max-w-[520px]">
-          <div className="flex items-center justify-center gap-2.5 mb-6 lg:mb-8">
-            <div className="bg-[#1e40af] rounded-xl p-2.5 shadow-lg shadow-blue-500/20">
-              <MyVetLogo color="white" className="w-60 h-33" />
+      <div className="flex-1 flex items-center justify-center bg-[radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(180deg,#f7faff_0%,#ffffff_100%)] px-4 py-5 sm:px-6 lg:h-screen lg:overflow-y-auto lg:py-4">
+        <div
+          className={`w-full transition-[max-width] duration-300 ${
+            role === null ? "max-w-[520px]" : "max-w-[440px]"
+          }`}
+        >
+          <div className={`flex items-center justify-center gap-2.5 ${role === null ? "mb-6" : "mb-3"}`}>
+            <div className="bg-[#1e40af] rounded-xl p-2 shadow-lg shadow-blue-500/20">
+              <MyVetLogo color="white" className="w-48 h-26" />
             </div>
           </div>
 
@@ -703,7 +707,7 @@ export function Login() {
 
           {role !== null && (
             <div
-              className={`rounded-2xl shadow-sm border-2 p-6 sm:p-10 transition-all ${role === "owner" ? "bg-white border-rose-100" : "bg-white border-blue-100"}`}
+              className={`rounded-2xl shadow-sm border-2 p-5 sm:p-6 transition-all ${role === "owner" ? "bg-white border-rose-100" : "bg-white border-blue-100"}`}
             >
               <button
                 type="button"
@@ -716,7 +720,7 @@ export function Login() {
                   setIsSignUp(false);
                   resetForm();
                 }}
-                className="flex items-center gap-1.5 text-gray-500 font-medium hover:text-gray-600 text-[13px] mb-6 cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 text-gray-500 font-medium hover:text-gray-600 text-[13px] mb-4 cursor-pointer transition-colors"
                 style={{ fontWeight: 500 }}
               >
                 <ArrowRight className="w-4 h-4" />
@@ -725,18 +729,18 @@ export function Login() {
                   : "חזרה לבחירת סוג כניסה"}
               </button>
 
-              <div className="text-center mb-8">
+              <div className="text-center mb-5">
                 <div
-                  className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-sm ${role === "owner" ? "bg-gradient-to-br from-rose-50 to-pink-100" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}
+                  className={`w-12 h-12 rounded-xl mx-auto mb-2.5 flex items-center justify-center shadow-sm ${role === "owner" ? "bg-gradient-to-br from-rose-50 to-pink-100" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}
                 >
                   {role === "owner" ? (
-                    <Heart className="w-8 h-8 text-rose-500" />
+                    <Heart className="w-6 h-6 text-rose-500" />
                   ) : (
-                    <Stethoscope className="w-8 h-8 text-[#1e40af]" />
+                    <Stethoscope className="w-6 h-6 text-[#1e40af]" />
                   )}
                 </div>
 
-                <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="flex items-center justify-center gap-2 mb-2">
                   <span
                     className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] border ${role === "owner" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-[#1e40af] border-blue-200"}`}
                     style={{ fontWeight: 600 }}
@@ -754,7 +758,7 @@ export function Login() {
                 </div>
 
                 <h1
-                  className="text-gray-900 text-[24px] mb-2"
+                  className="text-gray-900 text-[21px] mb-1"
                   style={{ fontWeight: 700 }}
                 >
                   {isPasswordRecovery
@@ -765,7 +769,7 @@ export function Login() {
                       : "שלום, אזור אישי"
                     : "שלום, צוות המרפאה"}
                 </h1>
-                <p className="text-gray-500 font-medium text-[15px]">
+                <p className="text-gray-500 font-medium text-[14px]">
                   {isPasswordRecovery
                     ? "הזינו סיסמה חדשה שתשמש אתכם בכניסה הבאה"
                     : role === "owner"
@@ -794,17 +798,17 @@ export function Login() {
                   void handleLogin(event);
                 }}
                 noValidate
-                className="space-y-5"
+                className="space-y-4"
               >
                 {role === "staff" && !isPasswordRecovery && (
-                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-right">
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-right">
                     <div className="flex items-start gap-3">
                       <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[#1e40af]" />
                       <div>
                         <p className="text-[13px] font-bold text-[#1e40af]">
                           ההרשאה נקבעת לפי משתמש הצוות במערכת
                         </p>
-                        <p className="mt-1 text-[12px] font-medium leading-5 text-slate-600">
+                        <p className="mt-0.5 text-[12px] font-medium leading-5 text-slate-600">
                           הזינו אימייל וסיסמה שקיבלתם ממנהל המרפאה. לאחר
                           ההתחברות המערכת תזהה אוטומטית אם אתם מנהל מרפאה,
                           וטרינר, אחות או מזכירות.
@@ -1106,7 +1110,7 @@ export function Login() {
           )}
 
           {role !== null && (
-            <p className="text-center text-gray-300 text-[12px] mt-8">
+            <p className="text-center text-gray-300 text-[12px] mt-4">
               © 2026 MyVet. כל הזכויות שמורות.
             </p>
           )}

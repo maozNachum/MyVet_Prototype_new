@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   AlertTriangle,
@@ -9,13 +9,17 @@ import {
   Dog,
   ExternalLink,
   Eye,
+  FileSpreadsheet,
+  Loader2,
   Mail,
   MapPin,
   Phone,
   Plus,
   Save,
   Search,
+  Sparkles,
   Trash2,
+  Upload,
   User,
   Users,
   X,
@@ -24,6 +28,19 @@ import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 import { OwnerPortalNotificationsPanel } from "../components/OwnerPortalNotificationsPanel";
+import { askAiAssistant } from "../components/ai/aiClient";
+import { getStaffType } from "../data/staffAuth";
+import {
+  buildPetImportDrafts,
+  getMissingPetImportFields,
+  inferLocalPetColumnMapping,
+  parseAiPetColumnMapping,
+  PET_IMPORT_FIELD_LABELS,
+  readPetSpreadsheet,
+  type PetImportDraft,
+  type PetImportMedicalVisit,
+  type PetImportVaccination,
+} from "../utils/petImport";
 
 type SpeciesType = "dog" | "cat" | "other";
 
@@ -94,6 +111,8 @@ type PetCreateForm = {
   weight: string;
   neutered_status: "unknown" | "yes" | "no";
 };
+
+type AddPetMode = "choice" | "manual" | "file";
 
 const INITIAL_OWNER_CREATE_FORM: OwnerCreateForm = {
   owner_id: "",
@@ -261,6 +280,22 @@ export function Clients() {
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [isAddingPet, setIsAddingPet] = useState(false);
   const [petForm, setPetForm] = useState<PetCreateForm>(INITIAL_PET_CREATE_FORM);
+  const [addPetMode, setAddPetMode] = useState<AddPetMode>("choice");
+  const [isReadingPetFile, setIsReadingPetFile] = useState(false);
+  const [petImportDrafts, setPetImportDrafts] = useState<PetImportDraft[]>([]);
+  const [petImportMedicalHistory, setPetImportMedicalHistory] = useState<PetImportMedicalVisit[]>([]);
+  const [petImportVaccinations, setPetImportVaccinations] = useState<PetImportVaccination[]>([]);
+  const [selectedPetImportIndex, setSelectedPetImportIndex] = useState(0);
+  const [petImportError, setPetImportError] = useState<string | null>(null);
+  const [petImportSummary, setPetImportSummary] = useState<{
+    fileName: string;
+    missingLabels: string[];
+    aiUsed: boolean;
+    medicalVisitCount: number;
+    vaccinationCount: number;
+    warning?: string;
+  } | null>(null);
+  const petFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const ownerIdFromUrl = searchParams.get("owner_id") || searchParams.get("ownerId");
@@ -379,7 +414,155 @@ export function Clients() {
 
   const openAddPetModal = () => {
     setPetForm(INITIAL_PET_CREATE_FORM);
+    setAddPetMode("choice");
+    setPetImportDrafts([]);
+    setPetImportMedicalHistory([]);
+    setPetImportVaccinations([]);
+    setSelectedPetImportIndex(0);
+    setPetImportError(null);
+    setPetImportSummary(null);
     setIsAddPetOpen(true);
+  };
+
+  const closeAddPetModal = () => {
+    if (isAddingPet || isReadingPetFile) return;
+    setIsAddPetOpen(false);
+    setAddPetMode("choice");
+    setPetImportDrafts([]);
+    setPetImportMedicalHistory([]);
+    setPetImportVaccinations([]);
+    setPetImportError(null);
+    setPetImportSummary(null);
+  };
+
+  const openManualPetEntry = () => {
+    setPetForm(INITIAL_PET_CREATE_FORM);
+    setPetImportMedicalHistory([]);
+    setPetImportVaccinations([]);
+    setPetImportSummary(null);
+    setPetImportError(null);
+    setAddPetMode("manual");
+  };
+
+  const applyImportedPetDraft = (
+    draft: PetImportDraft,
+    fileName: string,
+    aiUsed: boolean,
+    medicalVisitCount = petImportMedicalHistory.length,
+    vaccinationCount = petImportVaccinations.length,
+    warning?: string,
+  ) => {
+    const missingLabels = getMissingPetImportFields(draft).map(
+      (field) => PET_IMPORT_FIELD_LABELS[field],
+    );
+    setPetForm(draft);
+    setPetImportSummary({
+      fileName,
+      missingLabels,
+      aiUsed,
+      medicalVisitCount,
+      vaccinationCount,
+      warning,
+    });
+    setPetImportError(null);
+    setAddPetMode("manual");
+  };
+
+  const mapHeadersWithVetBot = async (headers: string[]) => {
+    const result = await askAiAssistant({
+      mode: "clients",
+      userRole: getStaffType(),
+      question: [
+        "מפה את שמות העמודות הבאים לשדות של כרטיס חיה.",
+        "החזר בתוך answer אך ורק אובייקט JSON, ללא הסבר וללא Markdown.",
+        'המפתחות המותרים: "pet_name", "species", "breed", "gender", "birth_date", "weight", "microchip", "allergies", "neutered_status".',
+        "הערך של כל מפתח חייב להיות שם עמודה מדויק מהרשימה. השמט שדה שאין לו התאמה.",
+        `שמות העמודות: ${JSON.stringify(headers)}`,
+      ].join("\n"),
+      context: {
+        task: "pet-spreadsheet-column-mapping",
+        columnHeaders: headers,
+        privacy: "Only column headers are supplied. Spreadsheet row values stay in the browser.",
+      },
+    });
+
+    return parseAiPetColumnMapping(result.answer, headers);
+  };
+
+  const handlePetFileSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsReadingPetFile(true);
+    setPetImportError(null);
+    setPetImportDrafts([]);
+    setPetImportMedicalHistory([]);
+    setPetImportVaccinations([]);
+    setPetImportSummary(null);
+
+    try {
+      const spreadsheet = await readPetSpreadsheet(file);
+      setPetImportMedicalHistory(spreadsheet.medicalHistory);
+      setPetImportVaccinations(spreadsheet.vaccinations);
+      const localMapping = inferLocalPetColumnMapping(spreadsheet.headers);
+      let aiMapping = {};
+      let aiUsed = false;
+      let warning: string | undefined;
+
+      try {
+        aiMapping = await mapHeadersWithVetBot(spreadsheet.headers);
+        aiUsed = Object.keys(aiMapping).length > 0;
+        if (!aiUsed) {
+          warning = "VetBot לא זיהה התאמות נוספות; המיפוי המקומי שימש לקריאת הקובץ.";
+        }
+      } catch (error) {
+        console.warn("VetBot pet import mapping was unavailable", error);
+        warning = "VetBot לא היה זמין, לכן בוצע מיפוי מקומי של כותרות הקובץ.";
+      }
+
+      const mapping = { ...aiMapping, ...localMapping };
+      const drafts = buildPetImportDrafts(spreadsheet.rows, mapping);
+      if (drafts.length === 0) {
+        throw new Error(
+          "לא הצלחנו לחלץ מהקובץ נתוני חיה. בדקו שכותרות העמודות והשורה הראשונה מכילות פרטי חיה.",
+        );
+      }
+
+      setPetImportDrafts(drafts);
+      setSelectedPetImportIndex(0);
+
+      if (drafts.length === 1) {
+        applyImportedPetDraft(
+          drafts[0],
+          spreadsheet.fileName,
+          aiUsed,
+          spreadsheet.medicalHistory.length,
+          spreadsheet.vaccinations.length,
+          warning,
+        );
+      } else {
+        setPetImportSummary({
+          fileName: spreadsheet.fileName,
+          missingLabels: [],
+          aiUsed,
+          medicalVisitCount: spreadsheet.medicalHistory.length,
+          vaccinationCount: spreadsheet.vaccinations.length,
+          warning,
+        });
+      }
+    } catch (error) {
+      console.error("Failed reading pet import file", error);
+      setPetImportError(
+        error instanceof Error
+          ? error.message
+          : "לא הצלחנו לקרוא או לנתח את הקובץ.",
+      );
+    } finally {
+      setIsReadingPetFile(false);
+    }
   };
 
   const createClient = async () => {
@@ -441,10 +624,15 @@ export function Clients() {
       return;
     }
 
+    let createdPetId: number | null = null;
+    let createdVisitIds: number[] = [];
+    let createdVaccinationIds: string[] = [];
+    let importStage = "שמירת פרטי החיה";
+
     try {
       setIsAddingPet(true);
 
-      const { error } = await supabase
+      const { data: createdPet, error } = await supabase
         .from("patients")
         .insert([
           {
@@ -459,16 +647,145 @@ export function Clients() {
             weight,
             neutered_status: petForm.neutered_status,
           },
-        ]);
+        ])
+        .select("pet_id")
+        .single();
 
       if (error) throw error;
+      createdPetId = Number(createdPet.pet_id);
 
-      toast.success("החיה נוספה ללקוח בהצלחה");
+      if (petImportMedicalHistory.length > 0) {
+        importStage = "שמירת ההיסטוריה הרפואית";
+        const { data: createdVisits, error: visitsError } = await supabase
+          .from("medical_visits")
+          .insert(
+            petImportMedicalHistory.map((visit) => ({
+              appointment_id: null,
+              pet_id: createdPetId,
+              visit_date: visit.visit_date,
+              vet_name: visit.vet_name || "לא צוין",
+              reason: visit.title || visit.description || "רשומה רפואית מיובאת",
+              diagnosis: null,
+              treatment: visit.description || null,
+              notes: "יובא מקובץ תיק רפואי לאחר אישור איש צוות.",
+              attachments: "0",
+              visit_type: visit.visit_type || "imported_record",
+              urgency_level: "normal",
+              chief_complaint: visit.title || "רשומה רפואית מיובאת",
+              final_diagnosis: null,
+              follow_up_required: false,
+              follow_up_notes: null,
+              entry_data: {
+                source: "medical-record-import",
+                importedAt: new Date().toISOString(),
+              },
+            })),
+          )
+          .select("visit_id");
+        if (visitsError) throw visitsError;
+        createdVisitIds = (createdVisits || []).map((visit) => Number(visit.visit_id));
+      }
+
+      if (petImportVaccinations.length > 0) {
+        importStage = "שמירת החיסונים";
+        const { data: createdVaccinations, error: vaccinationsError } = await supabase
+          .from("vaccinations")
+          .insert(
+            petImportVaccinations.map((vaccination) => ({
+              pet_id: createdPetId,
+              owner_id: selectedClient.owner_id,
+              visit_id: null,
+              vaccine_name: vaccination.vaccine_name,
+              vaccine_type: vaccination.vaccine_type || null,
+              manufacturer: vaccination.manufacturer || null,
+              batch_number: vaccination.batch_number || null,
+              barcode_value: vaccination.barcode_value || null,
+              given_date: vaccination.given_date,
+              next_due_date: vaccination.next_due_date || null,
+              expiry_date: vaccination.expiry_date || null,
+              administered_by: vaccination.administered_by || null,
+              // The live schema and VaccinationBook recognize manual, barcode
+              // and photo. The human-reviewed spreadsheet flow is recorded as
+              // manual, while notes preserve the import provenance.
+              entry_method: "manual",
+              sticker_image_path: null,
+              sticker_image_url: null,
+              notes: [
+                vaccination.notes,
+                "יובא מקובץ תיק רפואי לאחר אישור איש צוות.",
+              ].filter(Boolean).join("\n"),
+            })),
+          )
+          .select("vaccination_id");
+        if (vaccinationsError) throw vaccinationsError;
+        createdVaccinationIds = (createdVaccinations || []).map((record) =>
+          String(record.vaccination_id),
+        );
+      }
+
+      const importedDetails = [
+        petImportMedicalHistory.length
+          ? `${petImportMedicalHistory.length} רשומות רפואיות`
+          : "",
+        petImportVaccinations.length
+          ? `${petImportVaccinations.length} חיסונים`
+          : "",
+      ].filter(Boolean);
+      toast.success(
+        importedDetails.length
+          ? `החיה נוספה יחד עם ${importedDetails.join(" ו־")}`
+          : "החיה נוספה ללקוח בהצלחה",
+      );
       setIsAddPetOpen(false);
+      setAddPetMode("choice");
+      setPetImportDrafts([]);
+      setPetImportMedicalHistory([]);
+      setPetImportVaccinations([]);
+      setPetImportError(null);
+      setPetImportSummary(null);
       await fetchClients();
     } catch (error) {
-      console.error("Error adding pet:", error);
-      toast.error("אירעה שגיאה בהוספת החיה");
+      const errorCode =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof error.code === "string"
+          ? error.code
+          : "";
+      console.error("Error importing pet record", {
+        stage: importStage,
+        code: errorCode || "unknown",
+        message: error instanceof Error ? error.message : "Unknown import error",
+      });
+      let rollbackFailed = false;
+      if (createdVaccinationIds.length > 0) {
+        const { error: rollbackError } = await supabase
+          .from("vaccinations")
+          .delete()
+          .in("vaccination_id", createdVaccinationIds);
+        rollbackFailed = rollbackFailed || Boolean(rollbackError);
+      }
+      if (createdVisitIds.length > 0) {
+        const { error: rollbackError } = await supabase
+          .from("medical_visits")
+          .delete()
+          .in("visit_id", createdVisitIds);
+        rollbackFailed = rollbackFailed || Boolean(rollbackError);
+      }
+      if (createdPetId) {
+        const { error: rollbackError } = await supabase
+          .from("patients")
+          .delete()
+          .eq("pet_id", createdPetId);
+        rollbackFailed = rollbackFailed || Boolean(rollbackError);
+      }
+      toast.error(
+        rollbackFailed
+          ? "הייבוא נשמר חלקית. יש לבדוק את תיק החיה לפני ניסיון נוסף."
+          : `${importStage} נכשלה. החיה והרשומות לא נשמרו${
+              errorCode ? ` (קוד ${errorCode})` : ""
+            }.`,
+      );
     } finally {
       setIsAddingPet(false);
     }
@@ -700,155 +1017,399 @@ export function Clients() {
         )}
 
         {isAddPetOpen && (
-          <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center px-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full overflow-hidden max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40 z-[200] flex items-end justify-center sm:items-center sm:px-4">
+            <div className="bg-white rounded-t-[28px] sm:rounded-2xl shadow-xl max-w-3xl w-full overflow-hidden max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto">
               <div className="bg-[#1e40af] px-6 py-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-white text-[18px] font-bold">הוספת חיה ללקוח</h3>
-                  <p className="text-white/80 text-[13px] mt-0.5">החיה תתווסף לרשימת החיות של {selectedClient.fullName}</p>
+                  <h3 className="text-white text-[18px] font-bold">
+                    {addPetMode === "choice"
+                      ? "איך תרצו להוסיף חיה?"
+                      : addPetMode === "file"
+                        ? "ייבוא חיה מקובץ"
+                        : "הוספת חיה ללקוח"}
+                  </h3>
+                  <p className="text-white/80 text-[13px] mt-0.5">
+                    החיה תתווסף לרשימת החיות של {selectedClient.fullName}
+                  </p>
                 </div>
-                <button onClick={() => setIsAddPetOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
+                <button
+                  type="button"
+                  onClick={closeAddPetModal}
+                  aria-label="סגור חלון"
+                  className="text-white/80 hover:text-white cursor-pointer disabled:cursor-wait disabled:opacity-50"
+                  disabled={isAddingPet || isReadingPetFile}
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">שם החיה</label>
-                  <input
-                    value={petForm.pet_name}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, pet_name: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-                    placeholder="לדוגמה: בוני"
-                  />
-                </div>
+              {addPetMode === "choice" && (
+                <div className="p-5 sm:p-6">
+                  <p className="mb-5 text-[14px] leading-6 text-slate-600">
+                    אפשר להזין את פרטי החיה ידנית, או לייבא אותם מקובץ קיים
+                    ולבדוק את הנתונים לפני השמירה.
+                  </p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={openManualPetEntry}
+                      className="group rounded-2xl border-2 border-slate-100 bg-white p-5 text-right transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
+                    >
+                      <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#1e40af] transition group-hover:bg-blue-100">
+                        <Plus className="h-6 w-6" />
+                      </span>
+                      <span className="block text-[16px] font-bold text-slate-900">
+                        הזנה ידנית
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-6 text-slate-500">
+                        פתיחת הטופס הקיים ומילוי פרטי החיה שדה אחר שדה.
+                      </span>
+                    </button>
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">סוג</label>
-                  <select
-                    value={petForm.species}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, species: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
-                  >
-                    {SPECIES_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">גזע</label>
-                  <select
-                    value={petForm.breed}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, breed: e.target.value, custom_breed: e.target.value === "other" ? prev.custom_breed : "" }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
-                  >
-                    <option value="">בחר גזע</option>
-                    {BREED_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {petForm.breed === "other" && (
-                  <div>
-                    <label className="block text-gray-700 text-[14px] mb-2 font-medium">ציין גזע</label>
-                    <input
-                      value={petForm.custom_breed}
-                      onChange={(e) => setPetForm((prev) => ({ ...prev, custom_breed: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-                      placeholder="הקלד את הגזע"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddPetMode("file");
+                        setPetImportError(null);
+                      }}
+                      className="group rounded-2xl border-2 border-slate-100 bg-white p-5 text-right transition hover:border-indigo-300 hover:bg-indigo-50/40 hover:shadow-md"
+                    >
+                      <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 transition group-hover:bg-indigo-100">
+                        <FileSpreadsheet className="h-6 w-6" />
+                      </span>
+                      <span className="flex items-center gap-2 text-[16px] font-bold text-slate-900">
+                        ייבוא CSV / Excel
+                        <Sparkles className="h-4 w-4 text-indigo-500" />
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-6 text-slate-500">
+                        VetBot ימפה את כותרות הקובץ והטופס יתמלא אוטומטית.
+                      </span>
+                    </button>
                   </div>
-                )}
+                </div>
+              )}
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">מין</label>
-                  <select
-                    value={petForm.gender}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, gender: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+              {addPetMode === "file" && (
+                <div className="p-5 sm:p-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddPetMode("choice");
+                      setPetImportDrafts([]);
+                      setPetImportMedicalHistory([]);
+                      setPetImportVaccinations([]);
+                      setPetImportError(null);
+                    }}
+                    disabled={isReadingPetFile}
+                    className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 hover:text-[#1e40af] disabled:opacity-50"
                   >
-                    <option value="">בחר מין</option>
-                    {GENDER_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
+                    <ArrowRight className="h-4 w-4" /> חזרה לאפשרויות
+                  </button>
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">{getNeuteredQuestion(petForm.gender)}</label>
-                  <select
-                    value={petForm.neutered_status}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, neutered_status: e.target.value as "unknown" | "yes" | "no" }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                  <input
+                    ref={petFileInputRef}
+                    type="file"
+                    accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(event) => void handlePetFileSelected(event)}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => petFileInputRef.current?.click()}
+                    disabled={isReadingPetFile}
+                    className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/40 px-5 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-70"
                   >
-                    {NEUTERED_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
+                    {isReadingPetFile ? (
+                      <>
+                        <Loader2 className="mb-3 h-9 w-9 animate-spin text-[#1e40af]" />
+                        <span className="text-[15px] font-bold text-slate-800">
+                          קורא את הקובץ וממפה עמודות עם VetBot...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mb-3 h-9 w-9 text-[#1e40af]" />
+                        <span className="text-[15px] font-bold text-slate-800">
+                          בחירת קובץ מהמחשב
+                        </span>
+                        <span className="mt-1 text-[12px] text-slate-500">
+                          CSV, XLS או XLSX · עד 5MB
+                        </span>
+                      </>
+                    )}
+                  </button>
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">תאריך לידה</label>
-                  <input
-                    type="date"
-                    value={petForm.birth_date}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, birth_date: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-                  />
-                </div>
+                  <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[12px] leading-5 text-emerald-800">
+                    תוכן הקובץ נקרא מקומית בדפדפן. רק שמות העמודות נשלחים
+                    ל־VetBot לצורך מיפוי, ללא שורות הנתונים או פרטי הלקוח.
+                  </div>
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">משקל בק״ג</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={petForm.weight}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, weight: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-                    placeholder="לדוגמה: 12.5"
-                  />
-                </div>
+                  {petImportError && (
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold leading-6 text-red-700"
+                    >
+                      {petImportError}
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">מספר שבב</label>
-                  <input
-                    value={petForm.microchip}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, microchip: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
-                    placeholder="אופציונלי"
-                  />
+                  {petImportDrafts.length > 1 && petImportSummary && (
+                    <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="mb-3">
+                        <p className="text-[14px] font-bold text-slate-900">
+                          נמצאו {petImportDrafts.length} רשומות בקובץ
+                        </p>
+                        <p className="mt-1 text-[12px] text-slate-500">
+                          בחרו את החיה שתרצו להוסיף ללקוח הנוכחי.
+                        </p>
+                      </div>
+                      <select
+                        value={selectedPetImportIndex}
+                        onChange={(event) =>
+                          setSelectedPetImportIndex(Number(event.target.value))
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-[14px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      >
+                        {petImportDrafts.map((draft, index) => (
+                          <option key={`${draft.pet_name}-${index}`} value={index}>
+                            {draft.pet_name || `רשומה ${index + 1}`}
+                            {draft.species
+                              ? ` · ${getSpeciesLabel(draft.species)}`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {petImportSummary.warning && (
+                        <p className="mt-3 text-[12px] leading-5 text-amber-700">
+                          {petImportSummary.warning}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          applyImportedPetDraft(
+                            petImportDrafts[selectedPetImportIndex],
+                            petImportSummary.fileName,
+                            petImportSummary.aiUsed,
+                            petImportSummary.medicalVisitCount,
+                            petImportSummary.vaccinationCount,
+                            petImportSummary.warning,
+                          )
+                        }
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e40af] px-5 py-3 text-[14px] font-bold text-white hover:bg-[#1e3a8a]"
+                      >
+                        <Sparkles className="h-4 w-4" /> המשך לבדיקה והשלמת
+                        פרטים
+                      </button>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div className="md:col-span-2">
-                  <label className="block text-gray-700 text-[14px] mb-2 font-medium">אלרגיות / רגישויות</label>
-                  <textarea
-                    value={petForm.allergies}
-                    onChange={(e) => setPetForm((prev) => ({ ...prev, allergies: e.target.value }))}
-                    rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
-                    placeholder="אופציונלי"
-                  />
-                </div>
-              </div>
+              {addPetMode === "manual" && (
+                <>
+                  <div className="p-5 sm:p-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddPetMode("choice");
+                        setPetImportSummary(null);
+                        setPetImportMedicalHistory([]);
+                        setPetImportVaccinations([]);
+                        setPetForm(INITIAL_PET_CREATE_FORM);
+                      }}
+                      className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 hover:text-[#1e40af]"
+                    >
+                      <ArrowRight className="h-4 w-4" /> חזרה לאפשרויות
+                    </button>
 
-              <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                <button
-                  onClick={() => setIsAddPetOpen(false)}
-                  className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] font-medium"
-                >
-                  ביטול
-                </button>
-                <button
-                  onClick={addPetToSelectedClient}
-                  disabled={isAddingPet}
-                  className="px-5 py-2.5 bg-[#1e40af] hover:bg-[#1e3a8a] text-white rounded-xl transition-colors cursor-pointer text-[14px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> {isAddingPet ? "מוסיף..." : "הוספת חיה"}
-                </button>
-              </div>
+                    {petImportSummary && (
+                      <div
+                        className={`mb-5 rounded-xl border px-4 py-3 text-[13px] leading-6 ${
+                          petImportSummary.missingLabels.length > 0
+                            ? "border-amber-200 bg-amber-50 text-amber-800"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="mt-1 h-4 w-4 shrink-0" />
+                          <div>
+                            <p className="font-bold">
+                              הנתונים חולצו מהקובץ {petImportSummary.fileName}
+                            </p>
+                            <p>
+                              {petImportSummary.missingLabels.length > 0
+                                ? `נדרשת השלמה של: ${petImportSummary.missingLabels.join(", ")}.`
+                                : "כל שדות החובה זוהו. בדקו את הנתונים לפני השמירה."}
+                            </p>
+                            <p className="mt-1 font-semibold">
+                              לייבוא עם החיה:{" "}
+                              {petImportSummary.medicalVisitCount} רשומות רפואיות
+                              {" · "}
+                              {petImportSummary.vaccinationCount} חיסונים
+                            </p>
+                            {petImportSummary.warning && (
+                              <p className="mt-1">{petImportSummary.warning}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">שם החיה</label>
+                        <input
+                          value={petForm.pet_name}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, pet_name: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                          placeholder="לדוגמה: בוני"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">סוג</label>
+                        <select
+                          value={petForm.species}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, species: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                        >
+                          <option value="">בחר סוג חיה</option>
+                          {SPECIES_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">גזע</label>
+                        <select
+                          value={petForm.breed}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, breed: e.target.value, custom_breed: e.target.value === "other" ? prev.custom_breed : "" }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                        >
+                          <option value="">בחר גזע</option>
+                          {BREED_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {petForm.breed === "other" && (
+                        <div>
+                          <label className="block text-gray-700 text-[14px] mb-2 font-medium">ציין גזע</label>
+                          <input
+                            value={petForm.custom_breed}
+                            onChange={(e) => setPetForm((prev) => ({ ...prev, custom_breed: e.target.value }))}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                            placeholder="הקלד את הגזע"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">מין</label>
+                        <select
+                          value={petForm.gender}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, gender: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                        >
+                          <option value="">בחר מין</option>
+                          {GENDER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">{getNeuteredQuestion(petForm.gender)}</label>
+                        <select
+                          value={petForm.neutered_status}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, neutered_status: e.target.value as "unknown" | "yes" | "no" }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] bg-white"
+                        >
+                          {NEUTERED_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">תאריך לידה</label>
+                        <input
+                          type="date"
+                          value={petForm.birth_date}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, birth_date: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">משקל בק״ג</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={petForm.weight}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, weight: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                          placeholder="לדוגמה: 12.5"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">מספר שבב</label>
+                        <input
+                          value={petForm.microchip}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, microchip: e.target.value }))}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px]"
+                          placeholder="אופציונלי"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-gray-700 text-[14px] mb-2 font-medium">אלרגיות / רגישויות</label>
+                        <textarea
+                          value={petForm.allergies}
+                          onChange={(e) => setPetForm((prev) => ({ ...prev, allergies: e.target.value }))}
+                          rows={3}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-[15px] resize-none"
+                          placeholder="אופציונלי"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={closeAddPetModal}
+                      disabled={isAddingPet}
+                      className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] font-medium disabled:opacity-50"
+                    >
+                      ביטול
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addPetToSelectedClient}
+                      disabled={isAddingPet}
+                      className="px-5 py-2.5 bg-[#1e40af] hover:bg-[#1e3a8a] text-white rounded-xl transition-colors cursor-pointer text-[14px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isAddingPet ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                      {isAddingPet
+                        ? "מוסיף..."
+                        : petImportMedicalHistory.length > 0 || petImportVaccinations.length > 0
+                          ? "הוספת חיה וכל הרשומות"
+                          : "הוספת חיה"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -114,6 +114,10 @@ export function AiAssistantDrawer({
       setMessages((prev) => [...prev, { role: "assistant", content: result.answer, result }]);
     } catch (err: any) {
       console.error(err);
+      const failureMessage =
+        err instanceof Error && err.message
+          ? err.message
+          : "לא הצלחנו לקבל תשובה מ־VetBot";
       const fallback = buildLocalProactiveBriefing(mode, contextRef.current);
       if (fallback) {
         const fallbackResult: AiAssistantResult = {
@@ -122,9 +126,9 @@ export function AiAssistantDrawer({
           summary: "לא נשלח מידע לספק AI בתשובה החלופית הזו.",
         };
         setMessages((prev) => [...prev, { role: "assistant", content: fallbackResult.answer, result: fallbackResult }]);
-        setError("אפשר להמשיך לעבוד עם התובנות המקומיות או להחזיר את השאלה ולנסות שוב.");
+        setError(`${failureMessage} אפשר להחזיר את השאלה ולנסות שוב.`);
       } else {
-        setError(err?.message || "לא הצלחנו לקבל תשובה מ־VetBot");
+        setError(failureMessage);
       }
       setLastFailedQuestion(trimmed);
     } finally {
@@ -278,4 +282,3 @@ export function AiAssistantDrawer({
     document.body,
   );
 }
-

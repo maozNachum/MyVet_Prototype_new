@@ -55,9 +55,13 @@ interface PortalNotification {
 
 interface Pet {
   id: number; name: string; type: "dog" | "cat" | "other"; image: string;
-  breed: string; age: string | number; gender: string; weight: string;
+  breed: string; age: string | number; birthDate: string; gender: string; weight: string;
+  microchip: string; allergies: string;
   lastVisit: string; nextVaccine: string;
-  medicalHistory: { id: number; date: string; title: string; vet: string; icon: typeof Syringe; color: string }[];
+  medicalHistory: {
+    id: number; date: string; title: string; type?: string; description?: string;
+    vet: string; icon: typeof Syringe; color: string;
+  }[];
 }
 
 interface FutureAppointment {
@@ -546,8 +550,11 @@ export function ClientPortal() {
           image: getSpeciesImage(petType),
           breed: row.breed || "לא מוגדר",
           age: calculateAgeFromBirthDate(row.birth_date),
+          birthDate: row.birth_date || "",
           gender: row.gender || "לא ידוע",
           weight: row.weight !== null && row.weight !== undefined ? `${row.weight} ק״ג` : "לא נשקל",
+          microchip: row.microchip || "",
+          allergies: row.allergies || "",
           lastVisit: "טרם נקבע",
           nextVaccine: "טרם נקבע",
           medicalHistory: [],
@@ -560,7 +567,7 @@ export function ClientPortal() {
       if (petIds.length > 0) {
         const { data, error: visitsError } = await supabase
           .from("medical_visits")
-          .select("visit_id, pet_id, visit_date, vet_name, reason, diagnosis, treatment, notes")
+          .select("visit_id, pet_id, visit_date, vet_name, reason, diagnosis, treatment, notes, visit_type")
           .in("pet_id", petIds)
           .order("visit_date", { ascending: false });
 
@@ -659,6 +666,8 @@ export function ClientPortal() {
             id: row.visit_id,
             date,
             title,
+            type: row.visit_type || "",
+            description: [row.diagnosis, row.treatment, row.notes].filter(Boolean).join(" · "),
             vet,
             icon: Stethoscope,
             color: "bg-blue-50 text-blue-600 border-blue-200",
@@ -2322,7 +2331,16 @@ export function ClientPortal() {
                               <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                             </button>
                             <button
-                              onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
+                              onClick={() => {
+                                void exportOwnerMedicalRecord(
+                                  pet,
+                                  ownerDisplayName,
+                                  appointments,
+                                ).catch((error) => {
+                                  console.error("Failed exporting owner medical record", error);
+                                  toast.error("לא הצלחנו לייצא את התיק הרפואי");
+                                });
+                              }}
                               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] font-black text-emerald-700 transition-colors hover:bg-emerald-100"
                               style={{ fontWeight: 500 }}
                             >
@@ -2335,7 +2353,16 @@ export function ClientPortal() {
                         <div className="hidden">
                           <button
                             type="button"
-                            onClick={() => exportOwnerMedicalRecord(pet, ownerDisplayName, appointments)}
+                            onClick={() => {
+                              void exportOwnerMedicalRecord(
+                                pet,
+                                ownerDisplayName,
+                                appointments,
+                              ).catch((error) => {
+                                console.error("Failed exporting owner medical record", error);
+                                toast.error("לא הצלחנו לייצא את התיק הרפואי");
+                              });
+                            }}
                             className="flex items-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[12px] px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap"
                             style={{ fontWeight: 600 }}
                           >

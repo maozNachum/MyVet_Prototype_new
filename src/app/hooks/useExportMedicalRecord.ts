@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { Patient, MedicalVisit } from "../data/patients";
+import { supabase } from "../../services/supabaseClient";
 
 const VISIT_TYPE_LABELS: Record<string, string> = {
   checkup: "בדיקה",
@@ -9,8 +10,29 @@ const VISIT_TYPE_LABELS: Record<string, string> = {
   dental: "שיניים",
 };
 
+type ExportVaccination = {
+  vaccine_name: string;
+  vaccine_type: string | null;
+  manufacturer: string | null;
+  batch_number: string | null;
+  barcode_value: string | null;
+  given_date: string;
+  next_due_date: string | null;
+  expiry_date: string | null;
+  administered_by: string | null;
+  notes: string | null;
+};
+
 /** Exports a patient's full medical record as a structured Excel file. */
-export function exportMedicalRecord(patient: Patient, visits: MedicalVisit[]) {
+export async function exportMedicalRecord(patient: Patient, visits: MedicalVisit[]) {
+  const { data: vaccinationRows, error: vaccinationsError } = await supabase
+    .from("vaccinations")
+    .select("vaccine_name,vaccine_type,manufacturer,batch_number,barcode_value,given_date,next_due_date,expiry_date,administered_by,notes")
+    .eq("pet_id", patient.id)
+    .order("given_date", { ascending: false });
+  if (vaccinationsError) throw vaccinationsError;
+  const vaccinations = (vaccinationRows || []) as ExportVaccination[];
+
   const wb = XLSX.utils.book_new();
   const today = new Date().toLocaleDateString("he-IL");
 
@@ -36,6 +58,7 @@ export function exportMedicalRecord(patient: Patient, visits: MedicalVisit[]) {
     ["סוג", patient.pet.speciesType],
     ["מגדר", patient.pet.gender],
     ["גיל", String(patient.pet.age)],
+    ["תאריך לידה", patient.pet.birthDate || ""],
     ["גזע", patient.pet.breed],
     ["משקל", patient.pet.weight],
     ["מספר שבב", patient.pet.microchip],
@@ -78,7 +101,45 @@ export function exportMedicalRecord(patient: Patient, visits: MedicalVisit[]) {
   ];
   XLSX.utils.book_append_sheet(wb, historySheet, "היסטוריה רפואית");
 
-  // ── Sheet 4: Summary Stats ──
+  // ── Sheet 4: Vaccinations ──
+  const vaccinationHeader = [
+    "#",
+    "שם חיסון",
+    "סוג חיסון",
+    "יצרן",
+    "מספר אצווה",
+    "ברקוד",
+    "תאריך מתן",
+    "תאריך חיסון הבא",
+    "תאריך תפוגה",
+    "בוצע על ידי",
+    "הערות",
+  ];
+  const vaccinationData = vaccinations.map((record, index) => [
+    index + 1,
+    record.vaccine_name,
+    record.vaccine_type || "",
+    record.manufacturer || "",
+    record.batch_number || "",
+    record.barcode_value || "",
+    record.given_date,
+    record.next_due_date || "",
+    record.expiry_date || "",
+    record.administered_by || "",
+    record.notes || "",
+  ]);
+  const vaccinationsSheet = XLSX.utils.aoa_to_sheet([
+    vaccinationHeader,
+    ...vaccinationData,
+  ]);
+  vaccinationsSheet["!cols"] = [
+    { wch: 5 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+    { wch: 20 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 22 },
+    { wch: 40 },
+  ];
+  XLSX.utils.book_append_sheet(wb, vaccinationsSheet, "חיסונים");
+
+  // ── Sheet 5: Summary Stats ──
   const typeCount: Record<string, number> = {};
   const vetCount: Record<string, number> = {};
   for (const v of visits) {
@@ -90,6 +151,7 @@ export function exportMedicalRecord(patient: Patient, visits: MedicalVisit[]) {
   const summaryRows = [
     ["═══ סיכום סטטיסטי ═══", ""],
     ["סה״כ ביקורים", String(visits.length)],
+    ["סה״כ חיסונים", String(vaccinations.length)],
     [""],
     ["── לפי סוג טיפול ──", ""],
     ...Object.entries(typeCount).map(([k, v]) => [k, String(v)]),
