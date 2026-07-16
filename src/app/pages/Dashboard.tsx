@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  Activity,
   AlertCircle,
   ArrowLeft,
   ArrowRight,
@@ -755,9 +754,17 @@ export function Dashboard() {
     },
   ];
 
+  const openAppointment = (appointment: AppointmentItem) => {
+    if (appointment.mode === "video") {
+      navigate(`/digital-care?appointment_id=${appointment.id}`);
+      return;
+    }
+    navigate("/appointments");
+  };
+
   return (
-    <main className="relative mx-auto min-h-[calc(100vh-84px)] max-w-[1500px] px-4 py-4 sm:px-5" dir="rtl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[260px] rounded-b-[48px] bg-[radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.16),transparent_45%),radial-gradient(circle_at_12%_16%,rgba(14,165,233,0.09),transparent_34%)]" />
+    <main className="relative mx-auto min-h-[calc(100vh-84px)] max-w-[1500px] px-4 py-3 sm:px-5" dir="rtl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[220px] rounded-b-[42px] bg-[radial-gradient(circle_at_82%_0%,rgba(37,99,235,0.17),transparent_46%),radial-gradient(circle_at_12%_16%,rgba(14,165,233,0.08),transparent_34%)]" />
       {showSuccessToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-500" />
@@ -765,26 +772,26 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="space-y-3.5">
-        <header className="flex flex-col gap-4 rounded-3xl border border-blue-100/80 bg-gradient-to-l from-blue-50/90 via-white to-indigo-50/55 px-5 py-4 shadow-[0_14px_34px_rgba(30,64,175,0.07)] sm:px-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-3">
+        <header className="flex flex-col gap-3 rounded-2xl border border-blue-100/80 bg-white/95 px-4 py-3 shadow-[0_12px_28px_rgba(30,64,175,0.065)] backdrop-blur sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-slate-600">ברוך הבא, {getStaffName()}</p>
-            <h1 className="text-[30px] font-extrabold leading-tight text-slate-950">{dashboardTitle()}</h1>
-            <p className="mt-1 text-[14px] text-slate-600">כל מה שצריך כדי לנהל את היום, במקום אחד.</p>
+            <h1 className="text-[25px] font-extrabold leading-tight text-slate-950 sm:text-[27px]">{dashboardTitle()}</h1>
+            <p className="mt-0.5 text-[13px] text-slate-600">כל מה שצריך כדי לנהל את היום, במקום אחד.</p>
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end shrink-0">
             <span className="basis-full pb-1 text-[13px] text-slate-500 sm:basis-auto sm:px-2 sm:pb-0">עודכן {lastUpdated || "--:--"}</span>
-            <button type="button" onClick={() => loadDashboardData(false)} className="h-10 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[14px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+            <button type="button" onClick={() => loadDashboardData(false)} className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
               <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
             </button>
             <DashboardAssistant />
             {isSecretary ? (
-              <button type="button" onClick={() => navigate("/appointments/new")} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[14px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
+              <button type="button" onClick={() => navigate("/appointments/new")} className="h-9 px-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                 <CalendarPlus className="w-4 h-4" /> קבע תור
               </button>
             ) : (
-              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-10 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[14px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
+              <button type="button" onClick={() => { setShowWalkInPicker(true); loadPatients(); }} className="h-9 px-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white text-[13px] font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                 <ClipboardPlus className="w-4 h-4" /> {walkInButtonLabel}
               </button>
             )}
@@ -803,23 +810,23 @@ export function Dashboard() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-stretch">
+        <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 items-stretch">
           {statusTiles.map((tile) => {
             const Icon = tile.icon;
             const tileSkin = statusTileSkin(tile.tone);
             return (
-              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className={`group relative h-full min-h-[104px] overflow-hidden rounded-2xl border px-4 py-3 text-right hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${tileSkin.card}`}>
+              <button key={tile.label} type="button" onClick={() => navigate(tile.path)} className={`group relative h-full min-h-[86px] overflow-hidden rounded-2xl border px-3.5 py-2.5 text-right hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${tileSkin.card}`}>
                 <span className={`absolute right-0 top-4 bottom-4 w-1 rounded-l-full ${tileSkin.bar}`} />
-                <div className="flex h-full flex-col justify-between gap-3 pr-1">
+                <div className="flex h-full flex-col justify-between gap-2 pr-1">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[13.5px] font-bold text-slate-700">{tile.label}</p>
-                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ring-1 ${tileSkin.icon}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ring-1 ${tileSkin.icon}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   </div>
                   <div>
-                    <p className={`text-[25px] font-extrabold leading-none ${tileSkin.value}`}>{isDashboardLoading ? "…" : tile.value}</p>
-                    <p className={`mt-1.5 min-h-5 text-[13px] font-semibold leading-5 ${tileSkin.status}`}>{isDashboardLoading ? "טוען נתונים" : tile.status}</p>
+                    <p className={`text-[23px] font-extrabold leading-none ${tileSkin.value}`}>{isDashboardLoading ? "…" : tile.value}</p>
+                    <p className={`mt-1 truncate text-[12.5px] font-semibold leading-4 ${tileSkin.status}`}>{isDashboardLoading ? "טוען נתונים" : tile.status}</p>
                   </div>
                 </div>
               </button>
@@ -827,44 +834,28 @@ export function Dashboard() {
           })}
         </section>
 
-        <section className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-12">
-          <section className="flex h-full flex-col overflow-hidden rounded-3xl border border-blue-100/90 bg-white shadow-[0_14px_34px_rgba(30,64,175,0.055)] xl:col-span-7">
-            <div className="flex min-h-[76px] items-center justify-between gap-3 border-b border-blue-100/70 bg-gradient-to-l from-blue-50/85 via-white to-amber-50/45 px-5 py-4">
+        <section className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-12">
+          <section className="flex min-h-[408px] h-full flex-col overflow-hidden rounded-2xl border border-blue-100/90 bg-white shadow-[0_12px_30px_rgba(30,64,175,0.055)] xl:col-span-7">
+            <div className="flex min-h-[62px] items-center justify-between gap-3 bg-gradient-to-l from-blue-600 to-[#1e40af] px-5 py-3 text-white">
               <div>
-                <h2 className="text-[20px] font-extrabold text-slate-950">מרכז בקרה יומי</h2>
-                <p className="mt-1 text-[14px] text-slate-600">קדימויות הצוות ומעקב המרפאה בתמונה אחת.</p>
+                <h2 className="text-[18px] font-extrabold">לטיפול עכשיו</h2>
+                <p className="mt-0.5 text-[12.5px] text-blue-100">תמונת מצב קצרה ופעולות שמומלץ לקדם היום.</p>
               </div>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-200">
-                <LayoutDashboard className="h-[19px] w-[19px]" />
-              </div>
+              {!isDashboardLoading && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-[12px] font-bold ring-1 ring-white/20 backdrop-blur-sm">
+                  <span className={`h-2 w-2 rounded-full ${clinicAttentionCount > 0 ? "bg-amber-300" : "bg-emerald-300"}`} />
+                  {clinicAttentionCount > 0 ? `${clinicAttentionCount} פעולות` : "הכול בשליטה"}
+                </span>
+              )}
             </div>
 
-            <div className="flex-1 p-3">
-              <div className="overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/70 via-white to-white">
-                <div className="flex flex-col gap-3 border-b border-blue-100/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-200">
-                      <Activity className="h-[18px] w-[18px]" />
-                    </div>
-                    <div>
-                      <h3 className="text-[16px] font-extrabold text-slate-950">מצב המרפאה ופעולות לביצוע</h3>
-                      <p className="mt-0.5 text-[13px] text-slate-600">מקור אחד לחריגות — VetBot זמין להסבר ולהכוונה.</p>
-                    </div>
-                  </div>
-                  {!isDashboardLoading && (
-                    <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold ${clinicAttentionCount > 0 ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"}`}>
-                      <span className={`h-2 w-2 rounded-full ${clinicAttentionCount > 0 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                      {clinicAttentionCount > 0 ? `${clinicAttentionCount} פעולות מומלצות` : "הכול בשליטה"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 border-b border-blue-100/70 bg-white/70 p-3 sm:grid-cols-4">
+            <div className="flex flex-1 flex-col">
+                <div className="grid grid-cols-2 gap-2 border-b border-blue-100/70 bg-blue-50/45 p-3 sm:grid-cols-4">
                   {clinicAreas.map((area) => {
                     const Icon = area.icon;
                     return (
-                      <button key={area.id} type="button" onClick={area.onClick} className="group flex min-h-[58px] items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 text-right transition-all hover:border-blue-200 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ${area.iconClass}`}><Icon className="h-4 w-4" /></span>
+                      <button key={area.id} type="button" onClick={area.onClick} className="group flex min-h-[54px] items-center gap-2 rounded-xl border border-blue-100/80 bg-white px-3 text-right transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ${area.iconClass}`}><Icon className="h-4 w-4" /></span>
                         <span className="min-w-0">
                           <span className="block truncate text-[13px] font-extrabold text-slate-900">{area.title}</span>
                           <span className={`mt-0.5 flex items-center gap-1 text-[11.5px] font-bold ${area.needsAttention ? "text-amber-700" : "text-emerald-700"}`}>
@@ -886,13 +877,13 @@ export function Dashboard() {
                     <p className="mt-1 text-[13px] text-slate-500">אפשר להתמקד בתורים ובטיפול השוטף.</p>
                   </div>
                 ) : (
-                  <div className="grid gap-2 p-3 sm:grid-cols-2">
+                  <div className="divide-y divide-slate-100 px-3 py-1">
                     {workItems.map((item) => {
                       const Icon = item.icon;
                       const soft = item.tone === "blue" ? "bg-blue-50 text-blue-700" : item.tone === "emerald" ? "bg-emerald-50 text-emerald-700" : item.tone === "purple" ? "bg-purple-50 text-purple-700" : "bg-amber-50 text-amber-700";
                       return (
-                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="group flex min-h-[68px] items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 text-right transition-all hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
-                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${soft}`}><Icon className="h-[18px] w-[18px]" /></span>
+                        <button key={item.id} type="button" onClick={() => navigate(item.path)} className="group flex min-h-[61px] w-full items-center gap-3 px-2 py-2 text-right transition-colors hover:bg-blue-50/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/30">
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${soft}`}><Icon className="h-[17px] w-[17px]" /></span>
                           <span className="min-w-0 flex-1"><span className="block truncate text-[14px] font-extrabold text-slate-950">{item.title}</span><span className="mt-0.5 block truncate text-[12.5px] text-slate-600">{item.detail}</span></span>
                           <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:-translate-x-0.5 group-hover:text-blue-700" />
                         </button>
@@ -900,43 +891,42 @@ export function Dashboard() {
                     })}
                   </div>
                 )}
-              </div>
             </div>
           </section>
 
-          <section className="flex h-full flex-col overflow-hidden rounded-3xl border border-blue-100/90 bg-white shadow-[0_14px_34px_rgba(30,64,175,0.055)] xl:col-span-5">
-            <div className="flex min-h-[76px] items-center justify-between gap-3 border-b border-blue-100/70 bg-gradient-to-l from-blue-50/90 via-white to-white px-5 py-4">
+          <section className="flex min-h-[408px] h-full flex-col overflow-hidden rounded-2xl border border-blue-100/90 bg-white shadow-[0_12px_30px_rgba(30,64,175,0.055)] xl:col-span-5">
+            <div className="flex min-h-[62px] items-center justify-between gap-3 border-b border-blue-100/70 bg-gradient-to-l from-blue-50/90 via-white to-white px-5 py-3">
               <div>
-                <h2 className="text-[20px] font-extrabold text-slate-950">תורים להיום</h2>
-                <p className="mt-1 text-[14px] text-slate-600">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
+                <h2 className="text-[18px] font-extrabold text-slate-950">תורים להיום</h2>
+                <p className="mt-0.5 text-[12.5px] text-slate-600">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
               </div>
               <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 ring-1 ring-blue-100">
                 <Clock className="w-[18px] h-[18px]" />
               </div>
             </div>
 
-            <div className="border-b border-blue-100/70 bg-blue-50/45 p-3">
+            <div className="border-b border-blue-100/70 bg-blue-50/45 p-2.5">
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => navigate("/appointments")}
-                  className="rounded-2xl border border-blue-600 bg-gradient-to-l from-blue-600 to-[#1e40af] p-2.5 text-right text-white shadow-md shadow-blue-700/15 transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                  className="rounded-xl border border-blue-600 bg-gradient-to-l from-blue-600 to-[#1e40af] px-3 py-2 text-right text-white shadow-sm shadow-blue-700/15 transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                 >
                   <p className="text-[13px] font-bold text-blue-100">התור הבא</p>
-                  <p className="mt-1 truncate text-[15px] font-extrabold text-white">{nextAppointment ? nextAppointment.timeLabel : "אין תור קרוב"}</p>
+                  <p className="mt-0.5 truncate text-[14px] font-extrabold text-white">{nextAppointment ? nextAppointment.timeLabel : "אין תור קרוב"}</p>
                 </button>
-                <button type="button" onClick={() => navigate("/appointments")} className="rounded-2xl bg-white border border-slate-100 p-2.5 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
-                  <p className="text-[13px] font-bold text-slate-600">וידאו</p>
-                  <p className="mt-1 text-[15px] font-extrabold text-slate-950">{videoAppointmentsCount}</p>
+                <button type="button" onClick={() => navigate("/appointments")} className="rounded-xl bg-white border border-blue-100 px-3 py-2 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+                  <p className="text-[12.5px] font-bold text-slate-600">וידאו</p>
+                  <p className="mt-0.5 text-[14px] font-extrabold text-slate-950">{videoAppointmentsCount}</p>
                 </button>
-                <button type="button" onClick={() => navigate("/appointments")} className="rounded-2xl bg-white border border-slate-100 p-2.5 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
-                  <p className="text-[13px] font-bold text-slate-600">במרפאה</p>
-                  <p className="mt-1 text-[15px] font-extrabold text-slate-950">{physicalAppointmentsCount}</p>
+                <button type="button" onClick={() => navigate("/appointments")} className="rounded-xl bg-white border border-blue-100 px-3 py-2 text-right hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
+                  <p className="text-[12.5px] font-bold text-slate-600">במרפאה</p>
+                  <p className="mt-0.5 text-[14px] font-extrabold text-slate-950">{physicalAppointmentsCount}</p>
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 p-3">
+            <div className="flex-1 px-3 py-1">
               {isDashboardLoading ? (
                 <div className="flex min-h-[160px] items-center justify-center gap-2 text-[13px] font-medium text-slate-500" role="status">
                   <Loader2 className="h-4 w-4 animate-spin" /> טוען את יומן היום...
@@ -947,52 +937,52 @@ export function Dashboard() {
                   <p className="text-[14px] font-bold text-gray-700">אין תורים להיום</p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {todaysAppointments.slice(0, 4).map((appointment) => {
+                <div className="divide-y divide-slate-100">
+                  {todaysAppointments.slice(0, 5).map((appointment) => {
                     const appointmentTime = new Date(appointment.startTime).getTime();
                     const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
                     const isNext = nextAppointment?.id === appointment.id;
                     const isPriority = isPriorityAppointment(appointment);
                     const isActivePriority = isPriority && !isPast;
                     const appointmentClass = isPast
-                      ? "border border-slate-100 bg-slate-50/80 opacity-60 hover:opacity-80"
+                      ? "bg-slate-50/55 opacity-40 grayscale-[0.25] hover:opacity-60"
                       : isActivePriority
-                      ? "border border-[#f0d4d0] bg-[#fff7f5] hover:bg-[#fdf0ed] shadow-[0_8px_20px_rgba(159,69,59,0.045)]"
+                      ? "bg-amber-50/65 hover:bg-amber-50"
                       : isNext
-                        ? "bg-blue-50 border border-blue-100 hover:bg-blue-50/80"
-                        : "hover:bg-slate-50 border border-transparent";
+                        ? "bg-blue-50/85 hover:bg-blue-100/70"
+                        : "hover:bg-slate-50";
                     const timeClass = isPast
                       ? "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
                       : isActivePriority
-                      ? "bg-white text-[#9b4a42] ring-1 ring-[#edd2ce]"
+                      ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200"
                       : isNext
                         ? "bg-blue-600 text-white"
                         : "bg-gray-50 text-gray-900";
                     return (
-                      <button key={appointment.id} type="button" onClick={() => navigate("/appointments")} className={`w-full rounded-2xl px-3 py-2.5 text-right cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${appointmentClass}`}>
+                      <button key={appointment.id} type="button" onClick={() => openAppointment(appointment)} className={`w-full px-2 py-2 text-right cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/30 ${appointmentClass}`}>
                         <div className="flex items-center gap-3">
-                          {isActivePriority && <span className="h-11 w-1 shrink-0 rounded-full bg-[#d7867d]" />}
-                          <div className={`w-14 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0 ${timeClass}`}>
-                            <span className="text-[15px] font-extrabold leading-none">{appointment.timeLabel}</span>
-                            <span className="mt-1 text-[13px] opacity-75">{isActivePriority ? "דחוף" : isNext ? "הבא" : isPast ? "עבר" : "היום"}</span>
+                          {isActivePriority && <span className="h-10 w-1 shrink-0 rounded-full bg-amber-500" />}
+                          <div className={`w-14 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 ${timeClass}`}>
+                            <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
+                            <span className="mt-1 text-[11px] opacity-75">{isActivePriority ? "דחוף" : isNext ? "הבא" : isPast ? "עבר" : "מתוכנן"}</span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <p className={`${isPast ? "text-slate-600" : isActivePriority ? "text-[#713832]" : "text-gray-950"} truncate text-[15px] font-extrabold`}>{appointment.type || "ביקור"}</p>
-                              {isActivePriority && <span className="rounded-full border border-[#edd2ce] bg-white/85 px-2 py-0.5 text-[13px] font-bold text-[#9b4a42]">עדיפות גבוהה</span>}
-                              {appointment.mode === "video" && <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[13px] font-bold text-purple-700">וידאו</span>}
+                              <p className={`${isPast ? "text-slate-600" : isActivePriority ? "text-amber-950" : "text-gray-950"} truncate text-[14px] font-extrabold`}>{appointment.type || "ביקור"}</p>
+                              {isActivePriority && <span className="rounded-full border border-amber-200 bg-white/85 px-2 py-0.5 text-[11px] font-bold text-amber-800">עדיפות גבוהה</span>}
+                              {appointment.mode === "video" && <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700">וידאו</span>}
                             </div>
                             <p className={`mt-0.5 truncate text-[13px] ${isPast ? "text-slate-500" : "text-slate-700"}`}>{appointment.petName} · {appointment.ownerName}</p>
                             <p className="truncate text-[13px] text-slate-500">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
                           </div>
-                          <ArrowLeft className={`h-4 w-4 ${isActivePriority ? "text-[#c47970]" : "text-slate-400"} shrink-0`} />
+                          <ArrowLeft className={`h-4 w-4 ${isActivePriority ? "text-amber-600" : "text-slate-400"} shrink-0`} />
                         </div>
                       </button>
                     );
                   })}
-                  {todaysAppointments.length > 4 && (
+                  {todaysAppointments.length > 5 && (
                     <button type="button" onClick={() => navigate("/appointments")} className="w-full h-9 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                      עוד {todaysAppointments.length - 4} תורים ביומן <ArrowLeft className="w-4 h-4" />
+                      עוד {todaysAppointments.length - 5} תורים ביומן <ArrowLeft className="w-4 h-4" />
                     </button>
                   )}
                 </div>
