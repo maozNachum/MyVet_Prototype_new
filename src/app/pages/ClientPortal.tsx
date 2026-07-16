@@ -1369,15 +1369,27 @@ export function ClientPortal() {
     if (!paymentToPay) return;
 
     setPayingPaymentId(paymentToPay.id);
-    // מסך הדגמה בלבד: סטטוס תשלום אמיתי חייב להתעדכן מ-webhook
-    // מאומת של ספק סליקה, ולעולם לא ישירות מדפדפן הלקוח.
-    setPaymentSuccess(true);
-    toast.success("סימולציית התשלום הושלמה. לא בוצע חיוב אמיתי.");
-    window.setTimeout(() => {
-      setPaymentSuccess(false);
-      setPaymentToPay(null);
+    try {
+      // ה-RPC בודק בשרת שהחיוב שייך לבעלים המחובר. זהו תשלום הדגמה
+      // בלבד; בסליקה אמיתית העדכון חייב להגיע מ-webhook מאומת של הספק.
+      const { error } = await supabase.rpc("myvet_owner_settle_demo_payment", {
+        requested_payment_id: paymentToPay.id,
+      });
+      if (error) throw error;
+
+      await refreshPortalData();
+      setPaymentSuccess(true);
+      toast.success("התשלום לדוגמה נקלט והחוב עודכן במערכת.");
+      window.setTimeout(() => {
+        setPaymentSuccess(false);
+        setPaymentToPay(null);
+        setPayingPaymentId(null);
+      }, 1800);
+    } catch (error) {
+      console.error("Failed settling portal demo payment", error);
+      toast.error("לא הצלחנו לעדכן את התשלום. נסו שוב.");
       setPayingPaymentId(null);
-    }, 1800);
+    }
   };
 
   const allPayments = Object.values(paymentsByPet).flat() as PaymentSummary[];

@@ -6,6 +6,8 @@ import {
   CreditCard,
   Loader2,
   CheckCircle2,
+  Banknote,
+  Calculator,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
@@ -135,14 +137,21 @@ export function VisitCheckoutModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [cashReceived, setCashReceived] = useState("");
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + totalForItem(item), 0),
     [items],
   );
+  const cashReceivedAmount = toNumber(cashReceived);
+  const cashChange = Math.max(0, cashReceivedAmount - total);
+  const cashIsInsufficient = cashReceivedAmount < total;
 
   useEffect(() => {
     if (!isOpen) return;
+    setPaymentMethod("cash");
+    setCashReceived("");
 
     async function loadPriceData() {
       setIsLoading(true);
@@ -375,9 +384,9 @@ export function VisitCheckoutModal({
             pet_id: patientId || null,
             visit_id: visitId,
             amount: total,
-            status: markPaid ? "paid" : "unpaid",
-            payment_method: "other",
-            paid_at: markPaid ? new Date().toISOString() : null,
+            status: "unpaid",
+            payment_method: null,
+            paid_at: null,
             notes: `חיוב עבור ביקור ${entryLabel}`,
             created_at: new Date().toISOString(),
           },
@@ -410,6 +419,15 @@ export function VisitCheckoutModal({
         .from("payment_items")
         .insert(paymentItems);
       if (itemsError) throw itemsError;
+
+      if (markPaid) {
+        const { error: settlementError } = await supabase.rpc("myvet_staff_settle_payment", {
+          requested_payment_id: paymentId,
+          requested_method: paymentMethod,
+          tendered_amount: paymentMethod === "cash" ? cashReceivedAmount : null,
+        });
+        if (settlementError) throw settlementError;
+      }
       persistenceComplete = true;
 
       if (!markPaid && ownerId) {
@@ -606,7 +624,7 @@ export function VisitCheckoutModal({
           </section>
         </main>
 
-        <footer className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-4">
+        <footer className="px-6 py-4 border-t border-gray-100 bg-white flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
             <p className="text-gray-500 text-[12px] font-semibold">
               סה״כ לתשלום
@@ -615,7 +633,50 @@ export function VisitCheckoutModal({
               {formatPrice(total)}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-[170px_minmax(190px,1fr)] gap-3 max-w-xl">
+            <label className="space-y-1">
+              <span className="text-gray-600 text-[11px] font-bold">אמצעי תשלום בצוות</span>
+              <select
+                value={paymentMethod}
+                onChange={(event) => {
+                  setPaymentMethod(event.target.value);
+                  setCashReceived("");
+                }}
+                className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-[13px] font-semibold"
+              >
+                <option value="cash">מזומן</option>
+                <option value="credit">אשראי</option>
+                <option value="bit">Bit</option>
+                <option value="bank_transfer">העברה בנקאית</option>
+                <option value="other">אחר</option>
+              </select>
+            </label>
+            {paymentMethod === "cash" && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <div className="flex items-center gap-2 text-emerald-800 text-[11px] font-extrabold mb-1.5">
+                  <Calculator className="w-3.5 h-3.5" /> מחשבון עודף
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={total}
+                    step="0.01"
+                    inputMode="decimal"
+                    value={cashReceived}
+                    onChange={(event) => setCashReceived(event.target.value)}
+                    className="min-w-0 flex-1 h-9 rounded-lg border border-emerald-200 bg-white px-2 text-[14px] font-bold"
+                    placeholder="התקבל ₪"
+                  />
+                  <div className={`min-w-[105px] rounded-lg px-2 py-1.5 text-center ${cashReceived && !cashIsInsufficient ? "bg-emerald-600 text-white" : "bg-white text-gray-600"}`}>
+                    <span className="block text-[10px] font-bold">עודף</span>
+                    <span className="block text-[14px] font-extrabold">{formatPrice(cashChange)}</span>
+                  </div>
+                </div>
+                {cashReceived && cashIsInsufficient && <p className="text-amber-700 text-[10px] font-bold mt-1">הסכום שהתקבל נמוך מהסכום לתשלום</p>}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -639,10 +700,11 @@ export function VisitCheckoutModal({
             <button
               type="button"
               onClick={() => saveCheckout(true)}
-              disabled={isSaving}
+              disabled={isSaving || (paymentMethod === "cash" && (!cashReceived || cashIsInsufficient))}
               className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 text-[14px] font-bold flex items-center gap-2"
             >
-              <CheckCircle2 className="w-4 h-4" /> סמן כשולם
+              {paymentMethod === "cash" ? <Banknote className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+              {paymentMethod === "cash" ? "קבל מזומן וסמן כשולם" : "סמן כשולם"}
             </button>
           </div>
         </footer>

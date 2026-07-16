@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 
@@ -157,6 +157,8 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
+  const refreshQueuedRef = useRef(false);
 
   const pushNotification = useCallback(
     (target: "owner" | "staff", type: AppNotification["type"], message: string, detail: string, petName: string, changedBy: "owner" | "staff") => {
@@ -178,11 +180,16 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     []
   );
 
-  const refreshAppointments = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const refreshAppointments = useCallback((notifyOnError = true): Promise<void> => {
+    if (refreshInFlightRef.current) {
+      refreshQueuedRef.current = true;
+      return refreshInFlightRef.current;
+    }
 
-    try {
+    const refreshPromise = (async () => {
+      setIsLoading(true);
+
+      try {
       const { data: appointmentRows, error: appointmentsError } = await supabase
         .from("appointments")
         .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes")
@@ -256,23 +263,43 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         };
       });
 
-      setCalendarAppointments(mapped);
-    } catch (err: any) {
-      console.error("Error loading appointments from Supabase:", err);
-      setError(err?.message || "שגיאה בטעינת תורים");
-      toast.error("שגיאה בטעינת תורים מהענן");
-    } finally {
-      setIsLoading(false);
-    }
+        setCalendarAppointments(mapped);
+        setError(null);
+        toast.dismiss("appointments-cloud-load");
+      } catch (err: any) {
+        console.error("Error loading appointments from Supabase:", err);
+        setError(err?.message || "שגיאה בטעינת תורים");
+        if (notifyOnError && (typeof navigator === "undefined" || navigator.onLine)) {
+          toast.error("שגיאה בטעינת תורים מהענן", { id: "appointments-cloud-load" });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    })().finally(() => {
+      refreshInFlightRef.current = null;
+    });
+
+    refreshInFlightRef.current = refreshPromise;
+    return refreshPromise;
   }, []);
 
   useEffect(() => {
-    refreshAppointments();
+    void refreshAppointments(true);
   }, [refreshAppointments]);
 
   useEffect(() => {
+    let syncTimer: number | null = null;
+
     const syncAppointments = () => {
-      void refreshAppointments();
+      if (syncTimer !== null) window.clearTimeout(syncTimer);
+      syncTimer = window.setTimeout(() => {
+        syncTimer = null;
+        const hadQueuedRefresh = refreshQueuedRef.current;
+        refreshQueuedRef.current = false;
+        void refreshAppointments(false).finally(() => {
+          if (hadQueuedRefresh || refreshQueuedRef.current) syncAppointments();
+        });
+      }, 220);
     };
 
     const syncWhenVisible = () => {
@@ -282,6 +309,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     };
 
     window.addEventListener("focus", syncWhenVisible);
+    window.addEventListener("online", syncWhenVisible);
     document.addEventListener("visibilitychange", syncWhenVisible);
 
     const intervalId = window.setInterval(() => {
@@ -295,12 +323,19 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, syncAppointments)
       .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, syncAppointments)
       .on("postgres_changes", { event: "*", schema: "public", table: "owners" }, syncAppointments)
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") syncAppointments();
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(`Appointment realtime status: ${status}`);
+        }
+      });
 
     return () => {
       window.removeEventListener("focus", syncWhenVisible);
+      window.removeEventListener("online", syncWhenVisible);
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.clearInterval(intervalId);
+      if (syncTimer !== null) window.clearTimeout(syncTimer);
       void supabase.removeChannel(channel);
     };
   }, [refreshAppointments]);

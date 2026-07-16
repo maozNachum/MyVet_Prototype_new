@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CreditCard, Loader2, Wallet, X } from "lucide-react";
+import { Banknote, Calculator, CheckCircle2, CreditCard, Loader2, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 
@@ -60,6 +60,8 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("credit");
   const [updatingPaymentId, setUpdatingPaymentId] = useState<number | "all" | null>(null);
+  const [cashPaymentId, setCashPaymentId] = useState<number | null>(null);
+  const [cashReceived, setCashReceived] = useState("");
 
   const totalDebt = useMemo(
     () => payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
@@ -101,22 +103,38 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
     return () => window.removeEventListener("myvet:payments-updated", onPaymentsUpdated);
   }, [ownerId]);
 
-  const markPaid = async (paymentId: number) => {
+  useEffect(() => {
+    if (payments.length === 0) {
+      setCashPaymentId(null);
+      return;
+    }
+    if (!cashPaymentId || !payments.some((payment) => payment.payment_id === cashPaymentId)) {
+      setCashPaymentId(payments[0].payment_id);
+      setCashReceived("");
+    }
+  }, [cashPaymentId, payments]);
+
+  const selectedCashPayment = payments.find((payment) => payment.payment_id === cashPaymentId) || null;
+  const selectedCashAmount = Number(selectedCashPayment?.amount || 0);
+  const cashReceivedAmount = Number(cashReceived || 0);
+  const cashChange = Math.max(0, cashReceivedAmount - selectedCashAmount);
+  const cashIsInsufficient = cashReceivedAmount < selectedCashAmount;
+
+  const markPaid = async (paymentId: number, method = paymentMethod, received?: number) => {
     setUpdatingPaymentId(paymentId);
     try {
-      const { error } = await supabase
-        .from("payments")
-        .update({
-          status: "paid",
-          payment_method: paymentMethod,
-          paid_at: new Date().toISOString(),
-        })
-        .eq("payment_id", paymentId);
+      const { data, error } = await supabase.rpc("myvet_staff_settle_payment", {
+        requested_payment_id: paymentId,
+        requested_method: method,
+        tendered_amount: method === "cash" ? received : null,
+      });
 
       if (error) throw error;
-      toast.success("התשלום סומן כשולם");
+      const returnedChange = Number((data as { change_amount?: number } | null)?.change_amount || 0);
+      toast.success(method === "cash" ? `המזומן נקלט · עודף להחזיר ${money(returnedChange)}` : "התשלום סומן כשולם");
       window.dispatchEvent(new CustomEvent("myvet:payments-updated"));
       await loadOpenPayments();
+      setCashReceived("");
     } catch (error) {
       console.error("Failed marking payment as paid", error);
       toast.error("לא הצלחנו לעדכן את התשלום");
@@ -127,20 +145,18 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
 
   const markAllPaid = async () => {
     if (payments.length === 0) return;
-    const ids = payments.map((payment) => payment.payment_id);
+    if (paymentMethod === "cash") return;
 
     setUpdatingPaymentId("all");
     try {
-      const { error } = await supabase
-        .from("payments")
-        .update({
-          status: "paid",
-          payment_method: paymentMethod,
-          paid_at: new Date().toISOString(),
-        })
-        .in("payment_id", ids);
-
-      if (error) throw error;
+      for (const payment of payments) {
+        const { error } = await supabase.rpc("myvet_staff_settle_payment", {
+          requested_payment_id: payment.payment_id,
+          requested_method: paymentMethod,
+          tendered_amount: null,
+        });
+        if (error) throw error;
+      }
       toast.success("כל החובות סומנו כשולמו");
       window.dispatchEvent(new CustomEvent("myvet:payments-updated"));
       await loadOpenPayments();
@@ -232,6 +248,85 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
                 </select>
               </div>
 
+              {paymentMethod === "cash" && selectedCashPayment && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Calculator className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-gray-900 text-[15px] font-extrabold">מחשבון מזומן ועודף</p>
+                      <p className="text-gray-600 text-[12px] mt-0.5">בחרו חיוב, הזינו כמה הלקוח מסר ואשרו רק לאחר ספירת הכסף.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="space-y-1.5">
+                      <span className="text-gray-700 text-[12px] font-bold">חיוב לגבייה</span>
+                      <select
+                        value={cashPaymentId || ""}
+                        onChange={(event) => {
+                          setCashPaymentId(Number(event.target.value));
+                          setCashReceived("");
+                        }}
+                        className="w-full h-11 px-3 rounded-xl border border-emerald-200 bg-white text-[14px]"
+                      >
+                        {payments.map((payment) => (
+                          <option key={payment.payment_id} value={payment.payment_id}>
+                            חיוב #{payment.payment_id} · {money(Number(payment.amount || 0))}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="text-gray-700 text-[12px] font-bold">התקבל מהלקוח</span>
+                      <div className="relative">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₪</span>
+                        <input
+                          type="number"
+                          min={selectedCashAmount}
+                          step="0.01"
+                          inputMode="decimal"
+                          value={cashReceived}
+                          onChange={(event) => setCashReceived(event.target.value)}
+                          className="w-full h-11 pr-8 pl-3 rounded-xl border border-emerald-200 bg-white text-[16px] font-bold"
+                          placeholder="0"
+                        />
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl bg-white border border-emerald-100 p-3 text-center">
+                      <p className="text-gray-500 text-[11px] font-bold">לתשלום</p>
+                      <p className="text-gray-950 text-[16px] font-extrabold mt-1">{money(selectedCashAmount)}</p>
+                    </div>
+                    <div className="rounded-xl bg-white border border-emerald-100 p-3 text-center">
+                      <p className="text-gray-500 text-[11px] font-bold">התקבל</p>
+                      <p className="text-gray-950 text-[16px] font-extrabold mt-1">{money(cashReceivedAmount)}</p>
+                    </div>
+                    <div className={`rounded-xl border p-3 text-center ${cashIsInsufficient ? "bg-amber-50 border-amber-200" : "bg-emerald-600 border-emerald-600"}`}>
+                      <p className={`text-[11px] font-bold ${cashIsInsufficient ? "text-amber-700" : "text-emerald-50"}`}>עודף להחזיר</p>
+                      <p className={`text-[16px] font-extrabold mt-1 ${cashIsInsufficient ? "text-amber-800" : "text-white"}`}>{money(cashChange)}</p>
+                    </div>
+                  </div>
+
+                  {cashReceived && cashIsInsufficient && (
+                    <p className="text-amber-700 text-[12px] font-bold">חסרים {money(selectedCashAmount - cashReceivedAmount)} להשלמת התשלום.</p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => markPaid(selectedCashPayment.payment_id, "cash", cashReceivedAmount)}
+                    disabled={Boolean(updatingPaymentId) || !cashReceived || cashIsInsufficient}
+                    className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-[13px] font-extrabold flex items-center justify-center gap-2"
+                  >
+                    {updatingPaymentId === selectedCashPayment.payment_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                    אשר קבלת מזומן
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {payments.map((payment) => (
                   <div key={payment.payment_id} className="rounded-2xl border border-gray-100 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -249,12 +344,19 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => markPaid(payment.payment_id)}
+                      onClick={() => {
+                        if (paymentMethod === "cash") {
+                          setCashPaymentId(payment.payment_id);
+                          setCashReceived("");
+                          return;
+                        }
+                        void markPaid(payment.payment_id);
+                      }}
                       disabled={Boolean(updatingPaymentId)}
-                      className="px-4 py-2.5 rounded-xl bg-[#1e40af] text-white hover:bg-[#1e3a8a] disabled:bg-gray-300 transition-colors text-[13px] font-bold flex items-center justify-center gap-2"
+                      className={`px-4 py-2.5 rounded-xl disabled:bg-gray-300 transition-colors text-[13px] font-bold flex items-center justify-center gap-2 ${paymentMethod === "cash" && cashPaymentId === payment.payment_id ? "bg-emerald-600 text-white" : "bg-[#1e40af] text-white hover:bg-[#1e3a8a]"}`}
                     >
-                      {updatingPaymentId === payment.payment_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      סמן כשולם
+                      {updatingPaymentId === payment.payment_id ? <Loader2 className="w-4 h-4 animate-spin" /> : paymentMethod === "cash" ? <Banknote className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {paymentMethod === "cash" ? cashPaymentId === payment.payment_id ? "נבחר למזומן" : "בחר למזומן" : "סמן כשולם"}
                     </button>
                   </div>
                 ))}
@@ -271,15 +373,17 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
                 >
                   סגור
                 </button>
-                <button
-                  type="button"
-                  onClick={markAllPaid}
-                  disabled={Boolean(updatingPaymentId) || payments.length === 0}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 text-[13px] font-bold flex items-center gap-2"
-                >
-                  {updatingPaymentId === "all" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  סמן הכל כשולם
-                </button>
+                {paymentMethod !== "cash" && (
+                  <button
+                    type="button"
+                    onClick={markAllPaid}
+                    disabled={Boolean(updatingPaymentId) || payments.length === 0}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 text-[13px] font-bold flex items-center gap-2"
+                  >
+                    {updatingPaymentId === "all" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    סמן הכל כשולם
+                  </button>
+                )}
               </div>
             </div>
           </div>

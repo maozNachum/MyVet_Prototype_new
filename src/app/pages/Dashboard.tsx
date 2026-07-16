@@ -755,8 +755,8 @@ export function Dashboard() {
   ];
 
   const openAppointment = (appointment: AppointmentItem) => {
-    if (appointment.mode === "video") {
-      navigate(`/digital-care?appointment_id=${appointment.id}`);
+    if (appointment.petId) {
+      navigate(`/patients?selected=${appointment.petId}`);
       return;
     }
     navigate("/appointments");

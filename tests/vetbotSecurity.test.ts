@@ -7,10 +7,13 @@ const corsSource = readFileSync("supabase/functions/_shared/cors.ts", "utf8");
 const migration = readFileSync("supabase/migrations/202607150001_vetbot_privacy.sql", "utf8");
 const rlsMigration = readFileSync("supabase/migrations/202607150002_myvet_rls_hardening.sql", "utf8");
 const availabilityMigration = readFileSync("supabase/migrations/20260716145453_clinic_booking_availability.sql", "utf8");
+const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181935_reliable_realtime_and_payment_settlement.sql", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
+const appointmentStoreSource = readFileSync("src/app/data/AppointmentStore.tsx", "utf8");
+const dashboardSource = readFileSync("src/app/pages/Dashboard.tsx", "utf8");
 const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
 const themeSource = readFileSync("src/styles/theme.css", "utf8");
 
@@ -103,11 +106,41 @@ test("Appointment urgency offers only normal or emergency", () => {
   assert.doesNotMatch(newAppointmentSource, /<option value="high">/);
 });
 
-test("Demo payments never change billing records from the browser", () => {
+test("Portal demo payments settle only through an owner-authorized server RPC", () => {
   const handler = portalSource.match(/const handleDemoPaymentConfirm[\s\S]*?\n  };/)?.[0] || "";
   assert.ok(handler.length > 0);
   assert.doesNotMatch(handler, /from\("payments"\)/);
-  assert.match(handler, /לא בוצע חיוב אמיתי/);
+  assert.match(handler, /rpc\("myvet_owner_settle_demo_payment"/);
+  assert.match(handler, /תשלום הדגמה/);
+  assert.match(paymentSettlementMigration, /myvet_owner_settle_demo_payment/);
+  assert.match(paymentSettlementMigration, /myvet_owner_matches\(target_payment\.owner_id\)/);
+  assert.match(paymentSettlementMigration, /verified payment-provider webhook/i);
+});
+
+test("Staff cash collection is server-authorized and calculates change", () => {
+  assert.match(paymentSettlementMigration, /myvet_staff_settle_payment/);
+  assert.match(paymentSettlementMigration, /myvet_is_active_staff\(\)/);
+  assert.match(paymentSettlementMigration, /calculated_change := tendered_amount - target_payment\.amount/);
+  assert.match(paymentSettlementMigration, /payment_transactions/);
+});
+
+test("Appointment live refresh is published and duplicate error toasts are deduplicated", () => {
+  assert.match(paymentSettlementMigration, /alter publication supabase_realtime add table/);
+  assert.match(appointmentStoreSource, /refreshInFlightRef/);
+  assert.match(appointmentStoreSource, /id: "appointments-cloud-load"/);
+  assert.match(appointmentStoreSource, /CHANNEL_ERROR/);
+});
+
+test("Vaccination scanner connects the camera after the video element renders", () => {
+  const startScanner = vaccinationSource.match(/async function startScanner\(\)[\s\S]*?\n  }/)?.[0] || "";
+  assert.match(startScanner, /getUserMedia/);
+  assert.doesNotMatch(startScanner, /if \(!window\.BarcodeDetector\)/);
+  assert.match(vaccinationSource, /video\.srcObject = streamRef\.current/);
+  assert.match(vaccinationSource, /autoPlay muted playsInline/);
+});
+
+test("Dashboard appointments open the selected animal medical record", () => {
+  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
 });
 
 test("Medical images use expiring signed URLs and private storage", () => {

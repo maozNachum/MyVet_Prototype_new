@@ -254,37 +254,36 @@ export function VaccinationBook({
 
   useEffect(() => stopScanner, [stopScanner]);
 
-  async function startScanner() {
-    setScanError(null);
+  useEffect(() => {
+    if (!isScanning || !streamRef.current || !videoRef.current) return;
 
-    if (!window.BarcodeDetector) {
-      setScanError("סריקה אוטומטית לא זמינה בדפדפן הזה. אפשר להזין ברקוד ידנית או לצלם את המדבקה.");
-      return;
-    }
+    let cancelled = false;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setScanError("לא ניתן לפתוח מצלמה בדפדפן הזה. אפשר להזין ברקוד ידנית או לצלם את המדבקה.");
-      return;
-    }
+    const connectAndScan = async () => {
+      try {
+        await video.play();
+      } catch (error) {
+        console.error("Failed playing barcode camera", error);
+        if (!cancelled) {
+          setScanError("המצלמה נפתחה אך לא הצלחנו להציג את התמונה. בדקו הרשאת מצלמה ונסו שוב.");
+          stopScanner();
+        }
+        return;
+      }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setIsScanning(true);
-
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
+      if (!window.BarcodeDetector) {
+        setScanError("המצלמה פתוחה. הדפדפן הזה לא מזהה ברקוד אוטומטית, לכן אפשר לקרוא את המספר ולהזין אותו בשדה שמתחת או לצלם את המדבקה.");
+        return;
+      }
 
       const detector = new window.BarcodeDetector({
         formats: ["qr_code", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e", "itf"],
       });
 
       const scanFrame = async () => {
+        if (cancelled) return;
         const currentVideo = videoRef.current;
         if (!currentVideo || currentVideo.readyState < 2) {
           frameRef.current = requestAnimationFrame(scanFrame);
@@ -307,10 +306,44 @@ export function VaccinationBook({
         frameRef.current = requestAnimationFrame(scanFrame);
       };
 
-      scanFrame();
+      void scanFrame();
+    };
+
+    void connectAndScan();
+    return () => {
+      cancelled = true;
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [isScanning, stopScanner]);
+
+  async function startScanner() {
+    setScanError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScanError("לא ניתן לפתוח מצלמה בדפדפן הזה. אפשר להזין ברקוד ידנית או לצלם את המדבקה.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setIsScanning(true);
     } catch (error) {
       console.error("Failed to start barcode scanner", error);
-      setScanError("לא הצלחנו לפתוח מצלמה. אפשר להזין ברקוד ידנית או לצלם את המדבקה.");
+      const errorName = error instanceof DOMException ? error.name : "";
+      setScanError(errorName === "NotAllowedError"
+        ? "הרשאת המצלמה נחסמה. אשרו גישה למצלמה בהגדרות הדפדפן ונסו שוב."
+        : "לא הצלחנו לפתוח מצלמה. ודאו שאין אפליקציה אחרת שמשתמשת בה ונסו שוב.");
       stopScanner();
     }
   }
@@ -800,8 +833,10 @@ export function VaccinationBook({
                 {scanError && <div className="rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 px-4 py-3 text-[13px] font-bold mb-3">{scanError}</div>}
 
                 {isScanning && (
-                  <div className="rounded-2xl overflow-hidden border border-blue-100 bg-black mb-3">
-                    <video ref={videoRef} className="w-full max-h-[260px] object-cover" muted playsInline />
+                  <div className="relative rounded-2xl overflow-hidden border border-blue-200 bg-slate-900 mb-3 aspect-video">
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                    <div className="pointer-events-none absolute inset-[16%] rounded-xl border-2 border-white/90 shadow-[0_0_0_999px_rgba(15,23,42,0.28)]" />
+                    <span className="absolute bottom-3 inset-x-3 rounded-lg bg-slate-950/65 px-3 py-2 text-center text-white text-[12px] font-bold">מקמו את הברקוד בתוך המסגרת</span>
                   </div>
                 )}
 
