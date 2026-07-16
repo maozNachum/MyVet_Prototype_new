@@ -8,6 +8,7 @@ const migration = readFileSync("supabase/migrations/202607150001_vetbot_privacy.
 const rlsMigration = readFileSync("supabase/migrations/202607150002_myvet_rls_hardening.sql", "utf8");
 const availabilityMigration = readFileSync("supabase/migrations/20260716145453_clinic_booking_availability.sql", "utf8");
 const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181935_reliable_realtime_and_payment_settlement.sql", "utf8");
+const paymentMethodFixMigration = readFileSync("supabase/migrations/20260716200544_fix_portal_demo_payment_method.sql", "utf8");
 const actionMigration = readFileSync("supabase/migrations/20260716193200_vetbot_action_orchestration.sql", "utf8");
 const actionEngine = readFileSync("supabase/functions/_shared/vetbotActions.ts", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
@@ -54,6 +55,10 @@ test("VetBot retries incomplete structured Gemini output without logging content
   assert.match(edgeFunction, /responseLength: result\.text\.length/);
   assert.doesNotMatch(edgeFunction, /(?:text|content|response):\s*result\.text/);
   assert.doesNotMatch(edgeFunction, /console\.(?:log|warn|error)\(result\.text\)/);
+  assert.match(edgeFunction, /transientStatuses = new Set\(\[429, 500, 502, 503, 504\]\)/);
+  assert.match(edgeFunction, /trying fallback/);
+  assert.match(edgeFunction, /gemini-3\.5-flash/);
+  assert.match(edgeFunction, /gemini-2\.5-flash/);
 });
 
 test("VetBot verifies roles on the server and keeps owner access portal-only", () => {
@@ -137,6 +142,9 @@ test("Portal demo payments settle only through an owner-authorized server RPC", 
   assert.match(paymentSettlementMigration, /myvet_owner_settle_demo_payment/);
   assert.match(paymentSettlementMigration, /myvet_owner_matches\(target_payment\.owner_id\)/);
   assert.match(paymentSettlementMigration, /verified payment-provider webhook/i);
+  assert.match(paymentMethodFixMigration, /payment_method = 'credit'/);
+  assert.match(paymentMethodFixMigration, /'portal_demo'.*'owner_portal_demo'/s);
+  assert.doesNotMatch(paymentMethodFixMigration, /set status = 'paid',[\s\S]*payment_method = 'portal_demo'/);
 });
 
 test("Staff cash collection is server-authorized and calculates change", () => {
