@@ -773,7 +773,7 @@ export function Dashboard() {
       )}
 
       <div className="space-y-3">
-        <header className="flex flex-col gap-3 rounded-2xl border border-blue-100/80 bg-white/95 px-4 py-3 shadow-[0_12px_28px_rgba(30,64,175,0.065)] backdrop-blur sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-3 rounded-2xl border border-blue-100/80 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(30,64,175,0.065)] sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-slate-600">ברוך הבא, {getStaffName()}</p>
             <h1 className="text-[25px] font-extrabold leading-tight text-slate-950 sm:text-[27px]">{dashboardTitle()}</h1>

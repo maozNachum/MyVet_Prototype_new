@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, Loader2, RefreshCw, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router";
 import { askAiAssistant, recordAiFeedback } from "./aiClient";
@@ -137,7 +138,7 @@ export function AiAssistantDrawer({
     void recordAiFeedback({ mode, helpful, usedTools: result.usedTools });
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[260]" dir="rtl">
       <button type="button" aria-label="סגירת VetBot" onClick={onClose} className="absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px]" />
 
@@ -273,7 +274,8 @@ export function AiAssistantDrawer({
           </div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
