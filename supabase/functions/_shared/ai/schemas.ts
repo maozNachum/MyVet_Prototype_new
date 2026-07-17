@@ -5,6 +5,59 @@ export const VETBOT_OUTPUT_SCHEMA_VERSION = "2026-07-16.1";
 export const VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION = "2026-07-17.1";
 export const DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION = "2026-07-17.1";
 export const RAG_ANSWER_SCHEMA_VERSION = "2026-07-17.1";
+export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = "2026-07-17.1";
+
+const extractionFieldSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    value: { type: "string", maxLength: 2000 },
+    confidence: { type: "string", enum: ["not_found", "low", "medium", "high"] },
+  },
+  required: ["value", "confidence"],
+};
+
+const vaccinationExtractionFields = [
+  "vaccine_name", "vaccine_type", "manufacturer", "batch_number", "barcode_value",
+  "given_date", "next_due_date", "expiry_date", "administered_by", "notes",
+] as const;
+
+export const DOCUMENT_EXTRACTION_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    document_kind: { type: "string", enum: ["vaccination_sticker", "vaccination_book", "medical_document", "visit_summary", "lab_result"] },
+    vaccination: {
+      type: "object",
+      additionalProperties: false,
+      properties: Object.fromEntries(vaccinationExtractionFields.map((field) => [field, extractionFieldSchema])),
+      required: vaccinationExtractionFields,
+    },
+    document: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        title: extractionFieldSchema,
+        document_date: extractionFieldSchema,
+        summary: extractionFieldSchema,
+        test_name: extractionFieldSchema,
+        test_result: extractionFieldSchema,
+      },
+      required: ["title", "document_date", "summary", "test_name", "test_result"],
+    },
+    warnings: { type: "array", maxItems: 8, items: { type: "string", maxLength: 300 } },
+  },
+  required: ["document_kind", "vaccination", "document", "warnings"],
+};
+
+export type ExtractionConfidence = "not_found" | "low" | "medium" | "high";
+export type ValidatedExtractionField = { value: string; confidence: ExtractionConfidence };
+export interface ValidatedDocumentExtraction {
+  document_kind: "vaccination_sticker" | "vaccination_book" | "medical_document" | "visit_summary" | "lab_result";
+  vaccination: Record<typeof vaccinationExtractionFields[number], ValidatedExtractionField>;
+  document: Record<"title" | "document_date" | "summary" | "test_name" | "test_result", ValidatedExtractionField>;
+  warnings: string[];
+}
 
 export const RAG_ANSWER_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -340,6 +393,42 @@ export function validateRagAnswer(value: unknown): ValidatedRagAnswer {
   if (status === "answered" && usedSourceIds.length === 0) invalid();
   if (status === "insufficient" && usedSourceIds.length > 0) invalid();
   return { status, answer: answer.trim(), usedSourceIds };
+}
+
+function extractionField(value: unknown, dateField = false): ValidatedExtractionField {
+  const item = object(value);
+  exactKeys(item, ["value", "confidence"]);
+  const confidence = enumeration(item.confidence, ["not_found", "low", "medium", "high"] as const);
+  const raw = (text(item.value, 2_000) as string).trim();
+  const normalized = confidence === "not_found" ? "" : raw;
+  if (confidence !== "not_found" && !normalized) invalid();
+  if (dateField && normalized && !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) invalid();
+  return { value: normalized, confidence };
+}
+
+export function validateDocumentExtraction(value: unknown): ValidatedDocumentExtraction {
+  const result = object(value);
+  exactKeys(result, ["document_kind", "vaccination", "document", "warnings"]);
+  const vaccination = object(result.vaccination);
+  exactKeys(vaccination, vaccinationExtractionFields);
+  const document = object(result.document);
+  exactKeys(document, ["title", "document_date", "summary", "test_name", "test_result"]);
+  const mappedVaccination = Object.fromEntries(vaccinationExtractionFields.map((field) => [
+    field,
+    extractionField(vaccination[field], ["given_date", "next_due_date", "expiry_date"].includes(field)),
+  ])) as ValidatedDocumentExtraction["vaccination"];
+  return {
+    document_kind: enumeration(result.document_kind, ["vaccination_sticker", "vaccination_book", "medical_document", "visit_summary", "lab_result"] as const),
+    vaccination: mappedVaccination,
+    document: {
+      title: extractionField(document.title),
+      document_date: extractionField(document.document_date, true),
+      summary: extractionField(document.summary),
+      test_name: extractionField(document.test_name),
+      test_result: extractionField(document.test_result),
+    },
+    warnings: stringArray(result.warnings, 8, 300),
+  };
 }
 
 function validateFinding(value: unknown) {

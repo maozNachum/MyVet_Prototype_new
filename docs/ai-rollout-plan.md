@@ -1,5 +1,9 @@
 # MyVet — תוכנית Rollout לתשתית AI, שלבים 1–2
 
+## Stage 6 OCR gate
+
+Keep `AI_DOCUMENT_OCR_ENABLED=false` and `AI_VACCINATION_OCR_ENABLED=false` until synthetic vaccination documents pass a live-provider test outside Production. Enable the document flag first and vaccination flag second. RAG flags remain off and are not a dependency of this demo flow.
+
 עודכן: 17.07.2026  
 סטטוס: הקוד מוכן מקומית; לא בוצעה פריסת Production
 

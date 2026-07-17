@@ -7,7 +7,16 @@ export type AiCapability =
   | "digitalcare.recording"
   | "digitalcare.summary"
   | "rag.index"
-  | "rag.answer";
+  | "rag.answer"
+  | "document.ocr"
+  | "vaccination.ocr";
+
+export type DocumentExtractionKind =
+  | "vaccination_sticker"
+  | "vaccination_book"
+  | "medical_document"
+  | "visit_summary"
+  | "lab_result";
 
 export type VetBotMode =
   | "dashboard"
@@ -66,6 +75,13 @@ export interface RagAnswerGatewayInput {
   }>;
 }
 
+export interface DocumentExtractionGatewayInput {
+  actorId: string;
+  documentKind: DocumentExtractionKind;
+  bytes: Uint8Array;
+  mimeType: "image/jpeg" | "image/png" | "application/pdf";
+}
+
 export interface ProviderUsage {
   inputTokens?: number;
   outputTokens?: number;
@@ -113,6 +129,24 @@ export interface TranscriptionProviderRequest<TOutput> {
 export interface TranscriptionProviderAdapter {
   readonly id: string;
   transcribeStructured<TOutput>(request: TranscriptionProviderRequest<TOutput>): Promise<ProviderResult<TOutput>>;
+}
+
+export interface DocumentExtractionProviderRequest<TOutput> {
+  systemPrompt: string;
+  documentKind: DocumentExtractionKind;
+  bytes: Uint8Array;
+  mimeType: "image/jpeg" | "image/png" | "application/pdf";
+  responseSchema: Record<string, unknown>;
+  models: string[];
+  timeoutMs: number;
+  totalTimeoutMs: number;
+  maxSafeRetries: number;
+  validateOutput: (value: unknown) => TOutput;
+}
+
+export interface DocumentExtractionProviderAdapter {
+  readonly id: string;
+  extractStructured<TOutput>(request: DocumentExtractionProviderRequest<TOutput>): Promise<ProviderResult<TOutput>>;
 }
 
 export interface EmbeddingProviderRequest {

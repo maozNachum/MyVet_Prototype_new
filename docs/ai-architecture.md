@@ -1,5 +1,9 @@
 # MyVet — ארכיטקטורת תשתית AI מרכזית
 
+## Stage 6 — document extraction
+
+Document OCR enters through the authenticated `document-ocr` Edge Function and central `runDocumentExtractionGateway`. Provider-specific multimodal handling stays in `GeminiDocumentExtractionAdapter`; prompts and strict schemas are versioned shared infrastructure. OCR flags default off and are independent of RAG and VetBot. The reviewed vaccination draft is saved only after explicit confirmation into the existing vaccination schema and private storage. See `docs/ai-document-ocr.md`.
+
 עודכן: 17.07.2026  
 שלב: 1 הושלם בקוד; שלב 2 מוכן מקומית ולא הוחל על Production  
 ענף: `Full_Demo`

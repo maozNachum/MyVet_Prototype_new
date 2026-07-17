@@ -3,13 +3,14 @@ import { getAiModelConfiguration, getEmbeddingConfiguration } from "./config.ts"
 import { AiGatewayError, asAiGatewayError } from "./errors.ts";
 import { isAiCapabilityEnabled } from "./featureFlags.ts";
 import { buildDigitalCareSummaryUserPayload, buildRagAnswerUserPayload, buildVetBotUserPayload, buildVisitSummaryUserPayload, PROMPT_REGISTRY } from "./prompts.ts";
+import { GeminiDocumentExtractionAdapter } from "./providers/geminiDocumentExtraction.ts";
 import { GeminiProviderAdapter } from "./providers/gemini.ts";
 import { GeminiEmbeddingAdapter } from "./providers/geminiEmbedding.ts";
 import { MockEmbeddingAdapter } from "./providers/mockEmbedding.ts";
 import { GeminiTranscriptionAdapter } from "./providers/geminiTranscription.ts";
 import { InMemoryRateLimiter } from "./rateLimit.ts";
-import { DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, RAG_ANSWER_RESPONSE_SCHEMA, RAG_ANSWER_SCHEMA_VERSION, validateDigitalCareTranscript, validateRagAnswer, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedDigitalCareTranscript, type ValidatedRagAnswer, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
-import type { AiProviderAdapter, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, EmbeddingProviderAdapter, EnvReader, GatewayTelemetry, RagAnswerGatewayInput, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
+import { DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, DOCUMENT_EXTRACTION_RESPONSE_SCHEMA, DOCUMENT_EXTRACTION_SCHEMA_VERSION, RAG_ANSWER_RESPONSE_SCHEMA, RAG_ANSWER_SCHEMA_VERSION, validateDigitalCareTranscript, validateDocumentExtraction, validateRagAnswer, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedDigitalCareTranscript, type ValidatedDocumentExtraction, type ValidatedRagAnswer, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
+import type { AiProviderAdapter, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, DocumentExtractionGatewayInput, DocumentExtractionProviderAdapter, EmbeddingProviderAdapter, EnvReader, GatewayTelemetry, RagAnswerGatewayInput, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
 
 type RuntimeGlobals = typeof globalThis & {
   Deno?: { env?: { get?: (name: string) => string | undefined } };
@@ -36,6 +37,10 @@ export interface DigitalCareGatewayOptions extends VetBotGatewayOptions {
 
 export interface RagGatewayOptions extends VetBotGatewayOptions {
   embeddingAdapter?: EmbeddingProviderAdapter;
+}
+
+export interface DocumentExtractionGatewayOptions extends VetBotGatewayOptions {
+  documentAdapter?: DocumentExtractionProviderAdapter;
 }
 
 function requestId() {
@@ -521,6 +526,68 @@ export async function runRagAnswerGateway(
       attempts,
       usage,
       errorCode: safeError.code,
+    };
+    (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
+    auditLog(telemetry);
+    throw safeError;
+  }
+}
+
+export async function runDocumentExtractionGateway(
+  input: DocumentExtractionGatewayInput,
+  options: DocumentExtractionGatewayOptions = {},
+): Promise<VetBotGatewayResult<ValidatedDocumentExtraction>> {
+  const env = options.env || runtimeEnv;
+  const now = options.now || Date.now;
+  const startedAt = now();
+  const id = requestId();
+  const prompt = PROMPT_REGISTRY["document.ocr"];
+  const config = getAiModelConfiguration(env);
+  const capability = input.documentKind === "vaccination_sticker" || input.documentKind === "vaccination_book"
+    ? "vaccination.ocr" as const
+    : "document.ocr" as const;
+  let provider: string = config.provider;
+  let model = "none";
+  let attempts = 0;
+  let usage = {};
+  try {
+    if (!isAiCapabilityEnabled(capability, env)) throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+    if (!input.actorId || input.bytes.length < 16 || input.bytes.length > 8_388_608
+      || !["image/jpeg", "image/png", "application/pdf"].includes(input.mimeType)) {
+      throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    }
+    (options.rateLimiter || sharedRateLimiter).check(`${input.actorId}:${capability}`, Math.min(config.requestsPerMinute, 6), now());
+    const adapter = options.documentAdapter || new GeminiDocumentExtractionAdapter(env);
+    provider = adapter.id;
+    const result = await adapter.extractStructured({
+      systemPrompt: prompt.system,
+      documentKind: input.documentKind,
+      bytes: input.bytes,
+      mimeType: input.mimeType,
+      responseSchema: DOCUMENT_EXTRACTION_RESPONSE_SCHEMA,
+      models: config.models,
+      timeoutMs: Math.max(config.requestTimeoutMs, 15_000),
+      totalTimeoutMs: Math.max(config.totalTimeoutMs, 35_000),
+      maxSafeRetries: Math.min(config.maxSafeRetries, 1),
+      validateOutput: validateDocumentExtraction,
+    });
+    model = result.model;
+    attempts = result.attempts;
+    usage = result.usage;
+    const telemetry: GatewayTelemetry = {
+      requestId: id, capability, provider, model,
+      promptVersion: prompt.version, schemaVersion: DOCUMENT_EXTRACTION_SCHEMA_VERSION,
+      outcome: "success", latencyMs: Math.max(0, now() - startedAt), attempts, usage,
+    };
+    auditLog(telemetry);
+    return { output: result.output, telemetry, redaction: { total: 0, categories: [] } };
+  } catch (error) {
+    const safeError = asAiGatewayError(error);
+    const telemetry: GatewayTelemetry = {
+      requestId: id, capability, provider, model,
+      promptVersion: prompt.version, schemaVersion: DOCUMENT_EXTRACTION_SCHEMA_VERSION,
+      outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled" : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
+      latencyMs: Math.max(0, now() - startedAt), attempts, usage, errorCode: safeError.code,
     };
     (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
     auditLog(telemetry);

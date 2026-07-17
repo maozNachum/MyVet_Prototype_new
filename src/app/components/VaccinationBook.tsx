@@ -11,12 +11,21 @@ import {
   Pencil,
   RefreshCw,
   ShieldCheck,
+  ScanText,
   Syringe,
   Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import {
+  DocumentOcrError,
+  documentOcrErrorMessage,
+  extractVaccinationDocument,
+  saveExtractedVaccination,
+  type DocumentExtraction,
+  type DuplicateVaccination,
+} from "../../services/documentOcr";
 import { getStaffName } from "../data/staffAuth";
 
 const VACCINATIONS_CHANGED_EVENT = "myvet:vaccinations-changed";
@@ -169,6 +178,11 @@ export function VaccinationBook({
   const [form, setForm] = useState<FormState>(emptyForm);
   const [stickerFile, setStickerFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [ocrExtraction, setOcrExtraction] = useState<DocumentExtraction | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [duplicateCandidate, setDuplicateCandidate] = useState<DuplicateVaccination | null>(null);
+  const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string | null>(null);
 
   const [scanError, setScanError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -177,6 +191,16 @@ export function VaccinationBook({
   const frameRef = useRef<number | null>(null);
 
   const canEdit = mode === "staff";
+
+  useEffect(() => {
+    if (!stickerFile || !stickerFile.type.startsWith("image/")) {
+      setOcrPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(stickerFile);
+    setOcrPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [stickerFile]);
 
   const upcomingRecord = useMemo(() => {
     return [...records]
@@ -348,6 +372,48 @@ export function VaccinationBook({
     }
   }
 
+  function resetOcrState() {
+    setIsExtracting(false);
+    setOcrExtraction(null);
+    setOcrError(null);
+    setDuplicateCandidate(null);
+  }
+
+  function selectStickerFile(file: File | null) {
+    setStickerFile(file);
+    resetOcrState();
+    setFormError(null);
+  }
+
+  async function extractStickerDetails() {
+    if (!stickerFile || isExtracting) return;
+    setIsExtracting(true);
+    setOcrError(null);
+    setDuplicateCandidate(null);
+    try {
+      const extraction = await extractVaccinationDocument(patientId, stickerFile);
+      const vaccination = extraction.vaccination;
+      setForm((current) => ({
+        ...current,
+        vaccine_name: vaccination.vaccine_name.value,
+        vaccine_type: vaccination.vaccine_type.value,
+        manufacturer: vaccination.manufacturer.value,
+        batch_number: vaccination.batch_number.value,
+        barcode_value: vaccination.barcode_value.value,
+        given_date: vaccination.given_date.value,
+        next_due_date: vaccination.next_due_date.value,
+        expiry_date: vaccination.expiry_date.value,
+        administered_by: vaccination.administered_by.value,
+        notes: vaccination.notes.value,
+      }));
+      setOcrExtraction(extraction);
+    } catch (error) {
+      setOcrError(documentOcrErrorMessage(error));
+    } finally {
+      setIsExtracting(false);
+    }
+  }
+
   function openAddModal() {
     setEditingRecord(null);
     setForm({
@@ -356,6 +422,7 @@ export function VaccinationBook({
       administered_by: getStaffName(),
     });
     setStickerFile(null);
+    resetOcrState();
     setFormError(null);
     setScanError(null);
     setIsModalOpen(true);
@@ -376,6 +443,7 @@ export function VaccinationBook({
       notes: record.notes || "",
     });
     setStickerFile(null);
+    resetOcrState();
     setFormError(null);
     setScanError(null);
     setIsModalOpen(true);
@@ -386,6 +454,7 @@ export function VaccinationBook({
     setIsModalOpen(false);
     setEditingRecord(null);
     setStickerFile(null);
+    resetOcrState();
   }
 
   async function uploadStickerImage(vaccinationIdHint: string) {
@@ -404,22 +473,40 @@ export function VaccinationBook({
     return { path, url: null };
   }
 
-  async function saveVaccination() {
+  async function saveVaccination(duplicateConfirmed = false) {
     if (!canEdit) return;
 
     const vaccineName = form.vaccine_name.trim();
-    if (!vaccineName) {
-      setFormError("חובה להזין שם חיסון.");
-      return;
-    }
-    if (!form.given_date) {
-      setFormError("חובה להזין תאריך מתן חיסון.");
+    const missingFields = [!vaccineName ? "שם החיסון" : "", !form.given_date ? "תאריך מתן" : ""].filter(Boolean);
+    if (missingFields.length) {
+      setFormError(`כדי לשמור יש להשלים: ${missingFields.join(" וגם ")}.`);
       return;
     }
 
     setIsSaving(true);
     setFormError(null);
     try {
+      if (!editingRecord && ocrExtraction && stickerFile) {
+        const saved = await saveExtractedVaccination(patientId, stickerFile, {
+          vaccine_name: vaccineName,
+          vaccine_type: form.vaccine_type.trim(),
+          manufacturer: form.manufacturer.trim(),
+          batch_number: form.batch_number.trim(),
+          barcode_value: form.barcode_value.trim(),
+          given_date: form.given_date,
+          next_due_date: form.next_due_date,
+          expiry_date: form.expiry_date,
+          administered_by: form.administered_by.trim(),
+          notes: form.notes.trim(),
+        }, duplicateConfirmed);
+        const savedRecord = saved as unknown as VaccinationRecord;
+        setRecords((current) => [savedRecord, ...current]
+          .sort((a, b) => new Date(b.given_date).getTime() - new Date(a.given_date).getTime()));
+        closeAddModal();
+        toast.success("החיסון שנבדק ואושר נוסף לפנקס");
+        return;
+      }
+
       const vaccinationIdHint = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
       const image = await uploadStickerImage(vaccinationIdHint);
       const entryMethod = form.barcode_value.trim()
@@ -466,8 +553,13 @@ export function VaccinationBook({
       closeAddModal();
       toast.success(successMessage);
     } catch (error) {
+      if (error instanceof DocumentOcrError && error.code === "POSSIBLE_DUPLICATE" && error.duplicate) {
+        setDuplicateCandidate(error.duplicate);
+        setFormError(null);
+        return;
+      }
       console.error("Failed to save vaccination", error);
-      setFormError(editingRecord ? "לא הצלחנו לעדכן את החיסון במסד הנתונים." : "לא הצלחנו לשמור את החיסון במסד הנתונים.");
+      setFormError(ocrExtraction ? documentOcrErrorMessage(error) : editingRecord ? "לא הצלחנו לעדכן את החיסון במסד הנתונים." : "לא הצלחנו לשמור את החיסון במסד הנתונים.");
     } finally {
       setIsSaving(false);
     }
@@ -848,20 +940,78 @@ export function VaccinationBook({
                     <label className="h-[43px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors">
                       <span className="text-gray-600 text-[13px] font-semibold truncate">{stickerFile ? stickerFile.name : "בחר קובץ או צלם"}</span>
                       <span className="inline-flex items-center gap-1 text-blue-700 text-[12px] font-bold"><Camera className="w-4 h-4" /> צילום</span>
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setStickerFile(e.target.files?.[0] || null)} />
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" capture="environment" className="hidden" onChange={(e) => selectStickerFile(e.target.files?.[0] || null)} />
                     </label>
                   </Field>
                 </div>
+
+                {stickerFile && !editingRecord && (
+                  <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                      {ocrPreviewUrl ? (
+                        <img src={ocrPreviewUrl} alt="תצוגה מקדימה של מסמך החיסון" className="h-24 w-24 rounded-xl border border-blue-100 bg-white object-contain" />
+                      ) : (
+                        <div className="h-20 w-full sm:w-24 rounded-xl border border-blue-100 bg-white flex flex-col items-center justify-center text-blue-700 text-[12px] font-bold">
+                          <FileImage className="w-6 h-6 mb-1" /> PDF
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-slate-900 text-[14px] font-extrabold">חילוץ פרטים חכם</p>
+                        <p className="text-slate-600 text-[12px] font-medium mt-1">הסריקה ממלאת טיוטה בלבד. אפשר לערוך כל שדה, ושום חיסון לא נשמר לפני אישור.</p>
+                      </div>
+                      <button type="button" onClick={extractStickerDetails} disabled={isExtracting} className="h-11 px-4 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-slate-300 text-white text-[13px] font-extrabold inline-flex items-center justify-center gap-2 cursor-pointer disabled:cursor-wait">
+                        {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanText className="w-4 h-4" />}
+                        {isExtracting ? "סורק מסמך..." : ocrExtraction ? "סרוק שוב" : "חלץ פרטים"}
+                      </button>
+                    </div>
+
+                    {ocrError && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800 text-[12px] font-bold">
+                        {ocrError} הקובץ והפרטים שכבר הוזנו נשארו בטופס.
+                      </div>
+                    )}
+
+                    {ocrExtraction && (() => {
+                      const labels: Record<string, string> = {
+                        vaccine_name: "שם החיסון", vaccine_type: "סוג החיסון", manufacturer: "יצרן",
+                        batch_number: "מספר אצווה", barcode_value: "ברקוד", given_date: "תאריך מתן",
+                        next_due_date: "מועד הבא", expiry_date: "תוקף", administered_by: "ניתן על ידי", notes: "הערות",
+                      };
+                      const missing = Object.entries(ocrExtraction.vaccination)
+                        .filter(([, field]) => field.confidence === "not_found")
+                        .map(([key]) => labels[key]);
+                      const uncertain = Object.entries(ocrExtraction.vaccination)
+                        .filter(([, field]) => field.confidence === "low")
+                        .map(([key]) => labels[key]);
+                      return (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[12px] font-semibold text-emerald-900 space-y-1">
+                          <p className="font-extrabold">הפרטים חולצו לטופס — יש לבדוק ולערוך לפני שמירה.</p>
+                          {missing.length > 0 && <p>לא זוהו: {missing.join(", ")}.</p>}
+                          {uncertain.length > 0 && <p className="text-amber-800">זוהו ברמת ודאות נמוכה: {uncertain.join(", ")}.</p>}
+                          {ocrExtraction.warnings.map((warning) => <p key={warning}>{warning}</p>)}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               <Field label="הערות">
                 <textarea value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} className="input min-h-[90px] resize-y" placeholder="הערות פנימיות על החיסון" />
               </Field>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-2">
+                {duplicateCandidate && (
+                  <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 text-[13px] font-semibold">
+                    <p className="font-extrabold">נמצאה רשומה דומה בפנקס</p>
+                    <p className="mt-1">{duplicateCandidate.vaccine_name} · {formatDate(duplicateCandidate.given_date)}{duplicateCandidate.batch_number ? ` · אצווה ${duplicateCandidate.batch_number}` : ""}</p>
+                    <p className="mt-1">בדקו את הפרטים. אפשר לבטל, לערוך או לשמור במודע כרשומה נוספת.</p>
+                    <button type="button" onClick={() => void saveVaccination(true)} disabled={isSaving} className="mt-3 h-10 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold disabled:opacity-60">שמור בכל זאת</button>
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={saveVaccination}
+                  onClick={() => void saveVaccination(false)}
                   disabled={isSaving}
                   className="flex-1 h-12 rounded-2xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-[14px] font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-colors"
                 >
