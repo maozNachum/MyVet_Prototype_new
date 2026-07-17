@@ -14,6 +14,7 @@ export const AI_FEATURE_ENV = {
   "rag.answer": "AI_RAG_QA_ENABLED",
   "document.ocr": "AI_DOCUMENT_OCR_ENABLED",
   "vaccination.ocr": "AI_VACCINATION_OCR_ENABLED",
+  "client-summary.generate": "AI_CLIENT_SUMMARY_ENABLED",
 } as const;
 
 function enabled(value: string | undefined, fallback = true) {
@@ -23,6 +24,10 @@ function enabled(value: string | undefined, fallback = true) {
 
 export function isAiCapabilityEnabled(capability: AiCapability, env: EnvReader) {
   if (!enabled(env(AI_FEATURE_ENV.global))) return false;
+  if (capability === "client-summary.generate") {
+    return !enabled(env("AI_CLIENT_SUMMARY_KILL_SWITCH"), false)
+      && enabled(env(AI_FEATURE_ENV[capability]), false);
+  }
   if (capability === "document.ocr" || capability === "vaccination.ocr") {
     const killed = enabled(env("AI_DOCUMENT_OCR_KILL_SWITCH"), false)
       || (capability === "vaccination.ocr" && enabled(env("AI_VACCINATION_OCR_KILL_SWITCH"), false));

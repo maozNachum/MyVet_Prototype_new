@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, RotateCcw, Save, ShieldCheck, Sparkles, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getStaffType } from "../data/staffAuth";
+import { ClientSummaryPanel } from "./ClientSummaryPanel";
 import {
   generateVisitSummary,
   loadVisitSummary,
@@ -157,6 +158,7 @@ export function VisitAiSummaryPanel({ visitId }: { visitId: number }) {
             <div><p className="font-bold text-[14px]">סיכום וטרינר מאושר (גרסה {state.approved.version_number})</p><p className="text-[12px] mt-1">הגרסה המאושרת היא חלק מתצוגת הביקור ואינה נדרסת כאשר יוצרים טיוטה חדשה.</p></div>
           </div>
           <ApprovedSummary content={state.approved.content} />
+          <ClientSummaryPanel visitId={visitId} />
         </>
       ) : null}
 

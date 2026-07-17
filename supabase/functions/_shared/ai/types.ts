@@ -9,7 +9,8 @@ export type AiCapability =
   | "rag.index"
   | "rag.answer"
   | "document.ocr"
-  | "vaccination.ocr";
+  | "vaccination.ocr"
+  | "client-summary.generate";
 
 export type DocumentExtractionKind =
   | "vaccination_sticker"
@@ -49,6 +50,11 @@ export interface VetBotGatewayInput {
 export interface VisitSummaryGatewayInput {
   actorId: string;
   visitContext: unknown;
+}
+
+export interface ClientSummaryGatewayInput {
+  actorId: string;
+  approvedSummary: unknown;
 }
 
 export interface DigitalCareTranscriptionGatewayInput {

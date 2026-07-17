@@ -31,6 +31,8 @@ const stage5RollbackPaths = [
   "supabase/rollback/stage5/01_disable_medical_record_rag.sql",
   "supabase/rollback/stage5/02_remove_empty_medical_record_rag.sql",
 ];
+const stage7MigrationPath = "supabase/migrations/20260717173000_client_summary_workflow.sql";
+const stage7RollbackPath = "supabase/rollback/stage7/01_remove_client_summary_workflow.sql";
 
 function splitSqlStatements(sql) {
   const statements = [];
@@ -755,6 +757,96 @@ test("Stage 3 workflow rollback removes capabilities without deleting protected 
     assert.equal((await db.query("select to_regprocedure('public.myvet_transition_visit_summary(uuid,text,jsonb,text)') as value")).rows[0].value, null);
     assert.equal((await db.query("select to_regprocedure('public.myvet_create_visit_summary_draft(uuid,bigint,jsonb,uuid,text,text,text,integer,integer,integer)') as value")).rows[0].value, null);
     assert.notEqual((await db.query("select to_regclass('public.ai_artifacts') as value")).rows[0].value, null);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 7 owner summary requires an approved source, veterinarian approval and explicit release", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage7MigrationPath);
+    const seed = await seedTwoClinics(db);
+    const approvedSummary = {
+      chief_complaint: "Follow-up 17.07.2026", symptoms: ["Low appetite"], relevant_history: [],
+      examination_findings: ["Temperature normal"], tests: [], clinical_assessment: "Stable on examination",
+      treatments: ["Cleaned area"], medications: ["Drug A 5 mg once daily"],
+      follow_up: ["Review 24.07.2026"], warnings: ["Contact clinic if condition worsens"],
+      unresolved_items: ["Await laboratory result"], source_references: ["medical_visit"],
+    };
+    const clientSummary = {
+      reason_for_visit: approvedSummary.chief_complaint,
+      what_was_found: approvedSummary.examination_findings,
+      treatment_given: approvedSummary.treatments,
+      medications_and_instructions: approvedSummary.medications,
+      home_care: approvedSummary.follow_up,
+      follow_up: approvedSummary.follow_up,
+      warning_signs: approvedSummary.warnings,
+      next_steps: approvedSummary.unresolved_items,
+    };
+    const source = await db.query(
+      `insert into public.ai_artifacts(
+        clinic_id,operation_id,owner_id,pet_id,visit_id,artifact_type,status,content,created_by,approved_by,approved_at,version_number
+      ) values ($1,$2,'OWNER-A',$3,$4,'visit_summary','approved',$5::jsonb,$6,$7,now(),10) returning artifact_id`,
+      [seed.clinicA, seed.operationA, seed.petA, seed.visitA, JSON.stringify(approvedSummary), ids.vetA, seed.vetStaffA],
+    );
+
+    await assert.rejects(
+      db.query(
+        `select * from public.myvet_create_client_summary_draft($1,$2,$3::jsonb,$4,'mock','mock-v1','client-v1',1,1,1,true)`,
+        [ids.vetB, source.rows[0].artifact_id, JSON.stringify(clientSummary), crypto.randomUUID()],
+      ),
+      /CLIENT_SUMMARY_APPROVED_SOURCE_REQUIRED/,
+    );
+    const draft = await db.query(
+      `select * from public.myvet_create_client_summary_draft($1,$2,$3::jsonb,$4,'mock','mock-v1','client-v1',1,1,1,true)`,
+      [ids.vetA, source.rows[0].artifact_id, JSON.stringify(clientSummary), crypto.randomUUID()],
+    );
+    assert.equal(draft.rows[0].status, "draft");
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 0);
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.nurseA);
+    await assert.rejects(
+      db.query("select * from public.myvet_transition_client_summary($1,'approve',$2::jsonb,null)", [draft.rows[0].artifact_id, JSON.stringify(clientSummary)]),
+      /CLIENT_SUMMARY_ACCESS_DENIED/,
+    );
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.vetA);
+    await assert.rejects(
+      db.query("select * from public.myvet_transition_client_summary($1,'approve',$2::jsonb,null)", [draft.rows[0].artifact_id, JSON.stringify({ ...clientSummary, medications_and_instructions: ["Drug A 10 mg once daily"] })]),
+      /CLIENT_SUMMARY_FACT_MISMATCH/,
+    );
+    const approvedClient = await db.query(
+      "select * from public.myvet_transition_client_summary($1,'approve',$2::jsonb,null)",
+      [draft.rows[0].artifact_id, JSON.stringify(clientSummary)],
+    );
+    assert.equal(approvedClient.rows[0].status, "approved");
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 0);
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.vetA);
+    const released = await db.query("select * from public.myvet_transition_client_summary($1,'release',null,null)", [approvedClient.rows[0].artifact_id]);
+    assert.equal(released.rows[0].released_to_owner, true);
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 1);
+    await resetIdentity(db);
+    await setIdentity(db, ids.ownerB);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 0);
+    await resetIdentity(db);
+
+    await applySqlFile(db, stage7RollbackPath);
+    assert.equal((await db.query("select to_regprocedure('public.myvet_transition_client_summary(uuid,text,jsonb,text)') as value")).rows[0].value, null);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 2);
   } finally {
     await db.close();
   }

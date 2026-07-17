@@ -61,7 +61,38 @@ interface Pet {
   medicalHistory: {
     id: number; date: string; title: string; type?: string; description?: string;
     vet: string; icon: typeof Syringe; color: string;
+    clientSummary?: ClientPortalSummaryContent;
   }[];
+}
+
+interface ClientPortalSummaryContent {
+  reason_for_visit: string;
+  what_was_found: string[];
+  treatment_given: string[];
+  medications_and_instructions: string[];
+  home_care: string[];
+  follow_up: string[];
+  warning_signs: string[];
+  next_steps: string[];
+}
+
+const CLIENT_SUMMARY_FIELDS: Array<{ key: keyof ClientPortalSummaryContent; label: string }> = [
+  { key: "what_was_found", label: "מה נמצא" },
+  { key: "treatment_given", label: "הטיפול שניתן" },
+  { key: "medications_and_instructions", label: "תרופות והוראות" },
+  { key: "home_care", label: "טיפול בבית" },
+  { key: "follow_up", label: "המשך מעקב" },
+  { key: "warning_signs", label: "סימנים שדורשים תשומת לב" },
+  { key: "next_steps", label: "הצעדים הבאים" },
+];
+
+function parseClientPortalSummary(value: unknown): ClientPortalSummaryContent | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  if (typeof input.reason_for_visit !== "string") return null;
+  const arrays = CLIENT_SUMMARY_FIELDS.map(({ key }) => input[key]);
+  if (arrays.some((item) => !Array.isArray(item) || item.some((line) => typeof line !== "string"))) return null;
+  return input as ClientPortalSummaryContent;
 }
 
 interface FutureAppointment {
@@ -575,6 +606,31 @@ export function ClientPortal() {
         visitRows = data || [];
       }
 
+      const clientSummaryByVisitId = new Map<number, ClientPortalSummaryContent>();
+      if (petIds.length > 0) {
+        const { data: releasedSummaryRows, error: releasedSummariesError } = await supabase
+          .from("ai_artifacts")
+          .select("visit_id,content,version_number")
+          .in("pet_id", petIds)
+          .eq("artifact_type", "client_explanation")
+          .eq("status", "approved")
+          .eq("released_to_owner", true)
+          .is("deleted_at", null)
+          .order("version_number", { ascending: false });
+
+        if (releasedSummariesError) {
+          console.warn("Released client summaries are unavailable", { code: releasedSummariesError.code });
+        } else {
+          (releasedSummaryRows || []).forEach((row: any) => {
+            const visitId = Number(row.visit_id);
+            const content = parseClientPortalSummary(row.content);
+            if (visitId > 0 && content && !clientSummaryByVisitId.has(visitId)) {
+              clientSummaryByVisitId.set(visitId, content);
+            }
+          });
+        }
+      }
+
       let paymentRows: any[] = [];
       if (petIds.length > 0) {
         const { data, error: paymentsError } = await supabase
@@ -671,6 +727,7 @@ export function ClientPortal() {
             vet,
             icon: Stethoscope,
             color: "bg-blue-50 text-blue-600 border-blue-200",
+            clientSummary: clientSummaryByVisitId.get(Number(row.visit_id)),
           },
         ]);
       });
@@ -2466,6 +2523,43 @@ export function ClientPortal() {
                               ))}
                             </div>
                           </div>
+
+                          {pet.medicalHistory.some((visit) => visit.clientSummary) && (
+                            <section className="border-t border-blue-100 bg-gradient-to-l from-blue-50/80 to-sky-50/40 px-4 py-5 sm:px-6" aria-label="סיכומי ביקור ששוחררו אליך">
+                              <div className="mb-4 flex items-center gap-2">
+                                <ShieldCheck className="h-5 w-5 text-[#1e40af]" />
+                                <div>
+                                  <h4 className="text-[15px] font-extrabold text-slate-900">סיכום והנחיות מהמרפאה</h4>
+                                  <p className="mt-0.5 text-[12px] font-medium text-slate-600">מופיעים כאן רק סיכומים שהווטרינר בדק ושחרר עבורך.</p>
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                {pet.medicalHistory.filter((visit) => visit.clientSummary).map((visit) => {
+                                  const summary = visit.clientSummary!;
+                                  return (
+                                    <article key={`client-summary-${visit.id}`} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                                        <div>
+                                          <h5 className="text-[14px] font-extrabold text-slate-900">{visit.title}</h5>
+                                          <p className="mt-1 flex items-center gap-1 text-[12px] font-medium text-slate-500"><Calendar className="h-3.5 w-3.5" />{visit.date} · {pet.name}</p>
+                                        </div>
+                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">אושר ושוחרר</span>
+                                      </div>
+                                      {summary.reason_for_visit && <div className="mb-3"><h6 className="text-[12px] font-bold text-slate-500">סיבת הביקור</h6><p className="mt-1 text-[14px] leading-6 text-slate-800">{summary.reason_for_visit}</p></div>}
+                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        {CLIENT_SUMMARY_FIELDS.map(({ key, label }) => {
+                                          const lines = summary[key] as string[];
+                                          if (lines.length === 0) return null;
+                                          const warning = key === "warning_signs";
+                                          return <div key={key} className={`rounded-xl border p-3 ${warning ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50/70"}`}><h6 className={`text-[12px] font-extrabold ${warning ? "text-amber-900" : "text-slate-700"}`}>{label}</h6><ul className="mt-2 space-y-1.5">{lines.map((line, index) => <li key={`${key}-${index}`} className="flex gap-2 text-[13px] leading-5 text-slate-700"><span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />{line}</li>)}</ul></div>;
+                                        })}
+                                      </div>
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          )}
 
                           <div className="px-4 py-4 sm:px-6 bg-white border-t border-gray-100">
                             <div className="flex items-center justify-between mb-3">

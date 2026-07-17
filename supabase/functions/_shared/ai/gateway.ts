@@ -2,15 +2,15 @@ import { protectPayload } from "../privacy.ts";
 import { getAiModelConfiguration, getEmbeddingConfiguration } from "./config.ts";
 import { AiGatewayError, asAiGatewayError } from "./errors.ts";
 import { isAiCapabilityEnabled } from "./featureFlags.ts";
-import { buildDigitalCareSummaryUserPayload, buildRagAnswerUserPayload, buildVetBotUserPayload, buildVisitSummaryUserPayload, PROMPT_REGISTRY } from "./prompts.ts";
+import { buildClientSummaryUserPayload, buildDigitalCareSummaryUserPayload, buildRagAnswerUserPayload, buildVetBotUserPayload, buildVisitSummaryUserPayload, PROMPT_REGISTRY } from "./prompts.ts";
 import { GeminiDocumentExtractionAdapter } from "./providers/geminiDocumentExtraction.ts";
 import { GeminiProviderAdapter } from "./providers/gemini.ts";
 import { GeminiEmbeddingAdapter } from "./providers/geminiEmbedding.ts";
 import { MockEmbeddingAdapter } from "./providers/mockEmbedding.ts";
 import { GeminiTranscriptionAdapter } from "./providers/geminiTranscription.ts";
 import { InMemoryRateLimiter } from "./rateLimit.ts";
-import { DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, DOCUMENT_EXTRACTION_RESPONSE_SCHEMA, DOCUMENT_EXTRACTION_SCHEMA_VERSION, RAG_ANSWER_RESPONSE_SCHEMA, RAG_ANSWER_SCHEMA_VERSION, validateDigitalCareTranscript, validateDocumentExtraction, validateRagAnswer, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedDigitalCareTranscript, type ValidatedDocumentExtraction, type ValidatedRagAnswer, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
-import type { AiProviderAdapter, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, DocumentExtractionGatewayInput, DocumentExtractionProviderAdapter, EmbeddingProviderAdapter, EnvReader, GatewayTelemetry, RagAnswerGatewayInput, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
+import { assertClientSummaryGrounded, CLIENT_SUMMARY_RESPONSE_SCHEMA, CLIENT_SUMMARY_SCHEMA_VERSION, DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, DOCUMENT_EXTRACTION_RESPONSE_SCHEMA, DOCUMENT_EXTRACTION_SCHEMA_VERSION, RAG_ANSWER_RESPONSE_SCHEMA, RAG_ANSWER_SCHEMA_VERSION, validateClientSummaryOutput, validateDigitalCareTranscript, validateDocumentExtraction, validateRagAnswer, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedClientSummaryOutput, type ValidatedDigitalCareTranscript, type ValidatedDocumentExtraction, type ValidatedRagAnswer, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
+import type { AiProviderAdapter, ClientSummaryGatewayInput, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, DocumentExtractionGatewayInput, DocumentExtractionProviderAdapter, EmbeddingProviderAdapter, EnvReader, GatewayTelemetry, RagAnswerGatewayInput, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
 
 type RuntimeGlobals = typeof globalThis & {
   Deno?: { env?: { get?: (name: string) => string | undefined } };
@@ -587,6 +587,76 @@ export async function runDocumentExtractionGateway(
       requestId: id, capability, provider, model,
       promptVersion: prompt.version, schemaVersion: DOCUMENT_EXTRACTION_SCHEMA_VERSION,
       outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled" : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
+      latencyMs: Math.max(0, now() - startedAt), attempts, usage, errorCode: safeError.code,
+    };
+    (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
+    auditLog(telemetry);
+    throw safeError;
+  }
+}
+
+export async function runClientSummaryGateway(
+  input: ClientSummaryGatewayInput,
+  options: VetBotGatewayOptions = {},
+): Promise<VetBotGatewayResult<ValidatedClientSummaryOutput>> {
+  const env = options.env || runtimeEnv;
+  const now = options.now || Date.now;
+  const startedAt = now();
+  const id = requestId();
+  const prompt = PROMPT_REGISTRY["client-summary.generate"];
+  const config = getAiModelConfiguration(env);
+  let provider: string = config.provider;
+  let model = "none";
+  let attempts = 0;
+  let usage = {};
+  try {
+    if (!isAiCapabilityEnabled("client-summary.generate", env)) {
+      throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+    }
+    if (!input.actorId) throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    const approved = validateVisitSummaryOutput(input.approvedSummary);
+    const protectedInput = protectPayload({ approvedSummary: approved });
+    const safeApproved = validateVisitSummaryOutput(
+      (protectedInput.value as { approvedSummary: unknown }).approvedSummary,
+    );
+    (options.rateLimiter || sharedRateLimiter).check(
+      `${input.actorId}:client-summary.generate`,
+      Math.min(config.requestsPerMinute, 8),
+      now(),
+    );
+    const adapter = options.adapter || new GeminiProviderAdapter(env);
+    provider = adapter.id;
+    const result = await adapter.generateStructured({
+      systemPrompt: prompt.system,
+      retryPrompt: prompt.retrySuffix,
+      userPayload: buildClientSummaryUserPayload(safeApproved),
+      responseSchema: CLIENT_SUMMARY_RESPONSE_SCHEMA,
+      models: config.models,
+      timeoutMs: config.requestTimeoutMs,
+      totalTimeoutMs: config.totalTimeoutMs,
+      maxSafeRetries: config.maxSafeRetries,
+      validateOutput: (value) => assertClientSummaryGrounded(
+        validateClientSummaryOutput(value),
+        safeApproved,
+      ),
+    });
+    model = result.model;
+    attempts = result.attempts;
+    usage = result.usage;
+    const telemetry: GatewayTelemetry = {
+      requestId: id, capability: "client-summary.generate", provider, model,
+      promptVersion: prompt.version, schemaVersion: CLIENT_SUMMARY_SCHEMA_VERSION,
+      outcome: "success", latencyMs: Math.max(0, now() - startedAt), attempts, usage,
+    };
+    auditLog(telemetry);
+    return { output: result.output, telemetry, redaction: protectedInput.report };
+  } catch (error) {
+    const safeError = asAiGatewayError(error);
+    const telemetry: GatewayTelemetry = {
+      requestId: id, capability: "client-summary.generate", provider, model,
+      promptVersion: prompt.version, schemaVersion: CLIENT_SUMMARY_SCHEMA_VERSION,
+      outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled"
+        : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
       latencyMs: Math.max(0, now() - startedAt), attempts, usage, errorCode: safeError.code,
     };
     (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;

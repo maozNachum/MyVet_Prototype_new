@@ -148,3 +148,6 @@ Stage 1 נחשב יציב רק לאחר:
 שלב 5 נשאר כבוי כברירת מחדל. סדר ההפעלה הוא migration schema, migration RPC, פריסת `medical-record-rag`, הפעלת index בלבד ב־Preview, בדיקות tenant/owner/duplicate/injection, ורק אז הפעלת Q&A. אין להפעיל Q&A ללקוח בשלב זה. ההוראות וה־gates המלאים נמצאים ב־`docs/ai-rag.md`.
 
 Production מחייב בקשה מפורשת, גיבוי, Supabase Security/Performance Advisors, בדיקה עם pgvector אמיתי והרצת כל regression. אין deploy או שינוי DB חי כחלק משלב 5 המקומי.
+# Stage 7 client summary rollout
+
+Keep `AI_CLIENT_SUMMARY_ENABLED=false` and `AI_CLIENT_SUMMARY_KILL_SWITCH=false` while applying the migration and deploying `client-summary`. Verify veterinarian-only generation, unchanged protected facts, owner isolation, draft invisibility, release and revoke in Preview. Enable only in Preview after a real-provider smoke test. RAG and OCR flags remain unchanged/off. Production activation requires a separate explicit decision.

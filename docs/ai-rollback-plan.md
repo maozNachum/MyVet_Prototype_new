@@ -119,3 +119,6 @@
 4. אם סביבת Preview ריקה לחלוטין, להריץ `02_remove_empty_medical_record_rag.sql`. הסקריפט מסרב להמשיך כאשר קיימים chunks של Stage 5.
 5. בסביבה עם נתונים אמיתיים אין להסיר עמודות/vector או למחוק chunks. משאירים flags כבויים ומבצעים forward-fix או שחזור לנקודת הגיבוי.
 6. לאחר rollback להריץ `npm run test:vetbot`, `npm run build`, `npm run test:frontend-secrets` ו־`git diff --check`.
+# Stage 7 client summary rollback
+
+Set `AI_CLIENT_SUMMARY_ENABLED=false` or `AI_CLIENT_SUMMARY_KILL_SWITCH=true`, then remove/disable the `client-summary` Edge Function. If database API removal is required, run `supabase/rollback/stage7/01_remove_client_summary_workflow.sql`. This removes RPC entry points without deleting original visits, approved medical summaries or historical client-summary artifacts.

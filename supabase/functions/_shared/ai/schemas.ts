@@ -6,6 +6,7 @@ export const VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION = "2026-07-17.1";
 export const DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION = "2026-07-17.1";
 export const RAG_ANSWER_SCHEMA_VERSION = "2026-07-17.1";
 export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = "2026-07-17.1";
+export const CLIENT_SUMMARY_SCHEMA_VERSION = "2026-07-17.1";
 
 const extractionFieldSchema = {
   type: "object",
@@ -143,6 +144,41 @@ export interface ValidatedVisitSummaryOutput {
   warnings: string[];
   unresolved_items: string[];
   source_references: typeof VISIT_SOURCE_TYPES[number][];
+}
+
+const CLIENT_SUMMARY_FIELDS = [
+  "reason_for_visit", "what_was_found", "treatment_given",
+  "medications_and_instructions", "home_care", "follow_up",
+  "warning_signs", "next_steps",
+] as const;
+
+const clientSummaryList = { type: "array", maxItems: 20, items: { type: "string", maxLength: 700 } };
+
+export const CLIENT_SUMMARY_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    reason_for_visit: { type: "string", maxLength: 2000 },
+    what_was_found: clientSummaryList,
+    treatment_given: clientSummaryList,
+    medications_and_instructions: clientSummaryList,
+    home_care: clientSummaryList,
+    follow_up: clientSummaryList,
+    warning_signs: clientSummaryList,
+    next_steps: clientSummaryList,
+  },
+  required: CLIENT_SUMMARY_FIELDS,
+};
+
+export interface ValidatedClientSummaryOutput {
+  reason_for_visit: string;
+  what_was_found: string[];
+  treatment_given: string[];
+  medications_and_instructions: string[];
+  home_care: string[];
+  follow_up: string[];
+  warning_signs: string[];
+  next_steps: string[];
 }
 
 const ACTION_TYPES = [
@@ -371,6 +407,44 @@ export function validateVisitSummaryOutput(value: unknown): ValidatedVisitSummar
       enumeration(item, VISIT_SOURCE_TYPES)
     ),
   };
+}
+
+export function validateClientSummaryOutput(value: unknown): ValidatedClientSummaryOutput {
+  const result = object(value);
+  exactKeys(result, CLIENT_SUMMARY_FIELDS);
+  return {
+    reason_for_visit: text(result.reason_for_visit, 2_000) as string,
+    what_was_found: stringArray(result.what_was_found, 20, 700),
+    treatment_given: stringArray(result.treatment_given, 20, 700),
+    medications_and_instructions: stringArray(result.medications_and_instructions, 20, 700),
+    home_care: stringArray(result.home_care, 20, 700),
+    follow_up: stringArray(result.follow_up, 20, 700),
+    warning_signs: stringArray(result.warning_signs, 20, 700),
+    next_steps: stringArray(result.next_steps, 20, 700),
+  };
+}
+
+export function assertClientSummaryGrounded(
+  output: ValidatedClientSummaryOutput,
+  approved: ValidatedVisitSummaryOutput,
+) {
+  const onlyFrom = (values: string[], allowed: string[]) => {
+    const source = new Set(allowed);
+    if (values.some((value) => !source.has(value))) invalid();
+  };
+  if (output.reason_for_visit && output.reason_for_visit !== approved.chief_complaint) invalid();
+  onlyFrom(output.what_was_found, [
+    ...approved.symptoms,
+    ...approved.examination_findings,
+    ...(approved.clinical_assessment ? [approved.clinical_assessment] : []),
+  ]);
+  onlyFrom(output.treatment_given, approved.treatments);
+  onlyFrom(output.medications_and_instructions, approved.medications);
+  onlyFrom(output.home_care, approved.follow_up);
+  onlyFrom(output.follow_up, approved.follow_up);
+  onlyFrom(output.warning_signs, approved.warnings);
+  onlyFrom(output.next_steps, approved.unresolved_items);
+  return output;
 }
 
 export function validateDigitalCareTranscript(value: unknown): ValidatedDigitalCareTranscript {

@@ -1,5 +1,9 @@
 # MyVet — ארכיטקטורת תשתית AI מרכזית
 
+## Stage 7 — owner-facing client summary
+
+The authenticated `client-summary` Edge Function derives an owner-facing draft only from an approved `visit_summary`. It uses the central Gateway, the versioned `client-summary.generate` prompt and strict grounding validation. The existing `client_explanation` artifact, approval history, release fields and owner RLS are reused. Approval and release are distinct veterinarian actions; the portal queries only approved, explicitly released artifacts. The capability defaults off. Full design and rollback: `docs/ai-client-summary.md`.
+
 ## Stage 6 — document extraction
 
 Document OCR enters through the authenticated `document-ocr` Edge Function and central `runDocumentExtractionGateway`. Provider-specific multimodal handling stays in `GeminiDocumentExtractionAdapter`; prompts and strict schemas are versioned shared infrastructure. OCR flags default off and are independent of RAG and VetBot. The reviewed vaccination draft is saved only after explicit confirmation into the existing vaccination schema and private storage. See `docs/ai-document-ocr.md`.

@@ -15,3 +15,6 @@ verify_jwt = true
 [functions.document-ocr]
 verify_jwt = true
 
+[functions.client-summary]
+verify_jwt = true
+
