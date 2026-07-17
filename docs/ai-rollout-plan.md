@@ -151,3 +151,6 @@ Production מחייב בקשה מפורשת, גיבוי, Supabase Security/Perfo
 # Stage 7 client summary rollout
 
 Keep `AI_CLIENT_SUMMARY_ENABLED=false` and `AI_CLIENT_SUMMARY_KILL_SWITCH=false` while applying the migration and deploying `client-summary`. Verify veterinarian-only generation, unchanged protected facts, owner isolation, draft invisibility, release and revoke in Preview. Enable only in Preview after a real-provider smoke test. RAG and OCR flags remain unchanged/off. Production activation requires a separate explicit decision.
+# Stage 8 follow-up suggestion rollout
+
+Keep `AI_FOLLOW_UP_SUGGESTIONS_ENABLED=false` and `AI_FOLLOW_UP_SUGGESTIONS_KILL_SWITCH=false` while applying the Stage 8 migration and deploying `follow-up-suggestions` to Preview. Verify an approved source, vet-only review, tenant and owner isolation, missing-date handling, duplicate confirmation and that no reminder exists before approval. Then enable the capability in Preview only for a live-provider smoke test. RAG, OCR and client-summary flags remain unchanged/off. Production activation requires a separate explicit decision.

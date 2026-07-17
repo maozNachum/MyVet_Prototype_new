@@ -237,3 +237,6 @@ Storage רפואי נשאר פרטי. Buckets עתידיים משתמשים בנ
 - consent, retention records ו־approval schema עתידי.
 - הסדרת/השבתת `ai-insights-chat` לאחר אימות בעלות ושימוש.
 - כל RAG, OCR, תמלול, סיכום ביקור או תזכורת AI.
+## Stage 8 — approved follow-up suggestions
+
+The `follow-up-suggestions` Edge Function derives the authorized veterinarian and approved source server-side, then uses the central Gateway capability `follow-up.suggest`. The prompt and output schema are versioned, dates are resolved deterministically, and the model cannot change filters or write business data. Suggestions remain `ai_artifacts`; only the veterinarian-only approval RPC creates a row in the existing `public.reminders` table. Owner visibility is limited to an explicitly owner-targeted reminder and verified pet ownership. See `docs/ai-follow-up-suggestions.md`.

@@ -7,6 +7,7 @@ export const DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION = "2026-07-17.1";
 export const RAG_ANSWER_SCHEMA_VERSION = "2026-07-17.1";
 export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = "2026-07-17.1";
 export const CLIENT_SUMMARY_SCHEMA_VERSION = "2026-07-17.1";
+export const FOLLOW_UP_SUGGESTION_SCHEMA_VERSION = "2026-07-17.1";
 
 const extractionFieldSchema = {
   type: "object",
@@ -179,6 +180,109 @@ export interface ValidatedClientSummaryOutput {
   follow_up: string[];
   warning_signs: string[];
   next_steps: string[];
+}
+
+export type FollowUpReminderType = "return_visit" | "future_vaccination" | "general_follow_up";
+export type FollowUpTargetType = "staff" | "owner";
+export type FollowUpConfidence = "low" | "medium" | "high";
+
+export interface ValidatedFollowUpSuggestion {
+  reminder_type: FollowUpReminderType;
+  title: string;
+  description: string;
+  scheduled_at: string | null;
+  target_type: FollowUpTargetType;
+  requires_manual_date: boolean;
+  release_to_client: boolean;
+  confidence: FollowUpConfidence;
+  source_text: string;
+  date_expression: string;
+}
+
+type RawFollowUpSuggestion = Omit<ValidatedFollowUpSuggestion, "description" | "scheduled_at" | "requires_manual_date">;
+
+const FOLLOW_UP_TITLES: Record<FollowUpReminderType, string> = {
+  return_visit: "ביקורת חוזרת",
+  future_vaccination: "חיסון עתידי",
+  general_follow_up: "מעקב רפואי",
+};
+
+export const FOLLOW_UP_SUGGESTION_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    suggestions: {
+      type: "array", maxItems: 3, items: {
+        type: "object", additionalProperties: false,
+        properties: {
+          reminder_type: { type: "string", enum: ["return_visit", "future_vaccination", "general_follow_up"] },
+          title: { type: "string", enum: Object.values(FOLLOW_UP_TITLES) },
+          target_type: { type: "string", enum: ["staff", "owner"] },
+          release_to_client: { type: "boolean" },
+          confidence: { type: "string", enum: ["low", "medium", "high"] },
+          source_text: { type: "string", maxLength: 700 },
+          date_expression: { type: "string", maxLength: 120 },
+        },
+        required: ["reminder_type", "title", "target_type", "release_to_client", "confidence", "source_text", "date_expression"],
+      },
+    },
+  },
+  required: ["suggestions"],
+};
+
+function parseSourceDate(sourceDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(sourceDate)) invalid();
+  const date = new Date(`${sourceDate}T09:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) invalid();
+  return date;
+}
+
+export function resolveFollowUpDate(expression: string, sourceDate: string): string | null {
+  const value = expression.trim();
+  const iso = value.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (iso) return `${iso[1]}T09:00:00.000Z`;
+  const local = value.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/);
+  if (local) return `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}T09:00:00.000Z`;
+  let days: number | null = null;
+  if (/בעוד\s+שבועיים/.test(value)) days = 14;
+  else if (/בעוד\s+שבוע(?!ות)/.test(value)) days = 7;
+  else {
+    const dayMatch = value.match(/בעוד\s+(\d{1,3})\s+ימים?/);
+    const weekMatch = value.match(/בעוד\s+(\d{1,2})\s+שבועות?/);
+    if (dayMatch) days = Number(dayMatch[1]);
+    else if (weekMatch) days = Number(weekMatch[1]) * 7;
+  }
+  if (days === null || days < 1 || days > 730) return null;
+  const resolved = parseSourceDate(sourceDate);
+  resolved.setUTCDate(resolved.getUTCDate() + days);
+  return resolved.toISOString();
+}
+
+export function validateFollowUpSuggestionOutput(value: unknown, approved: ValidatedVisitSummaryOutput, sourceDate: string) {
+  const result = object(value);
+  exactKeys(result, ["suggestions"]);
+  if (!Array.isArray(result.suggestions) || result.suggestions.length > 3) invalid();
+  const allowed = new Set(approved.follow_up);
+  return result.suggestions.map((item): ValidatedFollowUpSuggestion => {
+    const row = object(item);
+    exactKeys(row, ["reminder_type", "title", "target_type", "release_to_client", "confidence", "source_text", "date_expression"]);
+    const reminderType = enumeration(row.reminder_type, ["return_visit", "future_vaccination", "general_follow_up"] as const);
+    const title = text(row.title, 80) as string;
+    const sourceText = text(row.source_text, 700) as string;
+    const dateExpression = text(row.date_expression, 120) as string;
+    if (title !== FOLLOW_UP_TITLES[reminderType] || !allowed.has(sourceText)) invalid();
+    if (dateExpression && !sourceText.includes(dateExpression)) invalid();
+    const targetType = enumeration(row.target_type, ["staff", "owner"] as const);
+    if (typeof row.release_to_client !== "boolean" || row.release_to_client !== (targetType === "owner")) invalid();
+    const scheduledAt = resolveFollowUpDate(dateExpression, sourceDate);
+    return {
+      reminder_type: reminderType, title, description: sourceText, scheduled_at: scheduledAt,
+      target_type: targetType, requires_manual_date: scheduledAt === null,
+      release_to_client: row.release_to_client,
+      confidence: enumeration(row.confidence, ["low", "medium", "high"] as const),
+      source_text: sourceText, date_expression: dateExpression,
+    };
+  });
 }
 
 const ACTION_TYPES = [

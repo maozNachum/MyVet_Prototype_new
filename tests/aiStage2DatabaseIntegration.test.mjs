@@ -33,6 +33,8 @@ const stage5RollbackPaths = [
 ];
 const stage7MigrationPath = "supabase/migrations/20260717173000_client_summary_workflow.sql";
 const stage7RollbackPath = "supabase/rollback/stage7/01_remove_client_summary_workflow.sql";
+const stage8MigrationPath = "supabase/migrations/20260717180000_follow_up_suggestion_workflow.sql";
+const stage8RollbackPath = "supabase/rollback/stage8/01_remove_follow_up_suggestion_workflow.sql";
 
 function splitSqlStatements(sql) {
   const statements = [];
@@ -401,7 +403,7 @@ async function setIdentity(db, userId, role = "authenticated") {
 }
 
 async function resetIdentity(db) {
-  await db.exec("reset role;");
+  await db.exec("reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claim.role', '', false);");
 }
 
 async function seedTwoClinics(db) {
@@ -847,6 +849,137 @@ test("Stage 7 owner summary requires an approved source, veterinarian approval a
     await applySqlFile(db, stage7RollbackPath);
     assert.equal((await db.query("select to_regprocedure('public.myvet_transition_client_summary(uuid,text,jsonb,text)') as value")).rows[0].value, null);
     assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='client_explanation'")).rows[0].count, 2);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 8 creates an existing reminder only after veterinarian approval and explicit duplicate confirmation", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage8MigrationPath);
+    const seed = await seedTwoClinics(db);
+    const approvedSummary = {
+      chief_complaint: "Follow-up", symptoms: [], relevant_history: [], examination_findings: [], tests: [],
+      clinical_assessment: "Stable", treatments: [], medications: ["Drug A 5 mg once daily"],
+      follow_up: ["Review in two weeks"], warnings: ["Contact clinic if worse"], unresolved_items: [], source_references: ["medical_visit"],
+    };
+    const source = await db.query(
+      `insert into public.ai_artifacts(
+        clinic_id,operation_id,owner_id,pet_id,visit_id,artifact_type,status,content,created_by,approved_by,approved_at,version_number
+      ) values ($1,$2,'OWNER-A',$3,$4,'visit_summary','approved',$5::jsonb,$6,$7,now(),20) returning artifact_id`,
+      [seed.clinicA, seed.operationA, seed.petA, seed.visitA, JSON.stringify(approvedSummary), ids.vetA, seed.vetStaffA],
+    );
+    const content = {
+      reminder_type: "return_visit", title: "Return review", description: "Review in two weeks",
+      scheduled_at: "2026-08-01T09:00:00.000Z", target_type: "owner", requires_manual_date: false,
+      release_to_client: true, confidence: "high",
+    };
+
+    const unapprovedSource = await db.query(
+      `insert into public.ai_artifacts(
+        clinic_id,operation_id,owner_id,pet_id,visit_id,artifact_type,status,content,created_by,version_number
+      ) values ($1,$2,'OWNER-A',$3,$4,'visit_summary','draft',$5::jsonb,$6,21) returning artifact_id`,
+      [seed.clinicA, seed.operationA, seed.petA, seed.visitA, JSON.stringify(approvedSummary), ids.vetA],
+    );
+    await assert.rejects(
+      db.query(
+        `select * from public.myvet_create_follow_up_suggestion_draft($1,'ai_artifact',$2,$3::jsonb,$4,'mock','mock-v1','follow-up-v1',1,1,1,true)`,
+        [ids.vetA, unapprovedSource.rows[0].artifact_id, JSON.stringify(content), crypto.randomUUID()],
+      ),
+      /FOLLOW_UP_APPROVED_SOURCE_REQUIRED/,
+    );
+
+    await assert.rejects(
+      db.query(
+        `select * from public.myvet_create_follow_up_suggestion_draft($1,'ai_artifact',$2,$3::jsonb,$4,'mock','mock-v1','follow-up-v1',1,1,1,true)`,
+        [ids.vetB, source.rows[0].artifact_id, JSON.stringify(content), crypto.randomUUID()],
+      ),
+      /FOLLOW_UP_APPROVED_SOURCE_REQUIRED/,
+    );
+    const draft = await db.query(
+      `select * from public.myvet_create_follow_up_suggestion_draft($1,'ai_artifact',$2,$3::jsonb,$4,'mock','mock-v1','follow-up-v1',1,1,1,true)`,
+      [ids.vetA, source.rows[0].artifact_id, JSON.stringify(content), crypto.randomUUID()],
+    );
+    assert.equal(draft.rows[0].status, "draft");
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 0);
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='reminder_suggestion'")).rows[0].count, 0);
+    await resetIdentity(db);
+    await setIdentity(db, ids.nurseA);
+    await assert.rejects(
+      db.query("select * from public.myvet_transition_follow_up_suggestion($1,'approve',$2::jsonb,null,false)", [draft.rows[0].artifact_id, JSON.stringify(content)]),
+      /FOLLOW_UP_ACCESS_DENIED/,
+    );
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.vetA);
+    await assert.rejects(
+      db.query("select * from public.myvet_transition_follow_up_suggestion($1,'approve',$2::jsonb,null,false)", [draft.rows[0].artifact_id, JSON.stringify({ ...content, scheduled_at: null, requires_manual_date: true })]),
+      /FOLLOW_UP_DATE_REQUIRED/,
+    );
+    const approved = await db.query(
+      "select * from public.myvet_transition_follow_up_suggestion($1,'approve',$2::jsonb,null,false)",
+      [draft.rows[0].artifact_id, JSON.stringify(content)],
+    );
+    assert.equal(approved.rows[0].status, "approved");
+    assert.equal(approved.rows[0].possible_duplicate, false);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 1);
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders where pet_id=$1", [seed.petA])).rows[0].count, 1);
+    await resetIdentity(db);
+    await setIdentity(db, ids.ownerB);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders where pet_id=$1", [seed.petA])).rows[0].count, 0);
+    await resetIdentity(db);
+
+    const secondDraft = await db.query(
+      `select * from public.myvet_create_follow_up_suggestion_draft($1,'ai_artifact',$2,$3::jsonb,$4,'manual','manual','manual-v1',1,0,0,false)`,
+      [ids.vetA, source.rows[0].artifact_id, JSON.stringify(content), crypto.randomUUID()],
+    );
+    await setIdentity(db, ids.vetA);
+    const duplicate = await db.query(
+      "select * from public.myvet_transition_follow_up_suggestion($1,'approve',$2::jsonb,null,false)",
+      [secondDraft.rows[0].artifact_id, JSON.stringify(content)],
+    );
+    assert.equal(duplicate.rows[0].possible_duplicate, true);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 1);
+    const confirmed = await db.query(
+      "select * from public.myvet_transition_follow_up_suggestion($1,'approve',$2::jsonb,null,true)",
+      [secondDraft.rows[0].artifact_id, JSON.stringify(content)],
+    );
+    assert.equal(confirmed.rows[0].possible_duplicate, false);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 2);
+    await resetIdentity(db);
+
+    const manualContent = {
+      ...content, reminder_type: "general_follow_up", title: "General follow-up", description: "Manual follow-up",
+      target_type: "staff", release_to_client: false, scheduled_at: null, requires_manual_date: true,
+    };
+    const manualDraft = await db.query(
+      `select * from public.myvet_create_follow_up_suggestion_draft($1,'ai_artifact',$2,$3::jsonb,$4,'manual','manual','manual-v1',1,0,0,false)`,
+      [ids.vetA, source.rows[0].artifact_id, JSON.stringify(manualContent), crypto.randomUUID()],
+    );
+    await setIdentity(db, ids.vetA);
+    const edited = await db.query(
+      "select * from public.myvet_transition_follow_up_suggestion($1,'save',$2::jsonb,null,false)",
+      [manualDraft.rows[0].artifact_id, JSON.stringify({ ...manualContent, description: "Edited manually" })],
+    );
+    assert.equal(edited.rows[0].status, "edited");
+    const rejected = await db.query(
+      "select * from public.myvet_transition_follow_up_suggestion($1,'reject',null,'Not needed',false)",
+      [edited.rows[0].artifact_id],
+    );
+    assert.equal(rejected.rows[0].status, "rejected");
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 2);
+    await resetIdentity(db);
+
+    await applySqlFile(db, stage8RollbackPath);
+    assert.equal((await db.query("select to_regprocedure('public.myvet_transition_follow_up_suggestion(uuid,text,jsonb,text,boolean)') as value")).rows[0].value, null);
+    assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 2);
   } finally {
     await db.close();
   }

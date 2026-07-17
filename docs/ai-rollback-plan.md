@@ -122,3 +122,9 @@
 # Stage 7 client summary rollback
 
 Set `AI_CLIENT_SUMMARY_ENABLED=false` or `AI_CLIENT_SUMMARY_KILL_SWITCH=true`, then remove/disable the `client-summary` Edge Function. If database API removal is required, run `supabase/rollback/stage7/01_remove_client_summary_workflow.sql`. This removes RPC entry points without deleting original visits, approved medical summaries or historical client-summary artifacts.
+# Stage 8 follow-up suggestion rollback
+
+1. Set `AI_FOLLOW_UP_SUGGESTIONS_ENABLED=false` or set `AI_FOLLOW_UP_SUGGESTIONS_KILL_SWITCH=true`.
+2. Stop or remove the `follow-up-suggestions` Edge Function route.
+3. If database removal is required, apply `supabase/rollback/stage8/01_remove_follow_up_suggestion_workflow.sql`.
+4. The rollback removes only Stage 8 RPCs, policies and the duplicate lookup index. It intentionally preserves original medical data, approved reminders and AI artifacts.

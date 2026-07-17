@@ -3,6 +3,7 @@ import { CheckCircle2, Loader2, RotateCcw, Save, ShieldCheck, Sparkles, XCircle 
 import { toast } from "sonner";
 import { getStaffType } from "../data/staffAuth";
 import { ClientSummaryPanel } from "./ClientSummaryPanel";
+import { FollowUpSuggestionsPanel } from "./FollowUpSuggestionsPanel";
 import {
   generateVisitSummary,
   loadVisitSummary,
@@ -159,6 +160,7 @@ export function VisitAiSummaryPanel({ visitId }: { visitId: number }) {
           </div>
           <ApprovedSummary content={state.approved.content} />
           <ClientSummaryPanel visitId={visitId} />
+          <FollowUpSuggestionsPanel visitId={visitId} />
         </>
       ) : null}
 
