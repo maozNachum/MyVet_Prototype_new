@@ -11,6 +11,9 @@ const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181
 const paymentMethodFixMigration = readFileSync("supabase/migrations/20260716200544_fix_portal_demo_payment_method.sql", "utf8");
 const actionMigration = readFileSync("supabase/migrations/20260716193200_vetbot_action_orchestration.sql", "utf8");
 const actionEngine = readFileSync("supabase/functions/_shared/vetbotActions.ts", "utf8");
+const aiGateway = readFileSync("supabase/functions/_shared/ai/gateway.ts", "utf8");
+const aiSchemas = readFileSync("supabase/functions/_shared/ai/schemas.ts", "utf8");
+const aiFeatures = readFileSync("supabase/functions/_shared/ai/featureFlags.ts", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
@@ -145,6 +148,19 @@ test("Portal demo payments settle only through an owner-authorized server RPC", 
   assert.match(paymentMethodFixMigration, /payment_method = 'credit'/);
   assert.match(paymentMethodFixMigration, /'portal_demo'.*'owner_portal_demo'/s);
   assert.doesNotMatch(paymentMethodFixMigration, /set status = 'paid',[\s\S]*payment_method = 'portal_demo'/);
+});
+
+test("VetBot requests use the central gateway while the legacy call remains rollback-only", () => {
+  assert.match(edgeFunction, /runVetBotGateway\(\{/);
+  assert.match(edgeFunction, /isAiGatewayEnabled\(runtimeEnv\)[\s\S]*runVetBotGateway[\s\S]*callGeminiLegacy/);
+  assert.match(aiGateway, /new GeminiProviderAdapter/);
+  assert.match(aiGateway, /protectPayload/);
+  assert.match(aiSchemas, /validateVetBotRequestBody/);
+  assert.match(aiSchemas, /validateVetBotOutput/);
+  assert.match(aiFeatures, /AI_VETBOT_APPOINTMENT_ACTIONS_ENABLED/);
+  assert.match(edgeFunction, /isAiGatewayEnabled\(runtimeEnv\)/);
+  assert.match(edgeFunction, /isAiCapabilityEnabled\("vetbot\.general", runtimeEnv\)/);
+  assert.match(edgeFunction, /legacy-unversioned/);
 });
 
 test("Staff cash collection is server-authorized and calculates change", () => {

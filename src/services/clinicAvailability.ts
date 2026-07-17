@@ -62,7 +62,9 @@ export async function saveClinicBookingHours(hours: ClinicBookingHour[]) {
     updated_at: new Date().toISOString(),
     updated_by: authData.user?.id || null,
   }));
-  const { error } = await supabase.from("clinic_booking_hours").upsert(rows, { onConflict: "weekday" });
+  // clinic_id is assigned by the database from the authenticated membership.
+  // The composite conflict target prevents one clinic from overwriting another.
+  const { error } = await supabase.from("clinic_booking_hours").upsert(rows, { onConflict: "clinic_id,weekday" });
   if (error) throw error;
 }
 

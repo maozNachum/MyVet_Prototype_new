@@ -1,6 +1,15 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { protectPayload, redactText, type RedactionReport } from "../_shared/privacy.ts";
+import { AiGatewayError, asAiGatewayError } from "../_shared/ai/errors.ts";
+import { capabilityForAction, isAiCapabilityEnabled, isAiGatewayEnabled } from "../_shared/ai/featureFlags.ts";
+import {
+  auditTags,
+  runVetBotGateway,
+  runtimeEnv,
+  telemetryFromError,
+} from "../_shared/ai/gateway.ts";
+import { validateVetBotRequestBody } from "../_shared/ai/schemas.ts";
 import {
   decideVetBotAction,
   prepareVetBotAction,
@@ -29,10 +38,10 @@ const ACTIONS = [
   { route: "/reports", label: "פתח דוחות", roles: ["clinic_admin", "vet", "secretary"] },
 ] as const;
 
-function json(request: Request, body: unknown, status = 200) {
+function json(request: Request, body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders(request), "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    headers: { ...corsHeaders(request), "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extraHeaders },
   });
 }
 
@@ -197,7 +206,9 @@ const responseSchema = {
   required: ["answer", "urgency", "confidence", "findings", "suggestedActions", "actionProposal", "memorySummary"],
 };
 
-async function callGemini(input: { question: string; context: unknown; history: unknown[]; memorySummary?: string; tools: unknown; role: StaffRole; mode: VetBotMode; actions: unknown[] }) {
+// Stage 1 rollback path only. New traffic uses runVetBotGateway below.
+// Keep this compatibility implementation until the staged rollout is verified.
+async function callGeminiLegacy(input: { question: string; context: unknown; history: unknown[]; memorySummary?: string; tools: unknown; role: StaffRole; mode: VetBotMode; actions: unknown[] }) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
   const configuredModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
@@ -342,16 +353,22 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await client.auth.getUser();
   if (authError || !authData.user) return json(request, { error: "Unauthorized" }, 401);
 
-  let body: any;
-  try { body = JSON.parse(rawBody); } catch { return json(request, { error: "Invalid JSON" }, 400); }
-  const allowedModes: VetBotMode[] = ["dashboard", "schedule", "digital-care", "inventory", "medical-record", "clients", "reports", "portal"];
-  const mode = String(body?.mode || "") as VetBotMode;
-  if (!allowedModes.includes(mode)) return json(request, { error: "Invalid mode" }, 400);
+  let body;
+  try {
+    body = validateVetBotRequestBody(JSON.parse(rawBody));
+  } catch (error) {
+    const safeError = error instanceof AiGatewayError
+      ? error
+      : new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    return json(request, { error: safeError.code }, safeError.httpStatus);
+  }
+  const mode = body.mode;
   const role = await resolveRole(client, authData.user.id, mode);
   if (!role) return json(request, { error: "ROLE_NOT_ALLOWED" }, 403);
 
   const actionDecision = body?.actionDecision;
   if (actionDecision) {
+    const actionStartedAt = Date.now();
     const requestId = String(actionDecision?.requestId || "");
     const decision = String(actionDecision?.decision || "");
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
@@ -362,12 +379,29 @@ Deno.serve(async (request) => {
     if (!serviceKey) return json(request, { error: "ACTION_SERVICE_NOT_CONFIGURED" }, 503);
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     try {
+      if (decision === "approve") {
+        const { data: pendingAction } = await admin
+          .from("vetbot_action_requests")
+          .select("action_type")
+          .eq("action_request_id", requestId)
+          .eq("actor_id", authData.user.id)
+          .maybeSingle();
+        const actionCapability = capabilityForAction(String(pendingAction?.action_type || ""));
+        if (!isAiCapabilityEnabled(actionCapability, runtimeEnv)) {
+          throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+        }
+      }
       const actionPlan = await decideVetBotAction({ client, admin, actorId: authData.user.id, requestId, decision });
       await audit(client, {
         actor_id: authData.user.id,
         actor_role: role,
         mode,
-        tool_names: [`action:${actionPlan.type}`, `decision:${decision}`],
+        tool_names: [
+          `action:${actionPlan.type}`,
+          `decision:${decision}`,
+          `capability:${capabilityForAction(actionPlan.type)}`,
+          `latency_ms:${Math.max(0, Date.now() - actionStartedAt)}`,
+        ],
         redaction_categories: [],
         redaction_count: 0,
         outcome: actionPlan.status === "executed" || actionPlan.status === "rejected" ? "success" : "failed",
@@ -387,9 +421,11 @@ Deno.serve(async (request) => {
         privacy: { mode: "strict-minimization", piiRemoved: false, removedCategories: [], externalProcessing: false, noticeVersion: NOTICE_VERSION },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "ACTION_FAILED";
-      console.error("VetBot action decision failed", { mode, role, message });
-      return json(request, { error: message }, 400);
+      const gatewayError = error instanceof AiGatewayError ? error : null;
+      const rawCode = error instanceof Error ? error.message : "ACTION_FAILED";
+      const code = gatewayError?.code || (/^[A-Z0-9_]{3,80}$/.test(rawCode) ? rawCode : "ACTION_FAILED");
+      console.error("VetBot action decision failed", { mode, role, code });
+      return json(request, { error: code }, gatewayError?.httpStatus || 400);
     }
   }
 
@@ -400,32 +436,87 @@ Deno.serve(async (request) => {
   let model = "unknown";
   let usedTools: string[] = [];
   try {
+    if (!isAiCapabilityEnabled("vetbot.general", runtimeEnv)) {
+      throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+    }
     const toolRun = await runReadOnlyTools(client, mode, role, safe.question);
     usedTools = toolRun.used;
-    const result = await callGemini({ question: safe.question, context: safe.context, history: safe.history, memorySummary: safe.memorySummary, tools: toolRun.results, role, mode, actions: availableActions(role) });
-    model = result.model;
-    const normalized: any = normalizeModelResult(result.parsed, role, usedTools, protectedInput.report);
-    if (normalized.actionProposal && normalized.actionProposal.type && normalized.actionProposal.type !== "none") {
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (!serviceKey) throw new Error("ACTION_SERVICE_NOT_CONFIGURED");
-      const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      normalized.actionPlan = await prepareVetBotAction({
-        client,
-        admin,
+    const result = isAiGatewayEnabled(runtimeEnv)
+      ? await runVetBotGateway({
         actorId: authData.user.id,
-        role,
-        proposal: normalized.actionProposal,
+        question: safe.question,
         context: safe.context,
-      });
+        history: safe.history,
+        memorySummary: safe.memorySummary,
+        tools: toolRun.results,
+        role,
+        mode,
+        actions: availableActions(role),
+        actionCatalog: VETBOT_ACTION_CATALOG,
+        currentTimeInIsrael: new Date().toLocaleString("sv-SE", { timeZone: "Asia/Jerusalem" }),
+      })
+      : await (async () => {
+        const legacy = await callGeminiLegacy({ question: safe.question, context: safe.context, history: safe.history, memorySummary: safe.memorySummary, tools: toolRun.results, role, mode, actions: availableActions(role) });
+        return {
+          output: legacy.parsed,
+          telemetry: {
+            requestId: `legacy-${crypto.randomUUID()}`,
+            capability: "vetbot.general" as const,
+            provider: "gemini",
+            model: legacy.model,
+            promptVersion: "legacy-unversioned",
+            schemaVersion: "legacy-response-schema",
+            outcome: "success" as const,
+            latencyMs: 0,
+            attempts: 0,
+            usage: {},
+          },
+          redaction: { total: 0, categories: [] as string[] },
+        };
+      })();
+    model = result.telemetry.model;
+    const combinedReport: RedactionReport = {
+      total: protectedInput.report.total + result.redaction.total,
+      categories: [...new Set([...protectedInput.report.categories, ...result.redaction.categories])],
+    };
+    const normalized: any = normalizeModelResult(result.output, role, usedTools, combinedReport);
+    if (normalized.actionProposal && normalized.actionProposal.type && normalized.actionProposal.type !== "none") {
+      const actionCapability = capabilityForAction(normalized.actionProposal.type);
+      if (!isAiCapabilityEnabled(actionCapability, runtimeEnv)) {
+        normalized.actionPlan = {
+          type: normalized.actionProposal.type,
+          status: "blocked",
+          title: "פעולת VetBot אינה זמינה",
+          summary: "היכולת הזו מושבתת זמנית. אפשר להמשיך ידנית במערכת.",
+          missingFields: [],
+          details: [],
+          destructive: false,
+        };
+      } else {
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!serviceKey) throw new AiGatewayError("AI_CONFIGURATION_ERROR", { httpStatus: 503 });
+        const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+        normalized.actionPlan = await prepareVetBotAction({
+          client,
+          admin,
+          actorId: authData.user.id,
+          role,
+          proposal: normalized.actionProposal,
+          context: safe.context,
+        });
+      }
       if (normalized.actionPlan) usedTools.push(`action_plan:${normalized.actionPlan.type}`);
     }
     delete normalized.actionProposal;
-    await audit(client, { actor_id: authData.user.id, actor_role: role, mode, tool_names: usedTools, redaction_categories: protectedInput.report.categories, redaction_count: protectedInput.report.total, outcome: "success", provider: "gemini", model_name: model, notice_version: NOTICE_VERSION });
+    await audit(client, { actor_id: authData.user.id, actor_role: role, mode, tool_names: [...usedTools, ...auditTags(result.telemetry)], redaction_categories: combinedReport.categories, redaction_count: combinedReport.total, outcome: "success", provider: result.telemetry.provider, model_name: model, notice_version: NOTICE_VERSION });
     return json(request, normalized);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "VetBot failed";
-    await audit(client, { actor_id: authData.user.id, actor_role: role, mode, tool_names: usedTools, redaction_categories: protectedInput.report.categories, redaction_count: protectedInput.report.total, outcome: "failed", provider: "gemini", model_name: model, notice_version: NOTICE_VERSION, error_code: message.slice(0, 80) });
-    console.error("VetBot request failed", { mode, role, message });
-    return json(request, { error: message }, message.includes("Missing GEMINI") ? 503 : 502);
+    const safeError = asAiGatewayError(error);
+    const telemetry = telemetryFromError(error);
+    const telemetryTags = telemetry ? auditTags(telemetry) : [];
+    await audit(client, { actor_id: authData.user.id, actor_role: role, mode, tool_names: [...usedTools, ...telemetryTags], redaction_categories: protectedInput.report.categories, redaction_count: protectedInput.report.total, outcome: "failed", provider: telemetry?.provider || "ai-gateway", model_name: telemetry?.model || model, notice_version: NOTICE_VERSION, error_code: safeError.code });
+    console.error("VetBot request failed", { mode, role, code: safeError.code });
+    const retryHeaders = safeError.retryAfterSeconds ? { "Retry-After": String(safeError.retryAfterSeconds) } : {};
+    return json(request, { error: safeError.code, message: safeError.message }, safeError.httpStatus, retryHeaders);
   }
 });

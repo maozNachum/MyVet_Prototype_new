@@ -3,3 +3,9 @@ project_id = "myvet"
 [functions.ai-assistant]
 verify_jwt = true
 
+[functions.visit-summary]
+verify_jwt = true
+
+[functions.digitalcare-transcription]
+verify_jwt = true
+

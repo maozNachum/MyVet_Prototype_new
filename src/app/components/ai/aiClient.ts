@@ -24,14 +24,14 @@ function friendlyEdgeError(message?: string) {
   if (text.includes("Missing question")) return "חסרה שאלה ל־VetBot.";
   if (text.includes("Forbidden") || text.includes("ROLE_NOT_ALLOWED")) return "אין הרשאה להפעיל את הפעולה הזו ב־VetBot.";
   if (text.includes("PRIVACY_BLOCKED")) return "VetBot עצר את הבקשה כי זוהה בה מידע רגיש שלא ניתן להסיר בבטחה.";
-  if (text.includes("Missing GEMINI_API_KEY")) {
-    return "VetBot לא הוגדר במערכת. יש להגדיר את מפתח Gemini בסודות של Supabase.";
+  if (text.includes("AI_RATE_LIMITED")) {
+    return "VetBot עמוס כרגע. נסה שוב בעוד כמה שניות.";
   }
-  if (text.includes("Gemini request failed: 401") || text.includes("Gemini request failed: 403")) {
-    return "מפתח Gemini של VetBot אינו תקין או שאינו מורשה למודל שנבחר.";
+  if (text.includes("AI_FEATURE_DISABLED") || text.includes("AI_CONFIGURATION_ERROR")) {
+    return "VetBot אינו זמין כרגע. נסה שוב מאוחר יותר.";
   }
-  if (text.includes("Gemini request failed: 404")) {
-    return "מודל Gemini שהוגדר עבור VetBot אינו זמין.";
+  if (text.includes("AI_PROVIDER_TIMEOUT")) {
+    return "VetBot לא הספיק להשיב בזמן. אפשר לנסות שוב.";
   }
   if (
     text.includes("Unauthorized") ||

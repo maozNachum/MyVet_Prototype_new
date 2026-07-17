@@ -24,6 +24,7 @@ import type {
   PhysicalExam,
   Prescription,
 } from "../data/MedicalStore";
+import { VisitAiSummaryPanel } from "./VisitAiSummaryPanel";
 
 type TimelineFilter = "all" | "critical" | "follow_up" | "lab" | "prescription" | "vaccination" | "video" | "hospitalization";
 
@@ -388,6 +389,8 @@ export function PatientMedicalTimeline({
                             {visit.followUpNotes && <p className="mt-2"><b>הערות מעקב:</b> {visit.followUpNotes}</p>}
                           </TextBlock>
                         )}
+
+                        <VisitAiSummaryPanel visitId={visit.id} />
                       </div>
                     )}
                   </div>
