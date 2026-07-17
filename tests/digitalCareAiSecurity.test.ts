@@ -19,6 +19,9 @@ test("DigitalCare capabilities are off by default and independent from VetBot", 
   assert.equal(isAiCapabilityEnabled("digitalcare.transcribe", env({ AI_DIGITALCARE_TRANSCRIPTION_ENABLED: "true" })), true);
   assert.equal(isAiCapabilityEnabled("digitalcare.recording", env({})), false);
   assert.equal(isAiCapabilityEnabled("digitalcare.recording", env({ AI_DIGITALCARE_RECORDING_ENABLED: "true" })), true);
+  assert.equal(isAiCapabilityEnabled("digitalcare.transcribe", env({ AI_DIGITALCARE_TRANSCRIPTION_ENABLED: "true", AI_DIGITALCARE_TRANSCRIPTION_KILL_SWITCH: "true" })), false);
+  assert.equal(isAiCapabilityEnabled("digitalcare.recording", env({ AI_DIGITALCARE_RECORDING_ENABLED: "true", AI_DIGITALCARE_RECORDING_KILL_SWITCH: "true" })), false);
+  assert.equal(isAiCapabilityEnabled("digitalcare.summary", env({ AI_DIGITALCARE_SUMMARY_ENABLED: "true", AI_DIGITALCARE_SUMMARY_KILL_SWITCH: "true" })), false);
   assert.equal(isAiCapabilityEnabled("vetbot.general", env({ AI_DIGITALCARE_TRANSCRIPTION_ENABLED: "false" })), true);
 });
 

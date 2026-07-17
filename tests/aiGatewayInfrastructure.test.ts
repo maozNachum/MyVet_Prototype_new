@@ -89,6 +89,9 @@ test("feature flags and per-capability kill switches are independent", () => {
   const visitSummaryOff = envFrom({ AI_VISIT_SUMMARY_ENABLED: "false" });
   assert.equal(isAiCapabilityEnabled("visit-summary.generate", visitSummaryOff), false);
   assert.equal(isAiCapabilityEnabled("vetbot.general", visitSummaryOff), true);
+  assert.equal(isAiCapabilityEnabled("visit-summary.generate", envFrom({})), false);
+  assert.equal(isAiCapabilityEnabled("visit-summary.generate", envFrom({ AI_VISIT_SUMMARY_ENABLED: "true" })), true);
+  assert.equal(isAiCapabilityEnabled("visit-summary.generate", envFrom({ AI_VISIT_SUMMARY_ENABLED: "true", AI_VISIT_SUMMARY_KILL_SWITCH: "true" })), false);
 });
 
 test("visit summary gateway returns only schema-validated draft content", async () => {
@@ -107,7 +110,7 @@ test("visit summary gateway returns only schema-validated draft content", async 
   const result = await runVisitSummaryGateway({
     actorId: "verified-veterinarian",
     visitContext: { medical_visit: { reason: "בדיקת מעקב" } },
-  }, { env: envFrom({}), adapter, rateLimiter: new InMemoryRateLimiter() });
+  }, { env: envFrom({ AI_VISIT_SUMMARY_ENABLED: "true" }), adapter, rateLimiter: new InMemoryRateLimiter() });
   assert.deepEqual(result.output, validVisitSummary);
   assert.equal(result.telemetry.capability, "visit-summary.generate");
   assert.equal(result.telemetry.promptVersion, PROMPT_REGISTRY["visit-summary.generate"].version);
@@ -144,7 +147,7 @@ test("visit summary kill switch and provider timeout do not affect VetBot", asyn
   assert.equal(called, false);
   await assert.rejects(
     runVisitSummaryGateway({ actorId: "vet", visitContext: {} }, {
-      env: envFrom({}), adapter, rateLimiter: new InMemoryRateLimiter(),
+      env: envFrom({ AI_VISIT_SUMMARY_ENABLED: "true" }), adapter, rateLimiter: new InMemoryRateLimiter(),
     }),
     (error: unknown) => error instanceof AiGatewayError && error.code === "AI_PROVIDER_TIMEOUT",
   );

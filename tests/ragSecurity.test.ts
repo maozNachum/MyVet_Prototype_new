@@ -22,6 +22,8 @@ test("RAG capabilities are independently disabled by default and independently s
   assert.equal(isAiCapabilityEnabled("rag.answer", env({})), false);
   assert.equal(isAiCapabilityEnabled("rag.index", env({ AI_RAG_INDEX_ENABLED: "false", AI_RAG_QA_ENABLED: "true" })), false);
   assert.equal(isAiCapabilityEnabled("rag.answer", env({ AI_RAG_INDEX_ENABLED: "false", AI_RAG_QA_ENABLED: "true" })), true);
+  assert.equal(isAiCapabilityEnabled("rag.index", env({ AI_RAG_INDEX_ENABLED: "true", AI_RAG_INDEX_KILL_SWITCH: "true" })), false);
+  assert.equal(isAiCapabilityEnabled("rag.answer", env({ AI_RAG_QA_ENABLED: "true", AI_RAG_QA_KILL_SWITCH: "true" })), false);
   assert.equal(isAiCapabilityEnabled("vetbot.general", env({ AI_RAG_QA_ENABLED: "false" })), true);
 });
 

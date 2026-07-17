@@ -38,7 +38,10 @@ The frontend never supplies clinic, pet, owner, user, provider, model or prompt.
 
 - `AI_GLOBAL_ENABLED`
 - `AI_VISIT_SUMMARY_ENABLED`
+- `AI_VISIT_SUMMARY_KILL_SWITCH`
 - `ai_feature_flags(capability = 'visit_summary')`
+
+`AI_VISIT_SUMMARY_ENABLED` now fails closed when missing. The independent kill switch blocks only visit-summary generation and does not affect VetBot.
 
 ## Rollback
 

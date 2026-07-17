@@ -33,6 +33,9 @@
 | שמירת הקלטה | `digitalcare_recording` | `AI_DIGITALCARE_RECORDING_ENABLED` | כבוי |
 | טיוטת סיכום | `digitalcare_summary` | `AI_DIGITALCARE_SUMMARY_ENABLED` | כבוי |
 
+לכל אחת משלוש היכולות קיים גם Kill Switch עצמאי בצד השרת:
+`AI_DIGITALCARE_TRANSCRIPTION_KILL_SWITCH`, `AI_DIGITALCARE_RECORDING_KILL_SWITCH` ו־`AI_DIGITALCARE_SUMMARY_KILL_SWITCH`. ברירת המחדל שלהם `false`; הפעלת אחד מהם חוסמת רק את היכולת המתאימה.
+
 השבתת יכולת אחת אינה משביתה Google Meet, VetBot, בוט התורים או יכולת DigitalCare אחרת.
 
 ## Retention וניקוי
@@ -73,4 +76,3 @@ Rollback מדויק:
 2. בטל את פריסת `digitalcare-transcription` והחזר את ה־Frontend לגרסה קודמת.
 3. אל תמחק הקלטות, הסכמות, Audit או רשומות רפואיות בלי החלטת retention ומשפטית.
 4. רק ב־Preview ריק ניתן להריץ `02_remove_empty_digitalcare_ai.sql`; הוא נכשל במפורש אם קיימים נתוני Stage 4.
-

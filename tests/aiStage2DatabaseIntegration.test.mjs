@@ -35,6 +35,7 @@ const stage7MigrationPath = "supabase/migrations/20260717173000_client_summary_w
 const stage7RollbackPath = "supabase/rollback/stage7/01_remove_client_summary_workflow.sql";
 const stage8MigrationPath = "supabase/migrations/20260717180000_follow_up_suggestion_workflow.sql";
 const stage8RollbackPath = "supabase/rollback/stage8/01_remove_follow_up_suggestion_workflow.sql";
+const stage9HardeningMigrationPath = "supabase/migrations/20260717190000_ai_feature_flag_fail_closed.sql";
 
 function splitSqlStatements(sql) {
   const statements = [];
@@ -980,6 +981,50 @@ test("Stage 8 creates an existing reminder only after veterinarian approval and 
     await applySqlFile(db, stage8RollbackPath);
     assert.equal((await db.query("select to_regprocedure('public.myvet_transition_follow_up_suggestion(uuid,text,jsonb,text,boolean)') as value")).rows[0].value, null);
     assert.equal((await db.query("select count(*)::int as count from public.reminders")).rows[0].count, 2);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 9 seeds disabled AI flags for every clinic and prevents fail-open deletion", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage4MigrationPath);
+    await applySqlFile(db, stage7MigrationPath);
+    await applySqlFile(db, stage8MigrationPath);
+    await applySqlFile(db, stage9HardeningMigrationPath);
+    const seeded = await seedTwoClinics(db);
+
+    const flags = await db.query(
+      `select clinic_id,count(*)::int as count,bool_or(enabled) as any_enabled,bool_or(kill_switch) as any_killed
+       from public.ai_feature_flags
+       where clinic_id in ($1,$2) and capability in (
+         'visit_summary','digitalcare_transcription','digitalcare_recording','digitalcare_summary',
+         'rag_index','record_qa','document_ocr','client_explanation','reminder_suggestion'
+       ) group by clinic_id order by clinic_id`,
+      [seeded.clinicA, seeded.clinicB],
+    );
+    assert.equal(flags.rows.length, 2);
+    for (const row of flags.rows) {
+      assert.equal(row.count, 9);
+      assert.equal(row.any_enabled, false);
+      assert.equal(row.any_killed, false);
+    }
+
+    await assert.rejects(
+      db.query("delete from public.ai_feature_flags where clinic_id=$1 and capability='visit_summary'", [seeded.clinicA]),
+      /AI_FEATURE_FLAG_DELETE_FORBIDDEN/,
+    );
+    const grants = await db.query(`
+      select
+        has_function_privilege('anon','private.myvet_seed_disabled_ai_feature_flags(uuid)','execute') as anon_execute,
+        has_function_privilege('authenticated','private.myvet_seed_disabled_ai_feature_flags(uuid)','execute') as authenticated_execute,
+        has_function_privilege('service_role','private.myvet_seed_disabled_ai_feature_flags(uuid)','execute') as service_execute
+    `);
+    assert.equal(grants.rows[0].anon_execute, false);
+    assert.equal(grants.rows[0].authenticated_execute, false);
+    assert.equal(grants.rows[0].service_execute, false);
   } finally {
     await db.close();
   }

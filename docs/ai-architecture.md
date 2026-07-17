@@ -191,6 +191,7 @@ Frontend קיים
 - `AI_DIGITALCARE_TRANSCRIPTION_ENABLED` (Stage 4; server only; default off)
 - `AI_DIGITALCARE_RECORDING_ENABLED` (Stage 4; server only; default off)
 - `AI_DIGITALCARE_SUMMARY_ENABLED` (Stage 4; server only; default off)
+- `AI_VISIT_SUMMARY_KILL_SWITCH`, `AI_DIGITALCARE_TRANSCRIPTION_KILL_SWITCH`, `AI_DIGITALCARE_RECORDING_KILL_SWITCH`, `AI_DIGITALCARE_SUMMARY_KILL_SWITCH` (Stage 9 hardening; server only)
 
 ### Stage 4 — DigitalCare
 
@@ -210,7 +211,9 @@ rollback and legal gates are documented in `docs/ai-digitalcare.md`.
 
 ה־RAG מוסיף דגלים נפרדים ל־index ול־answer, נכשל במצב סגור כשאין מקור, ואינו שומר תשובה בתיק. התכנון המלא, מקורות, Matrix הרשאות, Environment ו־rollback מתועדים ב־`docs/ai-rag.md`.
 
-משתני Stage 5, שמות בלבד: `AI_RAG_INDEX_ENABLED`, `AI_RAG_QA_ENABLED`, `AI_EMBEDDING_PROVIDER`, `AI_ALLOW_MOCK_PROVIDER` (בדיקות בלבד), `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_VERSION`, `AI_EMBEDDING_TIMEOUT_MS`, `AI_RAG_MAX_CHUNKS_PER_SOURCE`, `AI_RAG_MAX_RESULTS`, `AI_RAG_MINIMUM_SIMILARITY`.
+משתני Stage 5, שמות בלבד: `AI_RAG_INDEX_ENABLED`, `AI_RAG_QA_ENABLED`, `AI_RAG_INDEX_KILL_SWITCH`, `AI_RAG_QA_KILL_SWITCH`, `AI_EMBEDDING_PROVIDER`, `AI_ALLOW_MOCK_PROVIDER` (בדיקות בלבד), `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_VERSION`, `AI_EMBEDDING_TIMEOUT_MS`, `AI_RAG_MAX_CHUNKS_PER_SOURCE`, `AI_RAG_MAX_RESULTS`, `AI_RAG_MINIMUM_SIMILARITY`.
+
+Stage 9 מוסיף את `20260717190000_ai_feature_flag_fail_closed.sql`: הוא יוצר שורות דגל כבויות לכל מרפאה קיימת וחדשה ומונע מחיקת שורת דגל מוגנת, כדי שחוסר רשומה לא יהפוך למסלול fail-open.
 
 ## 13. עדכון שלב 2 — שכבת נתונים והרשאות
 

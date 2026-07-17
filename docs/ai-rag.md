@@ -76,6 +76,8 @@
 
 - `AI_RAG_INDEX_ENABLED`
 - `AI_RAG_QA_ENABLED`
+- `AI_RAG_INDEX_KILL_SWITCH`
+- `AI_RAG_QA_KILL_SWITCH`
 - `AI_EMBEDDING_PROVIDER`
 - `AI_ALLOW_MOCK_PROVIDER` (בדיקות בלבד; אין להפעיל ב־Production)
 - `AI_EMBEDDING_MODEL`
@@ -87,6 +89,8 @@
 - `GEMINI_API_KEY` (קיים, server only)
 
 אין להגדיר אף אחד מהמשתנים כ־`VITE_*`.
+
+שני ה־Kill Switches עצמאיים: ניתן לעצור Indexing בלי להשבית Q&A על אינדקס קיים, או לעצור Q&A בלי לפגוע ב־VetBot ובתיק הרפואי.
 
 ## Audit ועלות
 

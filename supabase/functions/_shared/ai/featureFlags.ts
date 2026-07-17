@@ -18,6 +18,17 @@ export const AI_FEATURE_ENV = {
   "follow-up.suggest": "AI_FOLLOW_UP_SUGGESTIONS_ENABLED",
 } as const;
 
+const AI_KILL_SWITCH_ENV: Partial<Record<AiCapability, string>> = {
+  "visit-summary.generate": "AI_VISIT_SUMMARY_KILL_SWITCH",
+  "digitalcare.transcribe": "AI_DIGITALCARE_TRANSCRIPTION_KILL_SWITCH",
+  "digitalcare.recording": "AI_DIGITALCARE_RECORDING_KILL_SWITCH",
+  "digitalcare.summary": "AI_DIGITALCARE_SUMMARY_KILL_SWITCH",
+  "rag.index": "AI_RAG_INDEX_KILL_SWITCH",
+  "rag.answer": "AI_RAG_QA_KILL_SWITCH",
+  "client-summary.generate": "AI_CLIENT_SUMMARY_KILL_SWITCH",
+  "follow-up.suggest": "AI_FOLLOW_UP_SUGGESTIONS_KILL_SWITCH",
+};
+
 function enabled(value: string | undefined, fallback = true) {
   if (value === undefined || value.trim() === "") return fallback;
   return !["0", "false", "off", "disabled"].includes(value.trim().toLowerCase());
@@ -25,14 +36,8 @@ function enabled(value: string | undefined, fallback = true) {
 
 export function isAiCapabilityEnabled(capability: AiCapability, env: EnvReader) {
   if (!enabled(env(AI_FEATURE_ENV.global))) return false;
-  if (capability === "client-summary.generate") {
-    return !enabled(env("AI_CLIENT_SUMMARY_KILL_SWITCH"), false)
-      && enabled(env(AI_FEATURE_ENV[capability]), false);
-  }
-  if (capability === "follow-up.suggest") {
-    return !enabled(env("AI_FOLLOW_UP_SUGGESTIONS_KILL_SWITCH"), false)
-      && enabled(env(AI_FEATURE_ENV[capability]), false);
-  }
+  const killSwitch = AI_KILL_SWITCH_ENV[capability];
+  if (killSwitch && enabled(env(killSwitch), false)) return false;
   if (capability === "document.ocr" || capability === "vaccination.ocr") {
     const killed = enabled(env("AI_DOCUMENT_OCR_KILL_SWITCH"), false)
       || (capability === "vaccination.ocr" && enabled(env("AI_VACCINATION_OCR_KILL_SWITCH"), false));
@@ -46,7 +51,10 @@ export function isAiCapabilityEnabled(capability: AiCapability, env: EnvReader) 
     return enabled(env(AI_FEATURE_ENV[capability]), false);
   }
   if (capability === "visit-summary.generate") {
-    return enabled(env(AI_FEATURE_ENV["visit-summary.generate"]));
+    return enabled(env(AI_FEATURE_ENV["visit-summary.generate"]), false);
+  }
+  if (capability === "client-summary.generate" || capability === "follow-up.suggest") {
+    return enabled(env(AI_FEATURE_ENV[capability]), false);
   }
   if (!enabled(env(AI_FEATURE_ENV["vetbot.general"]))) return false;
   if (capability === "vetbot.general") return true;
