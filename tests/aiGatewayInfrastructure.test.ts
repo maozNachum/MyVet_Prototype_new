@@ -338,6 +338,40 @@ test("Gemini adapter falls back when the configured primary model is unavailable
   assert.deepEqual(requestedModels, ["primary", "fallback"]);
 });
 
+test("Gemini adapter simplifies provider schema while keeping strict server validation", async () => {
+  const responseSchema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      answer: { type: "string" },
+      actionProposal: {
+        type: "object",
+        additionalProperties: false,
+        properties: { type: { type: "string" } },
+      },
+    },
+  };
+  const fetchMock: typeof fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body || "{}")) as {
+      generationConfig?: { responseSchema?: Record<string, unknown> };
+    };
+    const providerSchema = body.generationConfig?.responseSchema;
+    assert.equal(providerSchema?.additionalProperties, undefined);
+    const nested = (providerSchema?.properties as Record<string, Record<string, unknown>> | undefined)?.actionProposal;
+    assert.equal(nested?.additionalProperties, undefined);
+    return geminiResponse();
+  };
+  const adapter = new GeminiProviderAdapter(envFrom({ GEMINI_API_KEY: "test-only-placeholder" }), fetchMock);
+  const result = await adapter.generateStructured(providerRequest({ models: ["primary"], responseSchema }));
+  assert.equal(result.output.answer, validOutput.answer);
+  assert.equal(responseSchema.additionalProperties, false);
+  assert.equal(responseSchema.properties.actionProposal.additionalProperties, false);
+  assert.throws(
+    () => validateVetBotOutput({ ...validOutput, providerOnlyField: "must still be rejected" }),
+    (error: unknown) => error instanceof AiGatewayError && error.code === "AI_OUTPUT_INVALID",
+  );
+});
+
 test("provider failure returns a stable public error without provider response details", async () => {
   const fetchMock: typeof fetch = async () => new Response("internal-provider-secret", { status: 403 });
   const adapter = new GeminiProviderAdapter(envFrom({ GEMINI_API_KEY: "test-only-placeholder" }), fetchMock);

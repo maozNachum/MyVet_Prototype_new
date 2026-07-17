@@ -25,6 +25,20 @@ function usageFrom(value: unknown): ProviderUsage {
   };
 }
 
+function prepareGeminiResponseSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(prepareGeminiResponseSchema);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      // Gemini may reject a schema when repeated constraints make it too
+      // complex. Unknown fields are still rejected by validateOutput after
+      // generation, so the server-owned contract remains strict.
+      .filter(([key]) => key !== "additionalProperties")
+      .map(([key, nested]) => [key, prepareGeminiResponseSchema(nested)]),
+  );
+}
+
 async function fetchWithTimeout(fetchFn: FetchLike, url: string, init: RequestInit, timeoutMs: number) {
   const controller = new AbortController();
   return await new Promise<Response>((resolve, reject) => {
@@ -96,12 +110,15 @@ export class GeminiProviderAdapter implements AiProviderAdapter {
                 temperature: retry === 0 ? 0.2 : 0,
                 maxOutputTokens: retry === 0 ? 4096 : 6144,
                 responseMimeType: "application/json",
-                responseSchema: request.responseSchema,
+                responseSchema: prepareGeminiResponseSchema(request.responseSchema),
               },
             }),
           }, Math.min(request.timeoutMs, remaining));
 
-          if (!response.ok) throw new ProviderHttpError(response.status);
+          if (!response.ok) {
+            console.warn("Gemini provider request rejected", { model, status: response.status });
+            throw new ProviderHttpError(response.status);
+          }
           const data = await response.json() as Record<string, unknown>;
           const candidate = Array.isArray(data.candidates) ? data.candidates[0] as Record<string, unknown> | undefined : undefined;
           const content = candidate?.content && typeof candidate.content === "object"
