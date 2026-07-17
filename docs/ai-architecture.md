@@ -196,6 +196,14 @@ rollback and legal gates are documented in `docs/ai-digitalcare.md`.
 
 אין להגדיר משתנים אלה ב־Vite או בשם שמתחיל `VITE_`.
 
+### Stage 5 — Medical record RAG
+
+`medical-record-rag` הוא endpoint מאומת נפרד המשתמש ב־Gateway הקיים וב־Embedding Provider Adapter. הוא מרחיב את registries של שלב 2, אינו משנה את VetBot, ומבצע similarity search רק בתוך scope שנגזר בצד השרת. הממד קבוע ל־768 והאינדקס הוא HNSW/cosine. מזהי chunks מוחלפים במזהים ארעיים לפני ספק ה־AI; citations אמיתיים נבנים רק בשרת לאחר validation.
+
+ה־RAG מוסיף דגלים נפרדים ל־index ול־answer, נכשל במצב סגור כשאין מקור, ואינו שומר תשובה בתיק. התכנון המלא, מקורות, Matrix הרשאות, Environment ו־rollback מתועדים ב־`docs/ai-rag.md`.
+
+משתני Stage 5, שמות בלבד: `AI_RAG_INDEX_ENABLED`, `AI_RAG_QA_ENABLED`, `AI_EMBEDDING_PROVIDER`, `AI_ALLOW_MOCK_PROVIDER` (בדיקות בלבד), `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_VERSION`, `AI_EMBEDDING_TIMEOUT_MS`, `AI_RAG_MAX_CHUNKS_PER_SOURCE`, `AI_RAG_MAX_RESULTS`, `AI_RAG_MINIMUM_SIMILARITY`.
+
 ## 13. עדכון שלב 2 — שכבת נתונים והרשאות
 
 שלב 2 מוסיף שכבת tenant אמיתית באמצעות `clinics` ו־`clinic_id` חובה בכל טבלה עסקית וחדשה. ה־Frontend אינו מקור לזהות המרפאה; ההקשר נגזר מ־`auth.uid()` והקשרים המאומתים ב־`staff`/`owners`. במקרה של שיוך עמום המערכת נכשלת במצב סגור.

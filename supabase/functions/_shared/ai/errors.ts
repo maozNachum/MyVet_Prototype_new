@@ -5,7 +5,10 @@ export type AiGatewayErrorCode =
   | "AI_INPUT_INVALID"
   | "AI_PROVIDER_TIMEOUT"
   | "AI_PROVIDER_UNAVAILABLE"
-  | "AI_OUTPUT_INVALID";
+  | "AI_OUTPUT_INVALID"
+  | "RAG_ACCESS_DENIED"
+  | "RAG_INDEX_UNAVAILABLE"
+  | "RAG_SEARCH_UNAVAILABLE";
 
 const PUBLIC_MESSAGES: Record<AiGatewayErrorCode, string> = {
   AI_FEATURE_DISABLED: "VetBot is temporarily unavailable.",
@@ -15,6 +18,9 @@ const PUBLIC_MESSAGES: Record<AiGatewayErrorCode, string> = {
   AI_PROVIDER_TIMEOUT: "VetBot did not respond in time. Please try again.",
   AI_PROVIDER_UNAVAILABLE: "VetBot is temporarily unavailable.",
   AI_OUTPUT_INVALID: "VetBot returned an invalid response. Please try again.",
+  RAG_ACCESS_DENIED: "The requested medical record is not available.",
+  RAG_INDEX_UNAVAILABLE: "Medical record indexing is temporarily unavailable.",
+  RAG_SEARCH_UNAVAILABLE: "Medical record search is temporarily unavailable.",
 };
 
 export class AiGatewayError extends Error {

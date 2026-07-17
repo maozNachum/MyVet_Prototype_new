@@ -138,3 +138,9 @@ Stage 1 נחשב יציב רק לאחר:
 - הסיכון של rate limit מקומי בלבד התקבל או הוחלף בתשתית מבוזרת מאושרת.
 
 לאחר מכן עוצרים. אין להתחיל Stage 2 בלי משימה נפרדת.
+
+## 11. Rollout לשלב 5
+
+שלב 5 נשאר כבוי כברירת מחדל. סדר ההפעלה הוא migration schema, migration RPC, פריסת `medical-record-rag`, הפעלת index בלבד ב־Preview, בדיקות tenant/owner/duplicate/injection, ורק אז הפעלת Q&A. אין להפעיל Q&A ללקוח בשלב זה. ההוראות וה־gates המלאים נמצאים ב־`docs/ai-rag.md`.
+
+Production מחייב בקשה מפורשת, גיבוי, Supabase Security/Performance Advisors, בדיקה עם pgvector אמיתי והרצת כל regression. אין deploy או שינוי DB חי כחלק משלב 5 המקומי.

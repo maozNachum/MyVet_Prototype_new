@@ -1,13 +1,15 @@
 import { protectPayload } from "../privacy.ts";
-import { getAiModelConfiguration } from "./config.ts";
+import { getAiModelConfiguration, getEmbeddingConfiguration } from "./config.ts";
 import { AiGatewayError, asAiGatewayError } from "./errors.ts";
 import { isAiCapabilityEnabled } from "./featureFlags.ts";
-import { buildDigitalCareSummaryUserPayload, buildVetBotUserPayload, buildVisitSummaryUserPayload, PROMPT_REGISTRY } from "./prompts.ts";
+import { buildDigitalCareSummaryUserPayload, buildRagAnswerUserPayload, buildVetBotUserPayload, buildVisitSummaryUserPayload, PROMPT_REGISTRY } from "./prompts.ts";
 import { GeminiProviderAdapter } from "./providers/gemini.ts";
+import { GeminiEmbeddingAdapter } from "./providers/geminiEmbedding.ts";
+import { MockEmbeddingAdapter } from "./providers/mockEmbedding.ts";
 import { GeminiTranscriptionAdapter } from "./providers/geminiTranscription.ts";
 import { InMemoryRateLimiter } from "./rateLimit.ts";
-import { DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, validateDigitalCareTranscript, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedDigitalCareTranscript, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
-import type { AiProviderAdapter, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, EnvReader, GatewayTelemetry, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
+import { DIGITALCARE_TRANSCRIPT_RESPONSE_SCHEMA, DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION, RAG_ANSWER_RESPONSE_SCHEMA, RAG_ANSWER_SCHEMA_VERSION, validateDigitalCareTranscript, validateRagAnswer, validateVetBotOutput, validateVisitSummaryOutput, VETBOT_OUTPUT_SCHEMA_VERSION, VETBOT_RESPONSE_SCHEMA, VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION, VISIT_SUMMARY_RESPONSE_SCHEMA, type ValidatedDigitalCareTranscript, type ValidatedRagAnswer, type ValidatedVetBotOutput, type ValidatedVisitSummaryOutput } from "./schemas.ts";
+import type { AiProviderAdapter, DigitalCareSummaryGatewayInput, DigitalCareTranscriptionGatewayInput, EmbeddingProviderAdapter, EnvReader, GatewayTelemetry, RagAnswerGatewayInput, TranscriptionProviderAdapter, VisitSummaryGatewayInput, VetBotGatewayInput, VetBotGatewayResult } from "./types.ts";
 
 type RuntimeGlobals = typeof globalThis & {
   Deno?: { env?: { get?: (name: string) => string | undefined } };
@@ -30,6 +32,10 @@ export interface VetBotGatewayOptions {
 
 export interface DigitalCareGatewayOptions extends VetBotGatewayOptions {
   transcriptionAdapter?: TranscriptionProviderAdapter;
+}
+
+export interface RagGatewayOptions extends VetBotGatewayOptions {
+  embeddingAdapter?: EmbeddingProviderAdapter;
 }
 
 function requestId() {
@@ -343,6 +349,178 @@ export async function runDigitalCareSummaryGateway(
       promptVersion: prompt.version, schemaVersion: VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION,
       outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled" : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
       latencyMs: Math.max(0, now() - startedAt), attempts, usage, errorCode: safeError.code,
+    };
+    (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
+    auditLog(telemetry);
+    throw safeError;
+  }
+}
+
+export async function runRagEmbeddingGateway(
+  actorId: string,
+  text: string,
+  task: "retrieval_document" | "retrieval_query",
+  options: RagGatewayOptions = {},
+) {
+  const env = options.env || runtimeEnv;
+  const now = options.now || Date.now;
+  const startedAt = now();
+  const id = requestId();
+  const capability = task === "retrieval_document" ? "rag.index" as const : "rag.answer" as const;
+  const config = getEmbeddingConfiguration(env);
+  let provider: string = config.provider;
+  try {
+    if (!isAiCapabilityEnabled(capability, env)) {
+      throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+    }
+    const compactText = text.trim();
+    if (!actorId || !compactText || compactText.length > 12_000) {
+      throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    }
+    (options.rateLimiter || sharedRateLimiter).check(
+      `${actorId}:${capability}`,
+      task === "retrieval_document" ? 60 : 12,
+      now(),
+    );
+    const protectedInput = protectPayload({ text: compactText });
+    const safeText = String((protectedInput.value as { text?: unknown }).text || "").trim();
+    if (!safeText) throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    const adapter = options.embeddingAdapter || (config.provider === "mock"
+      ? new MockEmbeddingAdapter()
+      : new GeminiEmbeddingAdapter(env));
+    provider = adapter.id;
+    const result = await adapter.embed({
+      text: safeText,
+      task,
+      model: config.model,
+      dimensions: config.dimensions,
+      timeoutMs: config.timeoutMs,
+    });
+    if (result.embedding.length !== config.dimensions) {
+      throw new AiGatewayError("AI_OUTPUT_INVALID", { httpStatus: 502 });
+    }
+    const telemetry: GatewayTelemetry = {
+      requestId: id,
+      capability,
+      provider,
+      model: result.model,
+      promptVersion: "embedding-task-v1",
+      schemaVersion: config.version,
+      outcome: "success",
+      latencyMs: Math.max(0, now() - startedAt),
+      attempts: 1,
+      usage: result.usage,
+    };
+    auditLog(telemetry);
+    return { embedding: result.embedding, telemetry, configuration: config };
+  } catch (error) {
+    const safeError = asAiGatewayError(error);
+    const telemetry: GatewayTelemetry = {
+      requestId: id,
+      capability,
+      provider,
+      model: config.model,
+      promptVersion: "embedding-task-v1",
+      schemaVersion: config.version,
+      outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled"
+        : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
+      latencyMs: Math.max(0, now() - startedAt),
+      attempts: 1,
+      usage: {},
+      errorCode: safeError.code,
+    };
+    (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
+    auditLog(telemetry);
+    throw safeError;
+  }
+}
+
+export async function runRagAnswerGateway(
+  input: RagAnswerGatewayInput,
+  options: RagGatewayOptions = {},
+): Promise<VetBotGatewayResult<ValidatedRagAnswer>> {
+  const env = options.env || runtimeEnv;
+  const now = options.now || Date.now;
+  const startedAt = now();
+  const id = requestId();
+  const prompt = PROMPT_REGISTRY["rag.answer"];
+  const config = getAiModelConfiguration(env);
+  let provider: string = config.provider;
+  let model = "none";
+  let attempts = 0;
+  let usage = {};
+  try {
+    if (!isAiCapabilityEnabled("rag.answer", env)) {
+      throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+    }
+    if (!input.actorId || !input.question.trim() || input.question.length > 1_200
+      || input.sources.length < 1 || input.sources.length > 8) {
+      throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    }
+    const sourceIds = new Set(input.sources.map((source) => source.chunkId));
+    if (sourceIds.size !== input.sources.length
+      || input.sources.some((source) => !/^S[1-8]$/.test(source.chunkId)
+        || source.content.length > 3_000 || !source.content.trim())) {
+      throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 400 });
+    }
+    (options.rateLimiter || sharedRateLimiter).check(`${input.actorId}:rag.answer`, 12, now());
+    const protectedInput = protectPayload({ question: input.question, sources: input.sources });
+    const safe = protectedInput.value as { question: string; sources: RagAnswerGatewayInput["sources"] };
+    const adapter = options.adapter || new GeminiProviderAdapter(env);
+    provider = adapter.id;
+    const result = await adapter.generateStructured({
+      systemPrompt: prompt.system,
+      retryPrompt: prompt.retrySuffix,
+      userPayload: buildRagAnswerUserPayload({
+        actorId: input.actorId,
+        question: safe.question,
+        sources: safe.sources,
+      }),
+      responseSchema: RAG_ANSWER_RESPONSE_SCHEMA,
+      models: config.models,
+      timeoutMs: config.requestTimeoutMs,
+      totalTimeoutMs: config.totalTimeoutMs,
+      maxSafeRetries: config.maxSafeRetries,
+      validateOutput: (value) => {
+        const output = validateRagAnswer(value);
+        if (output.usedSourceIds.some((sourceId) => !sourceIds.has(sourceId))) {
+          throw new AiGatewayError("AI_OUTPUT_INVALID", { retryable: true });
+        }
+        return output;
+      },
+    });
+    model = result.model;
+    attempts = result.attempts;
+    usage = result.usage;
+    const telemetry: GatewayTelemetry = {
+      requestId: id,
+      capability: "rag.answer",
+      provider,
+      model,
+      promptVersion: prompt.version,
+      schemaVersion: RAG_ANSWER_SCHEMA_VERSION,
+      outcome: "success",
+      latencyMs: Math.max(0, now() - startedAt),
+      attempts,
+      usage,
+    };
+    auditLog(telemetry);
+    return { output: result.output, telemetry, redaction: protectedInput.report };
+  } catch (error) {
+    const safeError = asAiGatewayError(error);
+    const telemetry: GatewayTelemetry = {
+      requestId: id,
+      capability: "rag.answer",
+      provider,
+      model,
+      promptVersion: prompt.version,
+      schemaVersion: RAG_ANSWER_SCHEMA_VERSION,
+      outcome: safeError.code === "AI_FEATURE_DISABLED" ? "disabled"
+        : safeError.code === "AI_RATE_LIMITED" ? "rate_limited" : "failed",
+      latencyMs: Math.max(0, now() - startedAt),
+      attempts,
+      usage,
+      errorCode: safeError.code,
     };
     (safeError as AiGatewayError & { telemetry?: GatewayTelemetry }).telemetry = telemetry;
     auditLog(telemetry);

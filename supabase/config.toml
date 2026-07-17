@@ -9,3 +9,6 @@ verify_jwt = true
 [functions.digitalcare-transcription]
 verify_jwt = true
 
+[functions.medical-record-rag]
+verify_jwt = true
+

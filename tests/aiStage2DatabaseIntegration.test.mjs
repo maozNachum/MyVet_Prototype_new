@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
@@ -21,6 +22,14 @@ const stage4MigrationPath = "supabase/migrations/20260717150000_digitalcare_tran
 const stage4RollbackPaths = [
   "supabase/rollback/stage4/01_disable_digitalcare_ai.sql",
   "supabase/rollback/stage4/02_remove_empty_digitalcare_ai.sql",
+];
+const stage5MigrationPaths = [
+  "supabase/migrations/20260717160000_secure_medical_record_rag.sql",
+  "supabase/migrations/20260717160500_secure_medical_record_rag_rpc.sql",
+];
+const stage5RollbackPaths = [
+  "supabase/rollback/stage5/01_disable_medical_record_rag.sql",
+  "supabase/rollback/stage5/02_remove_empty_medical_record_rag.sql",
 ];
 
 function splitSqlStatements(sql) {
@@ -332,6 +341,8 @@ const ids = {
   nurseA: "10000000-0000-4000-8000-000000000004",
   ownerA: "10000000-0000-4000-8000-000000000005",
   ownerB: "10000000-0000-4000-8000-000000000006",
+  vetB: "10000000-0000-4000-8000-000000000007",
+  secretaryA: "10000000-0000-4000-8000-000000000008",
 };
 
 async function createDatabase() {
@@ -351,6 +362,28 @@ async function applySqlFile(db, path) {
     } catch (error) {
       const preview = statement.replace(/\s+/g, " ").slice(0, 180);
       error.message = `${path} statement ${index + 1} (${preview}): ${error.message}`;
+      throw error;
+    }
+  }
+}
+
+async function applyStage5SqlForPGlite(db, path) {
+  let sql = readFileSync(path, "utf8")
+    .replace(/create extension if not exists vector with schema extensions\s*;/gi, "")
+    .replace(/extensions\.vector\(768\)/gi, "double precision[]")
+    .replace(/::extensions\.vector\b/gi, "::double precision[]")
+    .replace(/\(\(item\s*->\s*'embedding'\)::text\)::double precision\[\]/gi, "array_fill(0.0::double precision, array[768])");
+  const statements = splitSqlStatements(sql).filter((statement) => {
+    if (/using\s+hnsw\s*\(/i.test(statement)) return false;
+    if (path.includes("160500") && /myvet_rag_search\s*\(/i.test(statement)) return false;
+    return true;
+  });
+  for (const [index, statement] of statements.entries()) {
+    try {
+      await db.exec(statement);
+    } catch (error) {
+      const preview = statement.replace(/\s+/g, " ").slice(0, 180);
+      error.message = `${path} Stage5/PGlite statement ${index + 1} (${preview}): ${error.message}`;
       throw error;
     }
   }
@@ -381,9 +414,10 @@ async function seedTwoClinics(db) {
   const staff = await db.query(
     `insert into public.staff(clinic_id,auth_user_id,role,is_active,name) values
       ($1,$3,'clinic_admin',true,'Admin A'), ($2,$4,'clinic_admin',true,'Admin B'),
-      ($1,$5,'vet',true,'Vet A'), ($1,$6,'nurse',true,'Nurse A')
+      ($1,$5,'vet',true,'Vet A'), ($1,$6,'nurse',true,'Nurse A'),
+      ($2,$7,'vet',true,'Vet B'), ($1,$8,'secretary',true,'Secretary A')
      returning staff_id,auth_user_id`,
-    [clinicA, clinicB, ids.adminA, ids.adminB, ids.vetA, ids.nurseA],
+    [clinicA, clinicB, ids.adminA, ids.adminB, ids.vetA, ids.nurseA, ids.vetB, ids.secretaryA],
   );
   const staffByUser = Object.fromEntries(staff.rows.map((row) => [row.auth_user_id, row.staff_id]));
 
@@ -855,6 +889,171 @@ test("Stage 4 empty Preview rollback restores the Stage 3 surface", async () => 
       follow_up: [], warnings: [], unresolved_items: [], source_references: ["digitalcare_transcript"],
     };
     assert.equal((await db.query("select private.myvet_is_valid_visit_summary($1::jsonb) as valid", [JSON.stringify(stage4OnlySummary)])).rows[0].valid, false);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 5 RAG authorization derives tenant and owner scope and keeps raw chunks server-only", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage4MigrationPath);
+    for (const path of stage5MigrationPaths) await applyStage5SqlForPGlite(db, path);
+    const seed = await seedTwoClinics(db);
+    await db.query(
+      `insert into public.ai_feature_flags(clinic_id,capability,enabled,kill_switch)
+       values ($1,'rag_index',true,false),($1,'record_qa',true,false)
+       on conflict (clinic_id,capability) do update set enabled=excluded.enabled,kill_switch=excluded.kill_switch`,
+      [seed.clinicA],
+    );
+    await db.query(
+      `insert into public.ai_feature_flags(clinic_id,capability,enabled,kill_switch)
+       values ($1,'rag_index',true,false),($1,'record_qa',true,false)
+       on conflict (clinic_id,capability) do update set enabled=excluded.enabled,kill_switch=excluded.kill_switch`,
+      [seed.clinicB],
+    );
+
+    await setIdentity(db, null, "service_role");
+    const vetStatus = await db.query("select * from public.myvet_rag_status($1,$2)", [ids.vetA, seed.petA]);
+    assert.equal(vetStatus.rows[0].actor_kind, "staff");
+    assert.equal(vetStatus.rows[0].actor_role, "vet");
+    assert.equal(vetStatus.rows[0].can_index, true);
+    assert.equal(vetStatus.rows[0].can_query, true);
+
+    const ownerStatus = await db.query("select * from public.myvet_rag_status($1,$2)", [ids.ownerA, seed.petA]);
+    assert.equal(ownerStatus.rows[0].actor_kind, "owner");
+    assert.equal(ownerStatus.rows[0].can_index, false);
+    assert.equal(ownerStatus.rows[0].can_query, true);
+    await assert.rejects(
+      db.query("select * from public.myvet_rag_status($1,$2)", [ids.ownerA, seed.petB]),
+      /RAG_ACCESS_DENIED/,
+    );
+    await assert.rejects(
+      db.query("select * from public.myvet_rag_status($1,$2)", [ids.adminB, seed.petA]),
+      /RAG_ACCESS_DENIED/,
+    );
+    await assert.rejects(
+      db.query("select * from public.myvet_rag_status($1,$2)", [ids.vetB, seed.petA]),
+      /RAG_ACCESS_DENIED/,
+    );
+    await assert.rejects(
+      db.query("select * from public.myvet_rag_status($1,$2)", [ids.secretaryA, seed.petA]),
+      /RAG_ACCESS_DENIED/,
+    );
+
+    const sources = await db.query("select source_type,pet_id from public.myvet_rag_collect_sources($1,$2)", [ids.vetA, seed.petA]);
+    assert.equal(sources.rows.some((row) => row.source_type === "medical_visit"), true);
+    assert.equal(sources.rows.every((row) => Number(row.pet_id) === Number(seed.petA)), true);
+    await assert.rejects(
+      db.query("select * from public.myvet_rag_collect_sources($1,$2)", [ids.adminB, seed.petA]),
+      /RAG_INDEX_ACCESS_DENIED/,
+    );
+    const sourceRows = await db.query(
+      "select * from public.myvet_rag_collect_sources($1,$2) where source_type='medical_visit' limit 1",
+      [ids.vetA, seed.petA],
+    );
+    const source = sourceRows.rows[0];
+    const sourceFingerprint = createHash("sha256").update(source.source_content, "utf8").digest("hex");
+    const contentHash = createHash("sha256").update(source.source_content, "utf8").digest("hex");
+    const vectorPayload = Array(768).fill(0.01);
+    const chunks = JSON.stringify([{
+      chunk_index: 0,
+      content: source.source_content,
+      content_hash: contentHash,
+      embedding_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      embedding: vectorPayload,
+    }]);
+    const invalidHashChunks = JSON.stringify([{
+      chunk_index: 0,
+      content: source.source_content,
+      content_hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      embedding_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      embedding: vectorPayload,
+    }]);
+    await assert.rejects(
+      db.query(
+        "select * from public.myvet_replace_rag_source($1,$2,$3,$4,$5,'mock','mock-model','v1',$6::jsonb)",
+        [ids.vetA, seed.petA, source.source_type, source.source_record_id, sourceFingerprint, invalidHashChunks],
+      ),
+      /RAG_INPUT_INVALID/,
+    );
+    const duplicateChunks = JSON.stringify([JSON.parse(chunks)[0], JSON.parse(chunks)[0]]);
+    await assert.rejects(
+      db.query(
+        "select * from public.myvet_replace_rag_source($1,$2,$3,$4,$5,'mock','mock-model','v1',$6::jsonb)",
+        [ids.vetA, seed.petA, source.source_type, source.source_record_id, sourceFingerprint, duplicateChunks],
+      ),
+      /RAG_INPUT_INVALID/,
+    );
+    const firstStore = await db.query(
+      "select * from public.myvet_replace_rag_source($1,$2,$3,$4,$5,'mock','mock-model','v1',$6::jsonb)",
+      [ids.vetA, seed.petA, source.source_type, source.source_record_id, sourceFingerprint, chunks],
+    );
+    assert.equal(firstStore.rows[0].changed, true);
+    const secondStore = await db.query(
+      "select * from public.myvet_replace_rag_source($1,$2,$3,$4,$5,'mock','mock-model','v1',$6::jsonb)",
+      [ids.vetA, seed.petA, source.source_type, source.source_record_id, sourceFingerprint, chunks],
+    );
+    assert.equal(secondStore.rows[0].changed, false);
+    const clinicBSources = await db.query(
+      "select * from public.myvet_rag_collect_sources($1,$2) where source_type='medical_visit' limit 1",
+      [ids.vetB, seed.petB],
+    );
+    await assert.rejects(
+      db.query(
+        "select * from public.myvet_replace_rag_source($1,$2,$3,$4,$5,'mock','mock-model','v1',$6::jsonb)",
+        [ids.vetA, seed.petA, clinicBSources.rows[0].source_type, clinicBSources.rows[0].source_record_id,
+          createHash("sha256").update(clinicBSources.rows[0].source_content, "utf8").digest("hex"), chunks],
+      ),
+      /RAG_SOURCE_ACCESS_DENIED/,
+    );
+    assert.equal((await db.query(
+      "select count(*)::int as count from public.ai_document_chunks where source_type='medical_visit' and status='ready'",
+    )).rows[0].count, 1);
+    await db.query("update public.medical_visits set reason='Updated follow-up' where visit_id=$1", [seed.visitA]);
+    assert.equal((await db.query(
+      "select count(*)::int as count from public.ai_document_chunks where source_type='medical_visit' and status='ready'",
+    )).rows[0].count, 0);
+    assert.equal((await db.query(
+      "select count(*)::int as count from public.ai_document_chunks where source_type='medical_visit' and status='superseded'",
+    )).rows[0].count, 1);
+    await resetIdentity(db);
+
+    await db.query(
+      `insert into public.ai_document_chunks(
+        clinic_id,owner_id,pet_id,source_type,source_record_id,source_date,source_title,
+        chunk_index,content,content_hash,status,approval_status,release_to_client,indexed_at
+      ) values ($1,'OWNER-A',$2,'approved_visit_summary','synthetic','2026-07-17','סיכום מאושר',
+        0,'מידע מאושר','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'ready','released',true,now())`,
+      [seed.clinicA, seed.petA],
+    );
+    await db.query(
+      `insert into public.ai_document_chunks(
+        clinic_id,owner_id,pet_id,source_type,source_record_id,source_date,source_title,
+        chunk_index,content,content_hash,status,approval_status,release_to_client,indexed_at
+      ) values ($1,'OWNER-A',$2,'medical_document','synthetic-private','2026-07-17','מסמך פנימי',
+        0,'מידע פנימי','cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        'ready','approved',false,now())`,
+      [seed.clinicA, seed.petA],
+    );
+    await setIdentity(db, null, "service_role");
+    const releasedStatus = await db.query("select * from public.myvet_rag_status($1,$2)", [ids.ownerA, seed.petA]);
+    assert.equal(Number(releasedStatus.rows[0].indexed_chunks), 1);
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.vetA);
+    await assert.rejects(db.query("select content from public.ai_document_chunks"));
+    await assert.rejects(db.query("select embedding from public.ai_document_embeddings"));
+    await resetIdentity(db);
+
+    await setIdentity(db, null, "service_role");
+    await db.query("delete from public.ai_document_chunks where source_type is not null");
+    await applyStage5SqlForPGlite(db, stage5RollbackPaths[0]);
+    await db.exec("reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claim.role', '', false);");
+    await applyStage5SqlForPGlite(db, stage5RollbackPaths[1]);
+    assert.equal((await db.query("select to_regprocedure('public.myvet_rag_status(uuid,bigint)') as value")).rows[0].value, null);
   } finally {
     await db.close();
   }

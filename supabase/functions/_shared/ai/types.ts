@@ -5,7 +5,9 @@ export type AiCapability =
   | "visit-summary.generate"
   | "digitalcare.transcribe"
   | "digitalcare.recording"
-  | "digitalcare.summary";
+  | "digitalcare.summary"
+  | "rag.index"
+  | "rag.answer";
 
 export type VetBotMode =
   | "dashboard"
@@ -50,6 +52,18 @@ export interface DigitalCareTranscriptionGatewayInput {
 export interface DigitalCareSummaryGatewayInput {
   actorId: string;
   transcript: string;
+}
+
+export interface RagAnswerGatewayInput {
+  actorId: string;
+  question: string;
+  sources: Array<{
+    chunkId: string;
+    sourceType: string;
+    sourceDate?: string | null;
+    sourceTitle: string;
+    content: string;
+  }>;
 }
 
 export interface ProviderUsage {
@@ -99,6 +113,26 @@ export interface TranscriptionProviderRequest<TOutput> {
 export interface TranscriptionProviderAdapter {
   readonly id: string;
   transcribeStructured<TOutput>(request: TranscriptionProviderRequest<TOutput>): Promise<ProviderResult<TOutput>>;
+}
+
+export interface EmbeddingProviderRequest {
+  text: string;
+  task: "retrieval_document" | "retrieval_query";
+  model: string;
+  dimensions: 768;
+  timeoutMs: number;
+}
+
+export interface EmbeddingProviderResult {
+  embedding: number[];
+  provider: string;
+  model: string;
+  usage: ProviderUsage;
+}
+
+export interface EmbeddingProviderAdapter {
+  readonly id: string;
+  embed(request: EmbeddingProviderRequest): Promise<EmbeddingProviderResult>;
 }
 
 export type GatewayOutcome = "success" | "failed" | "disabled" | "rate_limited";

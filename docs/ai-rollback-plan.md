@@ -110,3 +110,12 @@
 - `AI_GATEWAY_ENABLED=false` מחזיר זמנית קוד ישן שאינו כולל את כל בקרות Stage 1; זהו מצב התאוששות, לא מצב יעד.
 - `ai-insights-chat` החי אינו מנוהל בריפו ולא שונה. אירוע בו דורש טיפול נפרד לאחר אימות בעלות ושימוש.
 - שינוי secrets זמין לפונקציות ללא redeploy לפי תיעוד Supabase, אך יש לבצע smoke test מיד לאחר כל שינוי.
+
+## 9. Rollback מדויק לשלב 5
+
+1. להשבית מיד `AI_RAG_INDEX_ENABLED` ו־`AI_RAG_QA_ENABLED`.
+2. להריץ `supabase/rollback/stage5/01_disable_medical_record_rag.sql`; פעולה זו שומרת vectors ו־audit ואינה משפיעה על יכולות AI אחרות.
+3. להחזיר את קוד Stage 5 עם `git revert` של commit ייעודי, לא עם reset ולא באמצעות מחיקת migrations.
+4. אם סביבת Preview ריקה לחלוטין, להריץ `02_remove_empty_medical_record_rag.sql`. הסקריפט מסרב להמשיך כאשר קיימים chunks של Stage 5.
+5. בסביבה עם נתונים אמיתיים אין להסיר עמודות/vector או למחוק chunks. משאירים flags כבויים ומבצעים forward-fix או שחזור לנקודת הגיבוי.
+6. לאחר rollback להריץ `npm run test:vetbot`, `npm run build`, `npm run test:frontend-secrets` ו־`git diff --check`.

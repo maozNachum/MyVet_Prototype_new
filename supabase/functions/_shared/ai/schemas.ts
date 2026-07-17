@@ -4,6 +4,29 @@ import type { VetBotMode } from "./types.ts";
 export const VETBOT_OUTPUT_SCHEMA_VERSION = "2026-07-16.1";
 export const VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION = "2026-07-17.1";
 export const DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION = "2026-07-17.1";
+export const RAG_ANSWER_SCHEMA_VERSION = "2026-07-17.1";
+
+export const RAG_ANSWER_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: { type: "string", enum: ["answered", "insufficient", "conflict"] },
+    answer: { type: "string", maxLength: 2400 },
+    usedSourceIds: {
+      type: "array",
+      maxItems: 6,
+      uniqueItems: true,
+      items: { type: "string", maxLength: 80 },
+    },
+  },
+  required: ["status", "answer", "usedSourceIds"],
+};
+
+export interface ValidatedRagAnswer {
+  status: "answered" | "insufficient" | "conflict";
+  answer: string;
+  usedSourceIds: string[];
+}
 
 const VISIT_SUMMARY_FIELDS = [
   "chief_complaint", "symptoms", "relevant_history", "examination_findings",
@@ -303,6 +326,20 @@ export function validateDigitalCareTranscript(value: unknown): ValidatedDigitalC
   const transcript = text(result.transcript, 300_000) as string;
   if (!transcript.trim()) invalid();
   return { transcript: transcript.trim(), language: text(result.language, 20) as string };
+}
+
+export function validateRagAnswer(value: unknown): ValidatedRagAnswer {
+  const result = object(value);
+  exactKeys(result, ["status", "answer", "usedSourceIds"]);
+  const status = enumeration(result.status, ["answered", "insufficient", "conflict"] as const);
+  const answer = text(result.answer, 2_400) as string;
+  const usedSourceIds = stringArray(result.usedSourceIds, 6, 80);
+  if (!answer.trim() || new Set(usedSourceIds).size !== usedSourceIds.length) invalid();
+  if (/system\s*prompt|developer\s*message|api[_ -]?key|service[_ -]?role|supabase_service_role/i.test(answer)
+    || /פרומפט\s*(מערכת|סודי)|הוראות\s*(מערכת|מפתח)|חשוף\s*(סוד|מפתח|פרומפט)/i.test(answer)) invalid();
+  if (status === "answered" && usedSourceIds.length === 0) invalid();
+  if (status === "insufficient" && usedSourceIds.length > 0) invalid();
+  return { status, answer: answer.trim(), usedSourceIds };
 }
 
 function validateFinding(value: unknown) {

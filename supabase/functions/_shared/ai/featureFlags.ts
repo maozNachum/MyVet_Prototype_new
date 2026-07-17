@@ -10,6 +10,8 @@ export const AI_FEATURE_ENV = {
   "digitalcare.transcribe": "AI_DIGITALCARE_TRANSCRIPTION_ENABLED",
   "digitalcare.recording": "AI_DIGITALCARE_RECORDING_ENABLED",
   "digitalcare.summary": "AI_DIGITALCARE_SUMMARY_ENABLED",
+  "rag.index": "AI_RAG_INDEX_ENABLED",
+  "rag.answer": "AI_RAG_QA_ENABLED",
 } as const;
 
 function enabled(value: string | undefined, fallback = true) {
@@ -19,6 +21,9 @@ function enabled(value: string | undefined, fallback = true) {
 
 export function isAiCapabilityEnabled(capability: AiCapability, env: EnvReader) {
   if (!enabled(env(AI_FEATURE_ENV.global))) return false;
+  if (capability === "rag.index" || capability === "rag.answer") {
+    return enabled(env(AI_FEATURE_ENV[capability]), false);
+  }
   if (capability === "digitalcare.transcribe" || capability === "digitalcare.recording" || capability === "digitalcare.summary") {
     return enabled(env(AI_FEATURE_ENV[capability]), false);
   }
