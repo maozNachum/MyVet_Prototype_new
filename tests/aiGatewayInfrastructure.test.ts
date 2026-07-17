@@ -322,6 +322,22 @@ test("Gemini adapter uses a configured fallback after a transient provider failu
   assert.equal(calls, 2);
 });
 
+test("Gemini adapter falls back when the configured primary model is unavailable", async () => {
+  const requestedModels: string[] = [];
+  const fetchMock: typeof fetch = async (input) => {
+    const url = String(input);
+    const model = decodeURIComponent(url.match(/models\/([^:]+):generateContent/)?.[1] || "");
+    requestedModels.push(model);
+    return model === "primary"
+      ? new Response("model unavailable", { status: 404 })
+      : geminiResponse();
+  };
+  const adapter = new GeminiProviderAdapter(envFrom({ GEMINI_API_KEY: "test-only-placeholder" }), fetchMock);
+  const result = await adapter.generateStructured(providerRequest({ maxSafeRetries: 1 }));
+  assert.equal(result.model, "fallback");
+  assert.deepEqual(requestedModels, ["primary", "fallback"]);
+});
+
 test("provider failure returns a stable public error without provider response details", async () => {
   const fetchMock: typeof fetch = async () => new Response("internal-provider-secret", { status: 403 });
   const adapter = new GeminiProviderAdapter(envFrom({ GEMINI_API_KEY: "test-only-placeholder" }), fetchMock);

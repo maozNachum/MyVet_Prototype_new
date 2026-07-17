@@ -65,6 +65,10 @@ export class GeminiProviderAdapter implements AiProviderAdapter {
 
     const startedAt = Date.now();
     const transientStatuses = new Set([429, 500, 502, 503, 504]);
+    // A configured model can be unavailable (404) or reject a capability/schema
+    // that another configured model supports (400). Move to the next server-owned
+    // model without retrying the same incompatible model.
+    const modelFallbackStatuses = new Set([400, 404, ...transientStatuses]);
     let attempts = 0;
     let lastTransient: unknown;
 
@@ -129,7 +133,7 @@ export class GeminiProviderAdapter implements AiProviderAdapter {
             if (retry < request.maxSafeRetries) continue;
             throw error;
           }
-          if (error instanceof ProviderHttpError && transientStatuses.has(error.status) && hasFallback) {
+          if (error instanceof ProviderHttpError && modelFallbackStatuses.has(error.status) && hasFallback) {
             lastTransient = error;
             break;
           }
