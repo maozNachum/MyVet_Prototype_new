@@ -5,7 +5,8 @@
 1. `docs/PROJECT_CONTEXT_HE.md`
 2. `docs/SUPABASE_ARCHITECTURE_HE.md`
 3. `docs/COLLABORATION_HE.md`
-4. לפי הצורך: `docs/DEMO_SCENARIO_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, `docs/VETBOT_PRIVACY_DPIA_HE.md`
+4. `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md` — מצב תוכנית ה־AI, מה הושלם ומה עדיין חסום.
+5. לפי הצורך: `docs/DEMO_SCENARIO_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, `docs/VETBOT_PRIVACY_DPIA_HE.md`
 
 ## מטרת המוצר
 
@@ -91,4 +92,3 @@ MyVet הוא פרויקט גמר: מערכת מידע מלאה למרפאה וט
 6. `npm run build` עבר.
 7. `git diff --check` עבר.
 8. נכתב handoff קצר עם הקבצים ששונו והבדיקות שבוצעו.
-
