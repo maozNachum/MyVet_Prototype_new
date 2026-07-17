@@ -14,7 +14,8 @@
     "test:ai-data-local": "node --test tests/aiStage2DatabaseIntegration.test.mjs",
     "test:ai-data-integration": "node scripts/verify-ai-stage2-rls.mjs",
     "test:visit-summary": "node --experimental-strip-types --test tests/visitSummarySecurity.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseIntegration.test.mjs",
-    "test:vetbot": "node --experimental-strip-types --test tests/aiPrivacy.test.ts tests/vetbotSecurity.test.ts tests/petImport.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseSecurity.test.ts tests/aiStage2DatabaseIntegration.test.mjs tests/visitSummarySecurity.test.ts",
+    "test:digitalcare-ai": "node --experimental-strip-types --test tests/digitalCareAiSecurity.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseIntegration.test.mjs",
+    "test:vetbot": "node --experimental-strip-types --test tests/aiPrivacy.test.ts tests/vetbotSecurity.test.ts tests/petImport.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseSecurity.test.ts tests/aiStage2DatabaseIntegration.test.mjs tests/visitSummarySecurity.test.ts tests/digitalCareAiSecurity.test.ts",
     "test:anon-access": "node scripts/verify-anonymous-access.mjs"
   },
   "dependencies": {

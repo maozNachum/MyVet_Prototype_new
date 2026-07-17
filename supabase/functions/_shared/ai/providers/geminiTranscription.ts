@@ -33,7 +33,13 @@ async function requestWithTimeout(fetchFn: FetchLike, url: string, init: Request
 
 export class GeminiTranscriptionAdapter implements TranscriptionProviderAdapter {
   readonly id = "gemini";
-  constructor(private readonly env: EnvReader, private readonly fetchFn: FetchLike = fetch) {}
+  private readonly env: EnvReader;
+  private readonly fetchFn: FetchLike;
+
+  constructor(env: EnvReader, fetchFn: FetchLike = fetch) {
+    this.env = env;
+    this.fetchFn = fetchFn;
+  }
 
   async transcribeStructured<TOutput>(request: TranscriptionProviderRequest<TOutput>): Promise<ProviderResult<TOutput>> {
     const apiKey = this.env("GEMINI_API_KEY");

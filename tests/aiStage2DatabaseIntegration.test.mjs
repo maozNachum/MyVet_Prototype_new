@@ -17,6 +17,11 @@ const rollbackPaths = [
 ];
 const stage3MigrationPath = "supabase/migrations/20260717120000_visit_summary_workflow.sql";
 const stage3RollbackPath = "supabase/rollback/stage3/01_remove_visit_summary_workflow.sql";
+const stage4MigrationPath = "supabase/migrations/20260717150000_digitalcare_transcription_workflow.sql";
+const stage4RollbackPaths = [
+  "supabase/rollback/stage4/01_disable_digitalcare_ai.sql",
+  "supabase/rollback/stage4/02_remove_empty_digitalcare_ai.sql",
+];
 
 function splitSqlStatements(sql) {
   const statements = [];
@@ -716,6 +721,140 @@ test("Stage 3 workflow rollback removes capabilities without deleting protected 
     assert.equal((await db.query("select to_regprocedure('public.myvet_transition_visit_summary(uuid,text,jsonb,text)') as value")).rows[0].value, null);
     assert.equal((await db.query("select to_regprocedure('public.myvet_create_visit_summary_draft(uuid,bigint,jsonb,uuid,text,text,text,integer,integer,integer)') as value")).rows[0].value, null);
     assert.notEqual((await db.query("select to_regclass('public.ai_artifacts') as value")).rows[0].value, null);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 4 DigitalCare requires consent, isolates tenants and keeps AI output behind veterinarian approval", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage4MigrationPath);
+    const seed = await seedTwoClinics(db);
+    const appointmentA = await db.query(
+      "insert into public.appointments(clinic_id,pet_id,start_time,end_time,appointment_mode,appointment_type) values ($1,$2,now(),now()+interval '30 minutes','video','DigitalCare') returning appointment_id",
+      [seed.clinicA, seed.petA],
+    );
+    const appointmentB = await db.query(
+      "insert into public.appointments(clinic_id,pet_id,start_time,end_time,appointment_mode,appointment_type) values ($1,$2,now(),now()+interval '30 minutes','video','DigitalCare') returning appointment_id",
+      [seed.clinicB, seed.petB],
+    );
+    const conversationA = await db.query(
+      "insert into public.conversations(clinic_id,owner_id,pet_id,subject,status,priority) values ($1,'OWNER-A',$2,'Consultation','open','normal') returning conversation_id",
+      [seed.clinicA, seed.petA],
+    );
+    const sessionA = await db.query(
+      `insert into public.video_sessions(clinic_id,conversation_id,owner_id,pet_id,staff_id,meeting_url,status)
+       values ($1,$2,'OWNER-A',$3,$4,'https://meet.google.com/test','active') returning session_id`,
+      [seed.clinicA, conversationA.rows[0].conversation_id, seed.petA, seed.vetStaffA],
+    );
+    await db.query(
+      `update public.ai_feature_flags set enabled=true,kill_switch=false
+       where clinic_id=$1 and capability in ('digitalcare_transcription','digitalcare_recording','digitalcare_summary')`,
+      [seed.clinicA],
+    );
+    await db.query(
+      `insert into public.ai_feature_flags(clinic_id,capability,enabled,kill_switch)
+       values ($1,'visit_summary',true,false) on conflict (clinic_id,capability) do update set enabled=true,kill_switch=false`,
+      [seed.clinicA],
+    );
+    const objectPath = `${seed.clinicA}/${seed.petA}/digitalcare/${sessionA.rows[0].session_id}/${crypto.randomUUID()}.webm`;
+    const beginArgs = [ids.vetA, sessionA.rows[0].session_id, appointmentA.rows[0].appointment_id,
+      "digitalcare-consent-he-2026-07-17.1", true, false, false, objectPath, "audio/webm", 1];
+
+    await assert.rejects(
+      db.query("select * from public.myvet_begin_digitalcare_capture($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [...beginArgs.slice(0, 4), false, ...beginArgs.slice(5)]),
+      /DIGITALCARE_CONSENT_REQUIRED/,
+    );
+    await assert.rejects(
+      db.query("select * from public.myvet_begin_digitalcare_capture($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [ids.nurseA, ...beginArgs.slice(1)]),
+      /DIGITALCARE_ACCESS_DENIED/,
+    );
+    await assert.rejects(
+      db.query("select * from public.myvet_begin_digitalcare_capture($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [ids.vetA, sessionA.rows[0].session_id, appointmentB.rows[0].appointment_id, ...beginArgs.slice(3)]),
+      /DIGITALCARE_ACCESS_DENIED/,
+    );
+
+    const started = await db.query(
+      "select * from public.myvet_begin_digitalcare_capture($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", beginArgs,
+    );
+    assert.equal(started.rows.length, 1);
+    assert.equal(started.rows[0].owner_id, "OWNER-A");
+    const repeated = await db.query(
+      "select * from public.myvet_begin_digitalcare_capture($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", beginArgs,
+    );
+    assert.equal(repeated.rows[0].recording_document_id, started.rows[0].recording_document_id);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_documents where appointment_id=$1", [appointmentA.rows[0].appointment_id])).rows[0].count, 1);
+
+    const transcript = await db.query(
+      `select * from public.myvet_complete_digitalcare_transcript(
+        $1,$2,'Automatic consultation transcript','he',$3,'test-provider','test-model',25,10,20
+      )`,
+      [ids.vetA, sessionA.rows[0].session_id, crypto.randomUUID()],
+    );
+    assert.equal(transcript.rows[0].status, "draft");
+
+    await setIdentity(db, ids.ownerA);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_artifacts where artifact_type='transcript'")).rows[0].count, 0);
+    await resetIdentity(db);
+    await setIdentity(db, ids.adminB);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_consent_records where video_session_id=$1", [sessionA.rows[0].session_id])).rows[0].count, 0);
+    await resetIdentity(db);
+
+    await setIdentity(db, null, "service_role");
+
+    const visit = await db.query("select public.myvet_ensure_digitalcare_visit($1,$2) as visit_id", [ids.vetA, sessionA.rows[0].session_id]);
+    const summary = {
+      chief_complaint: "DigitalCare consultation", symptoms: [], relevant_history: [],
+      examination_findings: [], tests: [], clinical_assessment: "Not stated",
+      treatments: [], medications: [], follow_up: [], warnings: [],
+      unresolved_items: ["Veterinarian review required"], source_references: ["digitalcare_transcript"],
+    };
+    const draft = await db.query(
+      `select * from public.myvet_create_visit_summary_draft(
+        $1,$2,$3::jsonb,$4,'test-provider','test-model','2026-07-17.1',25,10,20
+      )`,
+      [ids.vetA, visit.rows[0].visit_id, JSON.stringify(summary), crypto.randomUUID()],
+    );
+    await db.query("select public.myvet_link_digitalcare_summary_source($1,$2,$3)", [ids.vetA, sessionA.rows[0].session_id, draft.rows[0].artifact_id]);
+    const shell = await db.query("select treatment,entry_data->>'aiContentApproved' as approved from public.medical_visits where visit_id=$1", [visit.rows[0].visit_id]);
+    assert.equal(shell.rows[0].treatment, null);
+    assert.equal(shell.rows[0].approved, "false");
+
+    await setIdentity(db, ids.nurseA);
+    await assert.rejects(
+      db.query("select * from public.myvet_transition_visit_summary($1,'approve',$2::jsonb,null)", [draft.rows[0].artifact_id, JSON.stringify(summary)]),
+      /VISIT_SUMMARY_ACCESS_DENIED/,
+    );
+    await resetIdentity(db);
+    await setIdentity(db, ids.vetA);
+    const approved = await db.query("select * from public.myvet_transition_visit_summary($1,'approve',$2::jsonb,null)", [draft.rows[0].artifact_id, JSON.stringify(summary)]);
+    assert.equal(approved.rows[0].status, "approved");
+    await resetIdentity(db);
+    const official = await db.query("select entry_data->>'aiContentApproved' as approved from public.medical_visits where visit_id=$1", [visit.rows[0].visit_id]);
+    assert.equal(official.rows[0].approved, "true");
+    assert.equal((await db.query("select count(*)::int as count from public.ai_sources where artifact_id=$1 and source_type='digitalcare'", [approved.rows[0].artifact_id])).rows[0].count, 1);
+  } finally {
+    await db.close();
+  }
+});
+
+test("Stage 4 empty Preview rollback restores the Stage 3 surface", async () => {
+  const db = await createDatabase();
+  try {
+    await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, stage4MigrationPath);
+    for (const path of stage4RollbackPaths) await applySqlFile(db, path);
+    assert.equal((await db.query("select to_regprocedure('public.myvet_begin_digitalcare_capture(uuid,bigint,bigint,text,boolean,boolean,boolean,text,text,bigint)') as value")).rows[0].value, null);
+    assert.equal((await db.query("select count(*)::int as count from information_schema.columns where table_schema='public' and table_name='video_sessions' and column_name='transcription_status'")).rows[0].count, 0);
+    assert.equal((await db.query("select count(*)::int as count from public.ai_feature_flags where capability in ('digitalcare_transcription','digitalcare_recording','digitalcare_summary')")).rows[0].count, 0);
+    const stage4OnlySummary = {
+      chief_complaint: "x", symptoms: [], relevant_history: [], examination_findings: [],
+      tests: [], clinical_assessment: "x", treatments: [], medications: [],
+      follow_up: [], warnings: [], unresolved_items: [], source_references: ["digitalcare_transcript"],
+    };
+    assert.equal((await db.query("select private.myvet_is_valid_visit_summary($1::jsonb) as valid", [JSON.stringify(stage4OnlySummary)])).rows[0].valid, false);
   } finally {
     await db.close();
   }

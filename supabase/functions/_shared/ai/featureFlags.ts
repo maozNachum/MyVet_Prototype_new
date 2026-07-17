@@ -8,6 +8,7 @@ export const AI_FEATURE_ENV = {
   "vetbot.appointment-actions": "AI_VETBOT_APPOINTMENT_ACTIONS_ENABLED",
   "visit-summary.generate": "AI_VISIT_SUMMARY_ENABLED",
   "digitalcare.transcribe": "AI_DIGITALCARE_TRANSCRIPTION_ENABLED",
+  "digitalcare.recording": "AI_DIGITALCARE_RECORDING_ENABLED",
   "digitalcare.summary": "AI_DIGITALCARE_SUMMARY_ENABLED",
 } as const;
 
@@ -18,7 +19,7 @@ function enabled(value: string | undefined, fallback = true) {
 
 export function isAiCapabilityEnabled(capability: AiCapability, env: EnvReader) {
   if (!enabled(env(AI_FEATURE_ENV.global))) return false;
-  if (capability === "digitalcare.transcribe" || capability === "digitalcare.summary") {
+  if (capability === "digitalcare.transcribe" || capability === "digitalcare.recording" || capability === "digitalcare.summary") {
     return enabled(env(AI_FEATURE_ENV[capability]), false);
   }
   if (capability === "visit-summary.generate") {

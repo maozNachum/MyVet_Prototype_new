@@ -27,6 +27,7 @@ import {
 import { supabase } from "../../services/supabaseClient";
 import { publishDigitalMessageToOwner } from "../../services/portalNotifications";
 import { DigitalCareAssistant } from "../components/ai/PageAssistants";
+import { DigitalCareTranscriptionPanel } from "../components/DigitalCareTranscriptionPanel";
 import { inferOperationalUrgency } from "../components/ai/aiProactiveEngine";
 import { getStaffId, getStaffName } from "../data/staffAuth";
 import { toast } from "sonner";
@@ -118,6 +119,13 @@ interface VideoSessionRow {
   ended_at: string | null;
   notes: string | null;
   created_at: string;
+  appointment_id: number | null;
+  visit_id: number | null;
+  transcription_status: "idle" | "consent_pending" | "capturing" | "processing" | "ready" | "failed" | "deleted";
+  recording_status: "disabled" | "consent_pending" | "recording" | "stored" | "failed" | "deleted";
+  recording_document_id: string | null;
+  transcript_artifact_id: string | null;
+  consent_notice_version: string | null;
 }
 
 interface ConversationVM extends ConversationRow {
@@ -343,6 +351,7 @@ export function DigitalCare() {
   const routePriority = searchParams.get("priority");
   const routePetId = Number(searchParams.get("pet_id")) || null;
   const routeOwnerId = searchParams.get("owner_id")?.trim() || null;
+  const routeAppointmentId = Number(searchParams.get("appointment_id")) || null;
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [pets, setPets] = useState<PetRow[]>([]);
   const [conversations, setConversations] = useState<ConversationVM[]>([]);
@@ -1161,6 +1170,7 @@ export function DigitalCare() {
               meeting_url: meetingUrl,
               status: "scheduled",
               scheduled_at: pendingRequest.scheduled_at || now,
+              appointment_id: pendingRequest.appointment_id || routeAppointmentId,
               notes:
                 "קישור Google Meet שנוצר/הודבק על ידי צוות המרפאה בעקבות בקשת לקוח",
             })
@@ -1177,6 +1187,7 @@ export function DigitalCare() {
               meeting_url: meetingUrl,
               status: "scheduled",
               scheduled_at: now,
+              appointment_id: routeAppointmentId,
               notes: "קישור Google Meet שנוצר/הודבק על ידי צוות המרפאה",
             })
             .select()
@@ -2711,6 +2722,10 @@ export function DigitalCare() {
                   סמן כשיחה הסתיימה
                 </button>
               </div>
+              <DigitalCareTranscriptionPanel
+                videoSessionId={videoModal.session_id}
+                appointmentId={videoModal.appointment_id || routeAppointmentId}
+              />
             </div>
           </div>
         </div>

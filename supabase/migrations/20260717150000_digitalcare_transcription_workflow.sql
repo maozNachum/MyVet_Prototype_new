@@ -200,8 +200,9 @@ begin
   end if;
 
   select session.clinic_id, session.session_id, session.appointment_id as linked_appointment_id,
+    session.recording_document_id, session.transcription_status,
     session.owner_id, session.pet_id, appointment.appointment_id,
-    appointment.appointment_mode, staff.staff_id
+    appointment.appointment_mode, staff.staff_id, owner.auth_user_id as owner_auth_user_id
   into target
   from public.video_sessions as session
   join public.appointments as appointment
@@ -211,6 +212,8 @@ begin
   join public.patients as pet
     on pet.clinic_id = session.clinic_id and pet.pet_id = session.pet_id
    and pet.owner_id = session.owner_id
+  join public.owners as owner
+    on owner.clinic_id = session.clinic_id and owner.owner_id = session.owner_id
   join public.staff as staff
     on staff.clinic_id = session.clinic_id
    and staff.auth_user_id = requested_actor_user_id
@@ -234,6 +237,17 @@ begin
   ) then raise exception 'AI_FEATURE_DISABLED'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('digitalcare:' || requested_video_session_id::text, 0));
+  if target.recording_document_id is not null
+    and target.transcription_status in ('capturing','processing','ready') then
+    return query select target.clinic_id, target.pet_id, target.owner_id,
+      requested_appointment_id, requested_video_session_id, document.document_id,
+      document.object_path, document.retention_until
+    from public.ai_documents as document
+    where document.clinic_id = target.clinic_id
+      and document.document_id = target.recording_document_id
+      and document.deleted_at is null;
+    if found then return; end if;
+  end if;
   update public.video_sessions set appointment_id = requested_appointment_id,
     transcription_status = 'capturing',
     recording_status = case when requested_recording_enabled then 'recording' else 'disabled' end,
@@ -241,19 +255,19 @@ begin
   where session_id = requested_video_session_id;
 
   insert into public.ai_consent_records(
-    clinic_id, owner_id, purpose, notice_version, status, capture_source,
+    clinic_id, owner_id, auth_user_id, purpose, notice_version, status, capture_source,
     granted_at, created_by, appointment_id, video_session_id
   ) values (
-    target.clinic_id, target.owner_id, 'transcription', requested_notice_version,
+    target.clinic_id, target.owner_id, target.owner_auth_user_id, 'transcription', requested_notice_version,
     'granted', 'staff_assisted', now(), requested_actor_user_id,
     requested_appointment_id, requested_video_session_id
   ) on conflict do nothing;
   if requested_recording_enabled then
     insert into public.ai_consent_records(
-      clinic_id, owner_id, purpose, notice_version, status, capture_source,
+      clinic_id, owner_id, auth_user_id, purpose, notice_version, status, capture_source,
       granted_at, created_by, appointment_id, video_session_id
     ) values (
-      target.clinic_id, target.owner_id, 'recording', requested_notice_version,
+      target.clinic_id, target.owner_id, target.owner_auth_user_id, 'recording', requested_notice_version,
       'granted', 'staff_assisted', now(), requested_actor_user_id,
       requested_appointment_id, requested_video_session_id
     ) on conflict do nothing;
@@ -267,7 +281,7 @@ begin
   if requested_recording_enabled then
     select greatest(1, least(30, coalesce((configuration ->> 'retention_days')::integer, 7)))
       into retention_days from public.ai_feature_flags
-      where ai_feature_flags.clinic_id = target.clinic_id and capability = 'digitalcare_recording';
+    where ai_feature_flags.clinic_id = target.clinic_id and ai_feature_flags.capability = 'digitalcare_recording';
   end if;
   insert into public.ai_documents(
     clinic_id, owner_id, pet_id, appointment_id, document_kind, bucket_id,
@@ -290,8 +304,7 @@ begin
     requested_actor_user_id, target.staff_id, target.owner_id, target.pet_id,
     requested_appointment_id, 'running', 'digitalcare-capture:' || requested_video_session_id::text,
     now()
-  ) on conflict (clinic_id, capability, idempotency_key) where idempotency_key is not null
-    do update set updated_at = now() returning public.ai_operations.operation_id into operation_id;
+  ) returning public.ai_operations.operation_id into operation_id;
   insert into public.ai_audit_events(
     clinic_id, actor_user_id, operation_id, capability, event_type, outcome
   ) values
@@ -335,7 +348,7 @@ begin
     or char_length(coalesce(requested_language, '')) not between 2 and 20 then
     raise exception 'DIGITALCARE_TRANSCRIPT_INVALID';
   end if;
-  select session.*, staff.staff_id into target
+  select session.*, staff.staff_id as actor_staff_id into target
   from public.video_sessions as session
   join public.staff as staff on staff.clinic_id = session.clinic_id
     and staff.auth_user_id = requested_actor_user_id and staff.is_active and staff.role = 'vet'
@@ -344,16 +357,15 @@ begin
     and session.transcription_status in ('capturing','processing','ready');
   if target.clinic_id is null or not exists (
     select 1 from public.ai_consent_records
-    where clinic_id = target.clinic_id and owner_id = target.owner_id
-      and purpose = 'transcription' and status = 'granted'
-      and appointment_id = target.appointment_id and video_session_id = target.session_id
+    where ai_consent_records.clinic_id = target.clinic_id and ai_consent_records.owner_id = target.owner_id
+      and ai_consent_records.purpose = 'transcription' and ai_consent_records.status = 'granted'
+      and ai_consent_records.appointment_id = target.appointment_id and ai_consent_records.video_session_id = target.session_id
   ) then raise exception 'DIGITALCARE_ACCESS_DENIED'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('digitalcare-transcript:' || requested_video_session_id::text, 0));
-  select source.artifact_id into existing_id from public.ai_sources as source
-    join public.ai_artifacts as artifact on artifact.clinic_id = source.clinic_id and artifact.artifact_id = source.artifact_id
-    where source.clinic_id = target.clinic_id and source.source_type = 'digitalcare'
-      and source.source_record_id = 'transcript:' || requested_video_session_id::text
+  select artifact.artifact_id into existing_id from public.ai_artifacts as artifact
+    where artifact.clinic_id = target.clinic_id
+      and artifact.artifact_id = target.transcript_artifact_id
       and artifact.artifact_type = 'transcript' and artifact.deleted_at is null limit 1;
   if existing_id is not null then
     return query select artifact.artifact_id, artifact.status, artifact.content, artifact.visit_id
@@ -363,14 +375,14 @@ begin
 
   select greatest(1, least(90, coalesce((configuration ->> 'retention_days')::integer, 30)))
     into retention_days from public.ai_feature_flags
-    where ai_feature_flags.clinic_id = target.clinic_id and capability = 'digitalcare_transcription';
+    where ai_feature_flags.clinic_id = target.clinic_id and ai_feature_flags.capability = 'digitalcare_transcription';
   insert into public.ai_operations(
     clinic_id, capability, actor_user_id, actor_staff_id, owner_id, pet_id,
     appointment_id, status, idempotency_key, provider, model_version,
     schema_version, latency_ms, input_tokens, output_tokens, started_at, completed_at
   ) values (
     target.clinic_id, 'digitalcare_transcription', requested_actor_user_id,
-    target.staff_id, target.owner_id, target.pet_id, target.appointment_id,
+    target.actor_staff_id, target.owner_id, target.pet_id, target.appointment_id,
     'succeeded', 'digitalcare-transcript:' || requested_request_id::text,
     left(requested_provider, 80), left(requested_model_version, 120),
     '2026-07-17.1', greatest(requested_latency_ms, 0),
@@ -392,7 +404,7 @@ begin
   ) returning public.ai_artifacts.artifact_id into transcript_id;
   insert into public.ai_sources(clinic_id, artifact_id, source_type, source_record_id, document_id)
   values (target.clinic_id, transcript_id, 'digitalcare',
-    'transcript:' || requested_video_session_id::text, target.recording_document_id);
+    target.conversation_id::text, target.recording_document_id);
   update public.video_sessions set transcript_artifact_id = transcript_id,
     transcription_status = 'ready', recording_status = case when recording_document_id is null then recording_status else 'stored' end,
     ai_updated_at = now() where session_id = requested_video_session_id;
@@ -425,7 +437,7 @@ declare
   target record;
   target_visit_id bigint;
 begin
-  select session.*, staff.staff_id, coalesce(staff.full_name, staff.name, 'וטרינר') as staff_name,
+  select session.*, coalesce(staff.full_name, staff.name, 'וטרינר') as staff_name,
     conversation.subject
   into target
   from public.video_sessions as session
@@ -436,14 +448,14 @@ begin
   where session.session_id = requested_video_session_id and session.appointment_id is not null
     and session.transcription_status = 'ready';
   if target.clinic_id is null then raise exception 'DIGITALCARE_ACCESS_DENIED'; end if;
-  if not exists (select 1 from public.ai_feature_flags where clinic_id = target.clinic_id
-    and capability = 'digitalcare_summary' and enabled and not kill_switch) then
+  if not exists (select 1 from public.ai_feature_flags where ai_feature_flags.clinic_id = target.clinic_id
+    and ai_feature_flags.capability = 'digitalcare_summary' and ai_feature_flags.enabled and not ai_feature_flags.kill_switch) then
     raise exception 'AI_FEATURE_DISABLED';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('digitalcare-visit:' || requested_video_session_id::text, 0));
-  select visit_id into target_visit_id from public.medical_visits
-    where clinic_id = target.clinic_id and appointment_id = target.appointment_id
-    order by visit_id limit 1;
+  select medical_visits.visit_id into target_visit_id from public.medical_visits
+    where medical_visits.clinic_id = target.clinic_id and medical_visits.appointment_id = target.appointment_id
+    order by medical_visits.visit_id limit 1;
   if target_visit_id is null then
     insert into public.medical_visits(
       clinic_id, appointment_id, pet_id, visit_date, vet_name, reason,
@@ -476,19 +488,19 @@ set search_path = ''
 as $$
 declare target record;
 begin
-  select session.*, staff.staff_id into target
+  select session.* into target
   from public.video_sessions as session
   join public.staff as staff on staff.clinic_id = session.clinic_id
     and staff.auth_user_id = requested_actor_user_id and staff.is_active and staff.role = 'vet'
   where session.session_id = requested_video_session_id;
   if target.clinic_id is null or target.transcript_artifact_id is null or target.visit_id is null
-    or not exists (select 1 from public.ai_artifacts where artifact_id = requested_summary_artifact_id
-      and clinic_id = target.clinic_id and visit_id = target.visit_id and artifact_type = 'visit_summary') then
+    or not exists (select 1 from public.ai_artifacts where ai_artifacts.artifact_id = requested_summary_artifact_id
+      and ai_artifacts.clinic_id = target.clinic_id and ai_artifacts.visit_id = target.visit_id and ai_artifacts.artifact_type = 'visit_summary') then
     raise exception 'DIGITALCARE_ACCESS_DENIED';
   end if;
   insert into public.ai_sources(clinic_id, artifact_id, source_type, source_record_id)
   values (target.clinic_id, requested_summary_artifact_id, 'digitalcare',
-    'transcript-artifact:' || target.transcript_artifact_id::text)
+    target.conversation_id::text)
   on conflict do nothing;
 end;
 $$;
@@ -507,7 +519,7 @@ as $$
 declare target record;
 begin
   if requested_stage not in ('recording','upload','transcription','summary') then return; end if;
-  select session.*, staff.staff_id into target from public.video_sessions as session
+  select session.* into target from public.video_sessions as session
   join public.staff as staff on staff.clinic_id = session.clinic_id
     and staff.auth_user_id = requested_actor_user_id and staff.is_active and staff.role = 'vet'
   where session.session_id = requested_video_session_id;
@@ -525,7 +537,55 @@ begin
 end;
 $$;
 
+create or replace function private.myvet_carry_digitalcare_summary_provenance()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.artifact_type = 'visit_summary' and new.supersedes_artifact_id is not null then
+    insert into public.ai_sources(
+      clinic_id, artifact_id, source_type, source_record_id,
+      document_id, chunk_id, source_hash, released_to_owner
+    )
+    select source.clinic_id, new.artifact_id, source.source_type,
+      source.source_record_id, source.document_id, source.chunk_id,
+      source.source_hash, false
+    from public.ai_sources as source
+    where source.clinic_id = new.clinic_id
+      and source.artifact_id = new.supersedes_artifact_id
+    on conflict do nothing;
+  end if;
+
+  if new.artifact_type = 'visit_summary' and new.status = 'approved'
+    and new.visit_id is not null
+    and exists (
+      select 1 from public.video_sessions as session
+      where session.clinic_id = new.clinic_id and session.visit_id = new.visit_id
+        and session.transcript_artifact_id is not null
+    ) then
+    update public.medical_visits
+    set entry_data = coalesce(entry_data, '{}'::jsonb)
+      || jsonb_build_object(
+        'aiContentApproved', true,
+        'aiSummaryArtifactId', new.artifact_id::text,
+        'aiApprovedAt', new.approved_at
+      )
+    where medical_visits.clinic_id = new.clinic_id
+      and medical_visits.visit_id = new.visit_id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists myvet_digitalcare_summary_provenance on public.ai_artifacts;
+create trigger myvet_digitalcare_summary_provenance
+after insert on public.ai_artifacts
+for each row execute function private.myvet_carry_digitalcare_summary_provenance();
+
 revoke all on function private.myvet_is_valid_visit_summary(jsonb) from public, anon, authenticated, service_role;
+revoke all on function private.myvet_carry_digitalcare_summary_provenance() from public, anon, authenticated, service_role;
 revoke all on function public.myvet_begin_digitalcare_capture(uuid,bigint,bigint,text,boolean,boolean,boolean,text,text,bigint) from public, anon, authenticated;
 revoke all on function public.myvet_complete_digitalcare_transcript(uuid,bigint,text,text,uuid,text,text,integer,integer,integer) from public, anon, authenticated;
 revoke all on function public.myvet_ensure_digitalcare_visit(uuid,bigint) from public, anon, authenticated;

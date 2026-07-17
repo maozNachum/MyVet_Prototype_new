@@ -4,6 +4,7 @@ export type AiCapability =
   | "vetbot.appointment-actions"
   | "visit-summary.generate"
   | "digitalcare.transcribe"
+  | "digitalcare.recording"
   | "digitalcare.summary";
 
 export type VetBotMode =

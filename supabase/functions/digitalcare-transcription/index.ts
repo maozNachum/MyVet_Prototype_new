@@ -126,7 +126,8 @@ Deno.serve(async (request) => {
     if (body.action === "begin") {
       if (!isAiCapabilityEnabled("digitalcare.transcribe", runtimeEnv) || !flags.transcription) throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
       if (!body.appointmentId || body.transcriptionConsent !== true || body.noticeVersion !== NOTICE_VERSION) throw new AiGatewayError("DIGITALCARE_CONSENT_REQUIRED", { httpStatus: 400 });
-      if (body.retainRecording && (!flags.recording || body.recordingConsent !== true)) throw new AiGatewayError("DIGITALCARE_RECORDING_CONSENT_REQUIRED", { httpStatus: 400 });
+      if (body.retainRecording && (!flags.recording || !isAiCapabilityEnabled("digitalcare.recording", runtimeEnv))) throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
+      if (body.retainRecording && body.recordingConsent !== true) throw new AiGatewayError("DIGITALCARE_RECORDING_CONSENT_REQUIRED", { httpStatus: 400 });
       const mimeType = body.mimeType || "audio/webm";
       const objectPath = `${session.clinic_id}/${session.pet_id}/digitalcare/${session.session_id}/${crypto.randomUUID()}.webm`;
       const { data: started, error: beginError } = await admin.rpc("myvet_begin_digitalcare_capture", {

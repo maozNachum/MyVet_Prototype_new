@@ -180,6 +180,19 @@ Frontend קיים
 - `AI_TOTAL_TIMEOUT_MS`
 - `AI_MAX_SAFE_RETRIES`
 - `AI_RATE_LIMIT_PER_MINUTE`
+- `AI_DIGITALCARE_TRANSCRIPTION_ENABLED` (Stage 4; server only; default off)
+- `AI_DIGITALCARE_RECORDING_ENABLED` (Stage 4; server only; default off)
+- `AI_DIGITALCARE_SUMMARY_ENABLED` (Stage 4; server only; default off)
+
+### Stage 4 — DigitalCare
+
+`digitalcare-transcription` is the authenticated server entry point for audio,
+transcription and transcript-based summary drafts. It reuses
+`ai_consent_records`, `ai_documents`, `ai_artifacts`, `ai_sources`, the private
+`ai-recordings` bucket, the central Gateway and the Stage 3 veterinarian
+approval workflow. Provider/model/prompt selection remains server-owned and all
+three Stage 4 capabilities default to off. The complete flow, retention,
+rollback and legal gates are documented in `docs/ai-digitalcare.md`.
 
 אין להגדיר משתנים אלה ב־Vite או בשם שמתחיל `VITE_`.
 
