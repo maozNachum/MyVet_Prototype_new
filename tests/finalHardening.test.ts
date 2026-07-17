@@ -58,3 +58,13 @@ test("medical storage remains private and uses short-lived signed links", () => 
   const digitalCare = readFileSync("supabase/functions/digitalcare-transcription/index.ts", "utf8");
   assert.match(digitalCare, /createSignedUrl\([^,]+,\s*60\)/);
 });
+
+test("owner communication stays in DigitalCare without a manual portal-update panel", () => {
+  const clients = readFileSync("src/app/pages/Clients.tsx", "utf8");
+  const digitalCare = readFileSync("src/app/pages/DigitalCare.tsx", "utf8");
+  const portalNotifications = readFileSync("src/services/portalNotifications.ts", "utf8");
+
+  assert.doesNotMatch(clients, /OwnerPortalNotificationsPanel|עדכוני פורטל ללקוח|שלח לפורטל/);
+  assert.doesNotMatch(portalNotifications, /createOwnerNotification/);
+  assert.match(digitalCare, /publishDigitalMessageToOwner/);
+});

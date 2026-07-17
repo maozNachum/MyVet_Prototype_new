@@ -175,11 +175,6 @@ export async function safePublishToOwnerPortal(input: PublishToOwnerPortalInput)
   }
 }
 
-// Backward-compatible name for older components.
-export async function createOwnerNotification(input: PublishToOwnerPortalInput) {
-  return publishToOwnerPortal(input);
-}
-
 export async function createOwnerReminder(input: CreateOwnerReminderInput) {
   const reminderType = input.reminderType || "follow_up";
   const actionView = input.actionView || defaultActionViewForType(reminderType);
