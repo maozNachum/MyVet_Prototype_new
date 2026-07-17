@@ -15,6 +15,47 @@ import { VETBOT_PRIVACY_NOTICE_VERSION } from "./aiPolicy";
 
 export { VETBOT_PRIVACY_NOTICE_VERSION } from "./aiPolicy";
 
+const VETBOT_RESPONSE_TIMEOUT_MS = 30_000;
+const VETBOT_ACTION_TIMEOUT_MS = 20_000;
+
+function withUiTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error("VETBOT_CLIENT_TIMEOUT")), timeoutMs);
+  });
+  return Promise.race([operation, timeout]).finally(() => {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  });
+}
+
+function looksLikeBrokenEncoding(value: string) {
+  return /(?:׳[^\s]){2,}|�|(?:Ã|Â){2,}/u.test(value);
+}
+
+function cleanDisplayText(value: unknown, fallback: string, maxLength: number) {
+  const text = redactSensitiveText(String(value || ""))
+    .normalize("NFC")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .trim()
+    .slice(0, maxLength);
+  return !text || looksLikeBrokenEncoding(text) ? fallback : text;
+}
+
+function normalizeAssistantAnswer(value: unknown) {
+  let text = String(value || "").trim();
+  const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced) text = fenced[1].trim();
+  if (text.startsWith("{") && text.endsWith("}")) {
+    try {
+      const nested = JSON.parse(text) as { answer?: unknown };
+      if (typeof nested.answer === "string") text = nested.answer;
+    } catch {
+      // A malformed JSON-looking answer is handled as regular text below.
+    }
+  }
+  return cleanDisplayText(text, "VetBot החזיר תשובה שלא ניתן להציג בבטחה. נסה לנסח את הבקשה מחדש.", 1_600);
+}
+
 function friendlyEdgeError(message?: string) {
   const text = message || "לא הצלחנו להפעיל את VetBot כרגע.";
 
@@ -32,6 +73,9 @@ function friendlyEdgeError(message?: string) {
   }
   if (text.includes("AI_PROVIDER_TIMEOUT")) {
     return "VetBot לא הספיק להשיב בזמן. אפשר לנסות שוב.";
+  }
+  if (text.includes("VETBOT_CLIENT_TIMEOUT")) {
+    return "VetBot לא הספיק להשיב בזמן. הבקשה נעצרה ואפשר לנסות שוב.";
   }
   if (
     text.includes("Unauthorized") ||
@@ -127,8 +171,8 @@ function normalizeResponse(
     : [];
 
   return {
-    answer: redactSensitiveText(String(data.answer || "")).trim(),
-    summary: data.summary ? redactSensitiveText(String(data.summary)).slice(0, 400) : undefined,
+    answer: normalizeAssistantAnswer(data.answer),
+    summary: data.summary ? cleanDisplayText(data.summary, "", 400) || undefined : undefined,
     urgency: normalizeUrgency(data.urgency),
     confidence: normalizeConfidence(data.confidence),
     findings,
@@ -160,13 +204,24 @@ function normalizeActionPlan(value: unknown): AiActionPlan | undefined {
     requestId: typeof raw.requestId === "string" ? raw.requestId.slice(0, 80) : undefined,
     type: raw.type as AiActionPlan["type"],
     status: raw.status as AiActionPlan["status"],
-    title: redactSensitiveText(String(raw.title || "פעולת VetBot")).slice(0, 100),
-    summary: redactSensitiveText(String(raw.summary || "")).slice(0, 320),
+    title: cleanDisplayText(raw.title, raw.status === "executed" ? "הפעולה בוצעה" : "פעולת VetBot", 100),
+    summary: cleanDisplayText(
+      raw.summary,
+      raw.status === "needs_details"
+        ? "חסרים פרטים להמשך. שום שינוי לא בוצע במערכת."
+        : raw.status === "needs_confirmation"
+          ? "הפעולה מוכנה לבדיקה, אך עדיין לא בוצעה."
+          : raw.status === "executed"
+            ? "הפעולה אושרה ובוצעה במערכת."
+            : "הפעולה לא בוצעה.",
+      320,
+    ),
     missingFields: Array.isArray(raw.missingFields) ? raw.missingFields.slice(0, 8).map((item) => redactSensitiveText(String(item)).slice(0, 60)) : [],
-    details: Array.isArray(raw.details) ? raw.details.slice(0, 8).map((item) => ({
-      label: redactSensitiveText(String(item?.label || "פרט")).slice(0, 50),
-      value: redactSensitiveText(String(item?.value || "")).slice(0, 140),
-    })) : [],
+    details: Array.isArray(raw.details) ? raw.details.slice(0, 8).flatMap((item) => {
+      const label = cleanDisplayText(item?.label, "", 50);
+      const value = cleanDisplayText(item?.value, "", 140);
+      return label && value ? [{ label, value }] : [];
+    }) : [],
     destructive: Boolean(raw.destructive),
     confirmationLabel: raw.confirmationLabel ? redactSensitiveText(String(raw.confirmationLabel)).slice(0, 60) : undefined,
   };
@@ -182,9 +237,10 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<AiAss
   });
 
   const safeRequest = protectedPayload.value;
-  const { data, error } = await supabase.functions.invoke<AiAssistantResponse>("ai-assistant", {
-    body: safeRequest,
-  });
+  const { data, error } = await withUiTimeout(
+    supabase.functions.invoke<AiAssistantResponse>("ai-assistant", { body: safeRequest }),
+    VETBOT_RESPONSE_TIMEOUT_MS,
+  );
 
   if (error) {
     const detail = await edgeErrorMessage(error);
@@ -203,12 +259,15 @@ export async function askAiAssistant(request: AiAssistantRequest): Promise<AiAss
 }
 
 export async function decideAiAction(request: AiActionDecisionRequest): Promise<AiAssistantResult> {
-  const { data, error } = await supabase.functions.invoke<AiAssistantResponse>("ai-assistant", {
-    body: {
-      mode: request.mode,
-      actionDecision: { requestId: request.requestId, decision: request.decision },
-    },
-  });
+  const { data, error } = await withUiTimeout(
+    supabase.functions.invoke<AiAssistantResponse>("ai-assistant", {
+      body: {
+        mode: request.mode,
+        actionDecision: { requestId: request.requestId, decision: request.decision },
+      },
+    }),
+    VETBOT_ACTION_TIMEOUT_MS,
+  );
   if (error) {
     const detail = await edgeErrorMessage(error);
     throw new Error(friendlyEdgeError(detail));

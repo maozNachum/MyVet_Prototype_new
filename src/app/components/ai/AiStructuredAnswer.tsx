@@ -138,12 +138,24 @@ function ActionPlanCard({
           ? "border-slate-200 bg-slate-50 text-slate-700"
           : "border-red-200 bg-red-50 text-red-950";
   const Icon = plan.status === "executed" ? CheckCircle2 : plan.status === "rejected" ? XCircle : TriangleAlert;
+  const statusLabel = plan.status === "executed"
+    ? "בוצע במערכת"
+    : plan.status === "needs_confirmation"
+      ? "ממתין לאישור — טרם בוצע"
+      : plan.status === "needs_details"
+        ? "חסרים פרטים — טרם בוצע"
+        : plan.status === "rejected"
+          ? "בוטל"
+          : "לא בוצע";
 
   return (
     <section className={`rounded-2xl border p-3.5 ${style}`} aria-label={plan.title}>
       <div className="flex items-start gap-2.5">
         <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0" />
         <div className="min-w-0 flex-1">
+          <span className="mb-1.5 inline-flex rounded-full border border-current/15 bg-white/70 px-2 py-1 text-[10.5px] font-black">
+            {statusLabel}
+          </span>
           <p className="text-[14px] font-black leading-6">{plan.title}</p>
           <p className="mt-1 text-[12.5px] font-medium leading-6 opacity-85">{plan.summary}</p>
 

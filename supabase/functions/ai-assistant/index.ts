@@ -505,6 +505,13 @@ Deno.serve(async (request) => {
           context: safe.context,
         });
       }
+      if (normalized.actionPlan?.status === "needs_details") {
+        normalized.answer = normalized.actionPlan.summary;
+      } else if (normalized.actionPlan?.status === "needs_confirmation") {
+        normalized.answer = "הכנתי את פרטי הפעולה לבדיקה. היא עדיין לא בוצעה; יש לאשר אותה בכפתור שמופיע למטה.";
+      } else if (normalized.actionPlan?.status === "blocked") {
+        normalized.answer = normalized.actionPlan.summary;
+      }
       if (normalized.actionPlan) usedTools.push(`action_plan:${normalized.actionPlan.type}`);
     }
     delete normalized.actionProposal;

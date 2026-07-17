@@ -22,6 +22,7 @@ const appointmentStoreSource = readFileSync("src/app/data/AppointmentStore.tsx",
 const dashboardSource = readFileSync("src/app/pages/Dashboard.tsx", "utf8");
 const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
 const vetbotAnswerSource = readFileSync("src/app/components/ai/AiStructuredAnswer.tsx", "utf8");
+const vetbotClientSource = readFileSync("src/app/components/ai/aiClient.ts", "utf8");
 const themeSource = readFileSync("src/styles/theme.css", "utf8");
 
 test("VetBot writes only through expiring human-approved action requests", () => {
@@ -43,6 +44,17 @@ test("VetBot asks for missing action details and blocks dangerous operations", (
   assert.match(actionEngine, /process a payment|תשלומים/);
   assert.match(edgeFunction, /missingFields/);
   assert.match(edgeFunction, /Never claim an action was executed/);
+  assert.match(edgeFunction, /היא עדיין לא בוצעה; יש לאשר אותה בכפתור/);
+  assert.match(vetbotAnswerSource, /חסרים פרטים — טרם בוצע/);
+  assert.match(vetbotAnswerSource, /ממתין לאישור — טרם בוצע/);
+});
+
+test("VetBot stops stalled browser requests and hides broken encoded output", () => {
+  assert.match(vetbotClientSource, /VETBOT_RESPONSE_TIMEOUT_MS = 30_000/);
+  assert.match(vetbotClientSource, /VETBOT_ACTION_TIMEOUT_MS = 20_000/);
+  assert.match(vetbotClientSource, /VETBOT_CLIENT_TIMEOUT/);
+  assert.match(vetbotClientSource, /looksLikeBrokenEncoding/);
+  assert.match(vetbotClientSource, /VetBot החזיר תשובה שלא ניתן להציג בבטחה/);
 });
 
 test("VetBot does not display source labels in answers", () => {
@@ -175,6 +187,8 @@ test("Appointment live refresh is published and duplicate error toasts are dedup
   assert.match(appointmentStoreSource, /refreshInFlightRef/);
   assert.match(appointmentStoreSource, /id: "appointments-cloud-load"/);
   assert.match(appointmentStoreSource, /CHANNEL_ERROR/);
+  assert.match(appointmentStoreSource, /myvet:vetbot-action/);
+  assert.match(appointmentStoreSource, /book_appointment.*reschedule_appointment.*cancel_appointment/s);
 });
 
 test("Vaccination scanner connects the camera after the video element renders", () => {

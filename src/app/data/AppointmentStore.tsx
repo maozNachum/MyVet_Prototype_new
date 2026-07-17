@@ -310,6 +310,13 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
 
     window.addEventListener("focus", syncWhenVisible);
     window.addEventListener("online", syncWhenVisible);
+    const syncVetBotAppointment = (event: Event) => {
+      const actionType = (event as CustomEvent<{ actionType?: string }>).detail?.actionType;
+      if (["book_appointment", "reschedule_appointment", "cancel_appointment"].includes(String(actionType || ""))) {
+        syncAppointments();
+      }
+    };
+    window.addEventListener("myvet:vetbot-action", syncVetBotAppointment);
     document.addEventListener("visibilitychange", syncWhenVisible);
 
     const intervalId = window.setInterval(() => {
@@ -333,6 +340,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     return () => {
       window.removeEventListener("focus", syncWhenVisible);
       window.removeEventListener("online", syncWhenVisible);
+      window.removeEventListener("myvet:vetbot-action", syncVetBotAppointment);
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.clearInterval(intervalId);
       if (syncTimer !== null) window.clearTimeout(syncTimer);
