@@ -13,11 +13,17 @@ type Props = { petId: number; petName: string };
 
 function errorMessage(error: unknown) {
   const code = error instanceof Error ? error.message : "RAG_UNAVAILABLE";
+  if (code.includes("REQUEST_TIMEOUT")) return "החיפוש בתיק לא הספיק להשיב. אפשר לנסות שוב.";
   if (code.includes("FEATURE_DISABLED")) return "החיפוש החכם אינו פעיל כרגע במרפאה.";
   if (code.includes("ACCESS_DENIED")) return "אין לך הרשאה לשאול על התיק הזה.";
   if (code.includes("RATE_LIMITED")) return "נשלחו יותר מדי שאלות. אפשר לנסות שוב בעוד רגע.";
   if (code.includes("REQUEST_BLOCKED")) return "לא ניתן לבצע את הבקשה הזו מטעמי פרטיות ואבטחה.";
   return "לא הצלחנו להשלים את החיפוש בתיק. אפשר לנסות שוב.";
+}
+
+function serviceIsUnavailable(error: unknown) {
+  const code = error instanceof Error ? error.message : "";
+  return code.includes("RAG_SERVICE_NOT_DEPLOYED") || code === "RAG_UNAVAILABLE";
 }
 
 export function MedicalRecordRagPanel({ petId, petName }: Props) {
@@ -28,6 +34,7 @@ export function MedicalRecordRagPanel({ petId, petName }: Props) {
   const [isAsking, setIsAsking] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [isServiceUnavailable, setIsServiceUnavailable] = useState(false);
   const requestSequence = useRef(0);
 
   useEffect(() => {
@@ -39,18 +46,32 @@ export function MedicalRecordRagPanel({ petId, petName }: Props) {
     setQuestion("");
     setIsAsking(false);
     setIsRefreshing(false);
+    setIsServiceUnavailable(false);
     void loadMedicalRecordRagStatus(petId)
       .then((nextStatus) => {
-        if (sequence === requestSequence.current) setStatus(nextStatus);
+        if (sequence === requestSequence.current) {
+          setStatus(nextStatus);
+          setIsServiceUnavailable(false);
+        }
       })
       .catch((loadError) => {
-        if (sequence === requestSequence.current) setError(errorMessage(loadError));
+        if (sequence === requestSequence.current) {
+          if (serviceIsUnavailable(loadError)) {
+            // The feature is rolled out fail-closed: do not advertise a control whose
+            // authenticated server endpoint is not installed or cannot be reached.
+            setIsServiceUnavailable(true);
+          } else {
+            setError(errorMessage(loadError));
+          }
+        }
       })
       .finally(() => {
         if (sequence === requestSequence.current) setIsLoadingStatus(false);
       });
     return () => { requestSequence.current += 1; };
   }, [petId]);
+
+  if ((isLoadingStatus && !status) || isServiceUnavailable) return null;
 
   async function handleRefresh() {
     if (!status?.canIndex || isRefreshing) return;

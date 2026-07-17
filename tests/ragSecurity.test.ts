@@ -12,6 +12,8 @@ const schemaSql = readFileSync("supabase/migrations/20260717160000_secure_medica
 const rpcSql = readFileSync("supabase/migrations/20260717160500_secure_medical_record_rag_rpc.sql", "utf8");
 const edgeSource = readFileSync("supabase/functions/medical-record-rag/index.ts", "utf8");
 const promptSource = readFileSync("supabase/functions/_shared/ai/prompts.ts", "utf8");
+const ragClientSource = readFileSync("src/services/medicalRecordRag.ts", "utf8");
+const ragPanelSource = readFileSync("src/app/components/MedicalRecordRagPanel.tsx", "utf8");
 
 function env(values: Record<string, string | undefined>): EnvReader {
   return (name) => values[name];
@@ -156,4 +158,12 @@ test("controlled rollout can index while Q&A is still disabled", () => {
   const indexGate = edgeSource.indexOf('if (body.action === "index")');
   const queryGate = edgeSource.indexOf('if (!status.can_query || !isAiCapabilityEnabled("rag.answer", runtimeEnv))');
   assert.ok(indexGate >= 0 && queryGate > indexGate);
+});
+
+test("RAG UI fails closed when its authenticated server function is unavailable", () => {
+  assert.match(ragClientSource, /RAG_REQUEST_TIMEOUT_MS = 25_000/);
+  assert.match(ragClientSource, /error\.context\.status === 404/);
+  assert.match(ragClientSource, /RAG_SERVICE_NOT_DEPLOYED/);
+  assert.match(ragPanelSource, /serviceIsUnavailable/);
+  assert.match(ragPanelSource, /if \(\(isLoadingStatus && !status\) \|\| isServiceUnavailable\) return null/);
 });
