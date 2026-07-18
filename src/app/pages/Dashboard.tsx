@@ -1012,22 +1012,26 @@ export function Dashboard() {
                         : "bg-gray-50 text-gray-900";
                     return (
                       <button key={appointment.id} type="button" onClick={() => openAppointment(appointment)} className={`w-full px-2 py-2 text-right cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/30 ${appointmentClass}`}>
-                        <div className="flex items-center gap-3">
+                        <div className="relative flex items-center gap-3">
                           {isActivePriority && <span className="h-10 w-1 shrink-0 rounded-full bg-amber-500" />}
                           <div className={`w-14 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 ${timeClass}`}>
                             <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
                             <span className="mt-1 text-[11px] opacity-75">{isCompleted ? "טופל" : isOverdue ? "באיחור" : isActivePriority ? "דחוף" : isNext ? "הבא" : "מתוכנן"}</span>
                           </div>
-                          <div className="min-w-0 flex-1">
+                          <div className={`min-w-0 flex-1 ${isOverdue ? "pl-[7.75rem]" : ""}`}>
                             <div className="flex items-center gap-2">
                               <p className={`${isCompleted ? "text-slate-600" : isOverdue ? "text-orange-950" : isActivePriority ? "text-amber-950" : "text-gray-950"} truncate text-[14px] font-extrabold`}>{appointment.type || "ביקור"}</p>
-                              {isOverdue && <span className="rounded-full border border-orange-200 bg-white/90 px-2 py-0.5 text-[11px] font-bold text-orange-800">טרם התחיל טיפול</span>}
                               {isActivePriority && <span className="rounded-full border border-amber-200 bg-white/85 px-2 py-0.5 text-[11px] font-bold text-amber-800">עדיפות גבוהה</span>}
                               {appointment.mode === "video" && <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700">וידאו</span>}
                             </div>
                             <p className={`mt-0.5 truncate text-[13px] ${isCompleted ? "text-slate-500" : "text-slate-700"}`}>{appointment.petName} · {appointment.ownerName}</p>
                             <p className="truncate text-[13px] text-slate-500">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
                           </div>
+                          {isOverdue && (
+                            <span className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-orange-200 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-orange-800 shadow-sm">
+                              טרם התחיל טיפול
+                            </span>
+                          )}
                           <ArrowLeft className={`h-4 w-4 ${isOverdue ? "text-orange-600" : isActivePriority ? "text-amber-600" : "text-slate-400"} shrink-0`} />
                         </div>
                       </button>
