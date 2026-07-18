@@ -246,11 +246,26 @@ async function callGeminiLegacy(input: { question: string; context: unknown; his
         responseSchema,
       },
     };
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify(payload),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        const timeoutError = new Error(`Gemini request timed out (${model})`) as Error & { status?: number };
+        timeoutError.status = 504;
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) {
       const requestError = new Error(`Gemini request failed: ${response.status} (${model})`) as Error & { status?: number };
       requestError.status = response.status;
@@ -275,6 +290,7 @@ async function callGeminiLegacy(input: { question: string; context: unknown; his
   }
 
   const transientStatuses = new Set([429, 500, 502, 503, 504]);
+  const modelFallbackStatuses = new Set([400, 404, ...transientStatuses]);
   for (let modelIndex = 0; modelIndex < models.length; modelIndex += 1) {
     const model = models[modelIndex];
     let firstFailure = "";
@@ -299,7 +315,7 @@ async function callGeminiLegacy(input: { question: string; context: unknown; his
         ? Number((error as { status?: number }).status)
         : 0;
       const hasFallback = modelIndex < models.length - 1;
-      if (!hasFallback || !transientStatuses.has(status)) throw error;
+      if (!hasFallback || !modelFallbackStatuses.has(status)) throw error;
       console.warn("VetBot provider model temporarily unavailable; trying fallback", { model, status });
     }
   }
@@ -441,39 +457,56 @@ Deno.serve(async (request) => {
     }
     const toolRun = await runReadOnlyTools(client, mode, role, safe.question);
     usedTools = toolRun.used;
-    const result = isAiGatewayEnabled(runtimeEnv)
-      ? await runVetBotGateway({
-        actorId: authData.user.id,
-        question: safe.question,
-        context: safe.context,
-        history: safe.history,
-        memorySummary: safe.memorySummary,
-        tools: toolRun.results,
-        role,
-        mode,
-        actions: availableActions(role),
-        actionCatalog: VETBOT_ACTION_CATALOG,
-        currentTimeInIsrael: new Date().toLocaleString("sv-SE", { timeZone: "Asia/Jerusalem" }),
-      })
-      : await (async () => {
+    const asLegacyResult = (legacy: { parsed: unknown; model: string }) => ({
+      output: legacy.parsed,
+      telemetry: {
+        requestId: `legacy-${crypto.randomUUID()}`,
+        capability: "vetbot.general" as const,
+        provider: "gemini",
+        model: legacy.model,
+        promptVersion: "legacy-unversioned",
+        schemaVersion: "legacy-response-schema",
+        outcome: "success" as const,
+        latencyMs: 0,
+        attempts: 0,
+        usage: {},
+      },
+      redaction: { total: 0, categories: [] as string[] },
+    });
+    let result;
+    if (isAiGatewayEnabled(runtimeEnv)) {
+      try {
+        result = await runVetBotGateway({
+          actorId: authData.user.id,
+          question: safe.question,
+          context: safe.context,
+          history: safe.history,
+          memorySummary: safe.memorySummary,
+          tools: toolRun.results,
+          role,
+          mode,
+          actions: availableActions(role),
+          actionCatalog: VETBOT_ACTION_CATALOG,
+          currentTimeInIsrael: new Date().toLocaleString("sv-SE", { timeZone: "Asia/Jerusalem" }),
+        });
+      } catch (error) {
+        const gatewayError = asAiGatewayError(error);
+        const compatibilityCodes = new Set([
+          "AI_PROVIDER_UNAVAILABLE",
+          "AI_PROVIDER_TIMEOUT",
+          "AI_OUTPUT_INVALID",
+        ]);
+        if (!compatibilityCodes.has(gatewayError.code)) throw error;
+        console.warn("VetBot gateway unavailable; using compatibility provider path", {
+          code: gatewayError.code,
+        });
         const legacy = await callGeminiLegacy({ question: safe.question, context: safe.context, history: safe.history, memorySummary: safe.memorySummary, tools: toolRun.results, role, mode, actions: availableActions(role) });
-        return {
-          output: legacy.parsed,
-          telemetry: {
-            requestId: `legacy-${crypto.randomUUID()}`,
-            capability: "vetbot.general" as const,
-            provider: "gemini",
-            model: legacy.model,
-            promptVersion: "legacy-unversioned",
-            schemaVersion: "legacy-response-schema",
-            outcome: "success" as const,
-            latencyMs: 0,
-            attempts: 0,
-            usage: {},
-          },
-          redaction: { total: 0, categories: [] as string[] },
-        };
-      })();
+        result = asLegacyResult(legacy);
+      }
+    } else {
+      const legacy = await callGeminiLegacy({ question: safe.question, context: safe.context, history: safe.history, memorySummary: safe.memorySummary, tools: toolRun.results, role, mode, actions: availableActions(role) });
+      result = asLegacyResult(legacy);
+    }
     model = result.telemetry.model;
     const combinedReport: RedactionReport = {
       total: protectedInput.report.total + result.redaction.total,
