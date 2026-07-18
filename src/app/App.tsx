@@ -17,6 +17,12 @@ function PageLoading() {
 export default function App() {
   return (
     <>
+      <a
+        href="#main-content"
+        className="fixed right-4 top-3 z-[1000] -translate-y-24 rounded-xl bg-white px-4 py-2.5 text-[14px] font-extrabold text-[#1e40af] shadow-lg ring-2 ring-[#1e40af] transition-transform focus:translate-y-0"
+      >
+        דילוג לתוכן המרכזי
+      </a>
       <Suspense fallback={<PageLoading />}>
         <RouterProvider router={router} />
       </Suspense>

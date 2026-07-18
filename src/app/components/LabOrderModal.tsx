@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   TestTube,
@@ -71,6 +71,19 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setPendingTests([]);
+    setSelectedCategory("all");
+    setCustomTestName("");
+    setCustomCategory("blood");
+    setShowCustom(false);
+    setEditingTestId(null);
+    setIsSaved(false);
+    setIsSaving(false);
+    setError("");
+  }, [isOpen, patientId]);
 
   if (!isOpen) return null;
 

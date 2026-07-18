@@ -22,7 +22,7 @@ const sections = [
 
 export function PrivacyPolicy() {
   return (
-    <main dir="rtl" className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-slate-50 text-slate-900" style={{ fontFamily: "'Heebo', sans-serif" }}>
+    <main id="main-content" tabIndex={-1} dir="rtl" className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-slate-50 text-slate-900 outline-none" style={{ fontFamily: "'Heebo', sans-serif" }}>
       <header className="border-b border-blue-100 bg-[#1e40af] text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <Link to="/" className="inline-flex items-center gap-2 text-[13px] font-bold text-blue-100 hover:text-white">

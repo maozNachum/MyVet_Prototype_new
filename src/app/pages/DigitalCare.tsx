@@ -2087,8 +2087,10 @@ export function DigitalCare() {
                   />
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={sending}
+                      aria-label="צירוף קובץ לשיחה"
                       className="w-11 h-11 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 flex items-center justify-center cursor-pointer disabled:opacity-50"
                       title="צרף קובץ"
                     >
@@ -2107,8 +2109,10 @@ export function DigitalCare() {
                       className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
                     />
                     <button
+                      type="button"
                       onClick={() => sendMessage()}
                       disabled={sending || !messageText.trim()}
+                      aria-label={sending ? "שולח הודעה" : "שליחת הודעה ללקוח"}
                       className="w-11 h-11 rounded-2xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
                     >
                       {sending ? (

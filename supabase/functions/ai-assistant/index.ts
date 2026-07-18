@@ -10,6 +10,7 @@ import {
   telemetryFromError,
 } from "../_shared/ai/gateway.ts";
 import { validateVetBotRequestBody } from "../_shared/ai/schemas.ts";
+import { dayRangeInTimeZone } from "../_shared/timeZone.ts";
 import {
   decideVetBotAction,
   prepareVetBotAction,
@@ -46,11 +47,7 @@ function json(request: Request, body: unknown, status = 200, extraHeaders: Recor
 }
 
 function dayRange(days = 1) {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + days);
-  return { start: start.toISOString(), end: end.toISOString() };
+  return dayRangeInTimeZone(days);
 }
 
 async function count(query: PromiseLike<{ count: number | null; error: unknown }>) {

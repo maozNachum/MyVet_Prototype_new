@@ -42,7 +42,6 @@ export function Layout() {
         if (mounted) setIsCheckingAccess(false);
       } catch {
         clearStaffSession();
-        await supabase.auth.signOut();
         if (mounted) navigate("/login", { replace: true });
       }
     }
@@ -74,9 +73,9 @@ export function Layout() {
           <LabStoreProvider>
             <Navbar />
             <CommandCenter />
-            <main className="flex-1">
+            <div id="main-content" tabIndex={-1} className="flex-1 outline-none">
               <Outlet />
-            </main>
+            </div>
             <Footer />
           </LabStoreProvider>
         </AppointmentStoreProvider>

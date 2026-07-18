@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { safeHebrewLabel } from "../utils/displayText";
 
 export type PetSpecies = "dog" | "cat" | "other";
 export type AppointmentMode = "physical" | "video";
@@ -253,9 +254,9 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           ownerName: owner ? fullName(owner.owner_first_name, owner.owner_last_name) || "ללא שם" : "בעלים לא ידוע",
           ownerPhone: owner?.phone || "",
           ownerEmail: owner?.email || "",
-          department: row.department || "כללי",
-          vet: row.vet_name || "טרם שובץ",
-          room: row.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
+          department: safeHebrewLabel(row.department, "כללי"),
+          vet: safeHebrewLabel(row.vet_name, "טרם שובץ"),
+          room: safeHebrewLabel(row.room, appointmentMode === "video" ? "דיגיטל" : "—"),
           type: row.appointment_type || "ביקור",
           appointmentMode,
           color: row.color || "blue",

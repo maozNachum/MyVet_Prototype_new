@@ -14,6 +14,15 @@ test("VetBot removes direct identifiers from free text", () => {
   assert.match(safe, /הוסר|הוסרה/);
 });
 
+test("VetBot does not mistake ordinary workflow wording for a street address", () => {
+  const operational = redactSensitiveText("אפשר לקבוע את התור דרך המערכת לאחר אישור המשתמש");
+  const realAddress = redactSensitiveText("כתובת: דרך השלום 12 תל אביב");
+
+  assert.equal(operational, "אפשר לקבוע את התור דרך המערכת לאחר אישור המשתמש");
+  assert.doesNotMatch(realAddress, /דרך השלום 12/);
+  assert.match(realAddress, /כתובת הוסרה/);
+});
+
 test("VetBot drops sensitive object fields and keeps aggregate facts", () => {
   const protectedPayload = protectAiPayload({
     owner_id: "123456782",

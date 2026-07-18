@@ -23,6 +23,7 @@ import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
 import { clearStaffSession } from "../data/staffAuth";
 import { ensureNoAppointmentConflict } from "../data/AppointmentStore";
+import { safeHebrewLabel } from "../utils/displayText";
 import { toast } from "sonner";
 import {
   defaultActionViewForType,
@@ -465,12 +466,10 @@ export function ClientPortal() {
       let ownerData: (OwnerProfile & { auth_user_id?: string | null }) | null = null;
 
       const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-
       const authUser = authData.user;
-      if (!authUser) {
+      if (authError || !authUser) {
         clearPortalData();
-        setPortalError("לא זוהה משתמש מחובר. התחברו מחדש כדי לפתוח את האזור האישי.");
+        navigate(`/login?role=${isStaffPreview ? "staff" : "owner"}`, { replace: true });
         return;
       }
 
@@ -618,9 +617,9 @@ export function ClientPortal() {
           .is("deleted_at", null)
           .order("version_number", { ascending: false });
 
-        if (releasedSummariesError) {
+        if (releasedSummariesError && !["42P01", "PGRST204", "PGRST205"].includes(releasedSummariesError.code || "")) {
           console.warn("Released client summaries are unavailable", { code: releasedSummariesError.code });
-        } else {
+        } else if (!releasedSummariesError) {
           (releasedSummaryRows || []).forEach((row: any) => {
             const visitId = Number(row.visit_id);
             const content = parseClientPortalSummary(row.content);
@@ -766,8 +765,8 @@ export function ClientPortal() {
             date: formatPortalDate(row.start_time),
             time: formatPortalTime(row.start_time),
             type: row.appointment_type || "ביקור",
-            vet: row.vet_name || "טרם שובץ",
-            room: row.room || "—",
+            vet: safeHebrewLabel(row.vet_name, "טרם שובץ"),
+            room: safeHebrewLabel(row.room, row.appointment_mode === "video" ? "דיגיטל" : "—"),
             notes: row.notes || "",
             start_time: row.start_time,
             end_time: row.end_time || null,
@@ -779,7 +778,7 @@ export function ClientPortal() {
 
       const { data: notificationRows, error: notificationsError } = await supabase
         .from("notifications")
-        .select("notification_id, owner_id, pet_id, title, message, type, is_read, read_at, action_url, created_at")
+        .select("notification_id, owner_id, pet_id, title, message, type, is_read, read_at, action_url, created_at, source_type, source_id")
         .eq("owner_id", ownerData.owner_id)
         .in("target", ["owner", "both"])
         .order("created_at", { ascending: false });
@@ -795,9 +794,23 @@ export function ClientPortal() {
 
       if (remindersError) throw remindersError;
 
+      const paymentById = new Map(paymentRows.map((payment: any) => [String(payment.payment_id), payment]));
+      const petsWithOpenPayments = new Set(
+        paymentRows
+          .filter((payment: any) => isOpenPayment(payment.status))
+          .map((payment: any) => Number(payment.pet_id)),
+      );
+
       const mappedNotifications: PortalNotification[] = (notificationRows || []).map((row: any) => {
         const pet = row.pet_id ? petById.get(Number(row.pet_id)) : undefined;
         const petType = pet?.type || "other";
+        const linkedPayment = row.source_type === "payment" && row.source_id
+          ? paymentById.get(String(row.source_id))
+          : null;
+        const isSettledPaymentNotice = row.type === "payment" && (
+          linkedPayment?.status === "paid" ||
+          (!linkedPayment && row.pet_id && !petsWithOpenPayments.has(Number(row.pet_id)))
+        );
         return {
           id: Number(row.notification_id),
           source: "notification",
@@ -805,11 +818,11 @@ export function ClientPortal() {
           petName: pet?.name || "כללי",
           petType,
           petImage: getSpeciesImage(petType),
-          title: row.title || "התראה",
-          text: row.message || "",
-          type: (row.type === "medical_summary" ? "medical" : row.type || "info") as PortalNotification["type"],
+          title: isSettledPaymentNotice ? "התשלום הושלם" : row.title || "התראה",
+          text: isSettledPaymentNotice ? "החיוב שולם ואין יתרה פתוחה לתשלום." : row.message || "",
+          type: (isSettledPaymentNotice ? "success" : row.type === "medical_summary" ? "medical" : row.type || "info") as PortalNotification["type"],
           date: formatPortalDate(row.created_at),
-          isRead: Boolean(row.is_read || row.read_at),
+          isRead: Boolean(isSettledPaymentNotice || row.is_read || row.read_at),
           actionUrl: row.action_url || null,
           createdAt: row.created_at || null,
         };
@@ -858,7 +871,7 @@ export function ClientPortal() {
     } finally {
       setIsPortalLoading(false);
     }
-  }, [isStaffPreview, ownerIdFromUrl]);
+  }, [isStaffPreview, navigate, ownerIdFromUrl]);
 
   useEffect(() => {
     refreshPortalData(ownerIdFromUrl);
@@ -1529,6 +1542,7 @@ export function ClientPortal() {
             onClick={() => goToPortalView("home")}
             className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity justify-self-center"
             title="חזרה לבית"
+            aria-label="חזרה לדף הבית של הפורטל"
           >
             <MyVetLogo color="#1e40af" showTagline={false} className="h-11 w-auto" />
           </button>
@@ -1537,6 +1551,7 @@ export function ClientPortal() {
             onClick={() => goToPortalView("notifications")}
             className="relative w-11 h-11 rounded-2xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer shadow-sm justify-self-end"
             title="עדכונים והתראות"
+            aria-label={unreadNotificationsCount > 0 ? `עדכונים והתראות, ${unreadNotificationsCount} לא נקראו` : "עדכונים והתראות"}
           >
             <Bell className="w-5 h-5 text-gray-500" />
             {unreadNotificationsCount > 0 && (
@@ -1567,6 +1582,9 @@ export function ClientPortal() {
           <aside
             onClick={(event) => event.stopPropagation()}
             className="absolute top-0 right-0 h-full w-[88vw] max-w-[360px] bg-white shadow-2xl border-l border-gray-100 flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="תפריט האזור האישי"
           >
             <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
               <div>
@@ -1621,7 +1639,7 @@ export function ClientPortal() {
       )}
 
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className={`flex-1 mx-auto w-full px-3 pb-28 pt-4 transition-[max-width] sm:px-4 md:pb-24 md:pt-7 ${activePortalView === "home" ? "max-w-[560px]" : "max-w-[1040px]"}`}>
+      <main id="main-content" tabIndex={-1} className={`flex-1 mx-auto w-full px-3 pb-28 pt-4 outline-none transition-[max-width] sm:px-4 md:pb-24 md:pt-7 ${activePortalView === "home" ? "max-w-[560px]" : "max-w-[1040px]"}`}>
         <div className={`${activePortalView === "home" ? "mb-6 sm:mb-8" : "mb-4 sm:mb-6"} space-y-4`}>
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>

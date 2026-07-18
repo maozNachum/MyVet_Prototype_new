@@ -17,6 +17,7 @@ const Hospitalizations = lazy(() => import("./pages/Hospitalizations").then((mod
 const LabOrders = lazy(() => import("./pages/LabOrders").then((module) => ({ default: module.LabOrders })));
 const PriceList = lazy(() => import("./pages/PriceList").then((module) => ({ default: module.PriceList })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then((module) => ({ default: module.PrivacyPolicy })));
+const AccessibilityStatement = lazy(() => import("./pages/AccessibilityStatement").then((module) => ({ default: module.AccessibilityStatement })));
 
 function ReportsRoute() {
   return canAccessReportsPage() ? <Reports /> : <Navigate to="/" replace />;
@@ -38,6 +39,10 @@ export const router = createBrowserRouter([
   {
     path: "/privacy",
     Component: PrivacyPolicy,
+  },
+  {
+    path: "/accessibility",
+    Component: AccessibilityStatement,
   },
   {
     path: "/",

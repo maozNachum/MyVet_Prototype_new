@@ -31,6 +31,7 @@ import { DashboardAssistant } from "../components/ai/PageAssistants";
 import { TreatmentModal } from "../components/TreatmentModal";
 import { canEditMedicalRecords, getStaffName, getStaffType, type StaffType } from "../data/staffAuth";
 import { useAppointmentStore } from "../data/AppointmentStore";
+import { safeHebrewLabel } from "../utils/displayText";
 
 type SpeciesType = "dog" | "cat" | "bird" | "rabbit" | "hamster" | "other";
 
@@ -583,9 +584,9 @@ export function Dashboard() {
           timeLabel: formatTime(row.start_time),
           type: row.appointment_type || row.department || "בדיקה",
           mode: row.appointment_mode === "video" ? "video" : "physical",
-          vetName: row.vet_name || "",
-          room: row.room || "",
-          department: row.department || "",
+          vetName: safeHebrewLabel(row.vet_name, "טרם שובץ"),
+          room: safeHebrewLabel(row.room, row.appointment_mode === "video" ? "דיגיטל" : "—"),
+          department: safeHebrewLabel(row.department, "כללי"),
           notes: row.notes || "",
           color: row.color || "",
           hasTreatment: treatedAppointmentIds.has(Number(row.appointment_id)),
@@ -789,18 +790,6 @@ export function Dashboard() {
   ];
 
   const openAppointment = (appointment: AppointmentItem) => {
-    const appointmentTime = new Date(appointment.startTime).getTime();
-    const isOverdueWithoutTreatment = !Number.isNaN(appointmentTime) && appointmentTime < Date.now() && !appointment.hasTreatment;
-    if (appointment.petId && canTreat && isOverdueWithoutTreatment) {
-      setTreatmentPatient({
-        id: appointment.petId,
-        petName: appointment.petName,
-        petSpecies: appointment.petSpecies,
-        ownerName: appointment.ownerName,
-        appointmentId: appointment.id,
-      });
-      return;
-    }
     if (appointment.petId) {
       navigate(`/patients?selected=${appointment.petId}`);
       return;

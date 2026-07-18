@@ -116,6 +116,8 @@ export interface ReminderRow {
   reminder_type?: string | null;
   due_at?: string | null;
   status?: string | null;
+  source_type?: string | null;
+  source_id?: string | null;
   created_at?: string | null;
 }
 
@@ -281,7 +283,34 @@ export function ownerName(owner?: OwnerRow | null) {
 }
 
 export function petName(patient?: PatientRow | null) {
-  return patient?.pet_name || `חיה #${patient?.pet_id || ""}`;
+  return patient?.pet_name || (patient?.pet_id ? `חיה #${patient.pet_id}` : "ללא חיה משויכת");
+}
+
+export function dedupeReminders(reminders: ReminderRow[]) {
+  const statusPriority: Record<string, number> = { open: 3, pending: 2, sent: 1, closed: 0, cancelled: 0 };
+  const unique = new Map<string, ReminderRow>();
+
+  for (const reminder of reminders) {
+    const dueDate = reminder.due_at ? new Date(reminder.due_at) : null;
+    const dueMinute = dueDate && !Number.isNaN(dueDate.getTime())
+      ? dueDate.toISOString().slice(0, 16)
+      : reminder.due_at || "";
+    const identity = [
+      reminder.owner_id || "",
+      reminder.pet_id || "",
+      reminder.reminder_type || "",
+      (reminder.title || "").trim().toLocaleLowerCase("he-IL"),
+      dueMinute,
+      reminder.source_type || "",
+      reminder.source_id || "",
+    ].join("|");
+    const existing = unique.get(identity);
+    if (!existing || (statusPriority[reminder.status || ""] ?? -1) > (statusPriority[existing.status || ""] ?? -1)) {
+      unique.set(identity, reminder);
+    }
+  }
+
+  return Array.from(unique.values());
 }
 
 async function selectTable<T>(table: string, orderColumn?: string): Promise<{ data: T[]; error?: ReportError }> {

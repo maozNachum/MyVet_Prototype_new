@@ -277,8 +277,8 @@ export function ClientMedicalReports({ petId, petName }: ClientMedicalReportsPro
   }), [visits.length, prescriptions.length, labOrders.length, documents.length]);
 
   const openDocument = async (doc: DocumentRow) => {
-    if (doc.file_url) {
-      window.open(doc.file_url, "_blank");
+    if (!doc.file_path) {
+      toast.error("המסמך אינו זמין לצפייה מאובטחת");
       return;
     }
 

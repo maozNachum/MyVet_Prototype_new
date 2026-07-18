@@ -179,7 +179,9 @@ export function Hospitalizations() {
       const ownerById = new Map(owners.map((owner) => [String(owner.owner_id), owner]));
       setRows(hospitalizations.map((row) => {
         const pet = row.pet_id ? patientById.get(Number(row.pet_id)) : undefined;
-        const ownerId = row.owner_id || pet?.owner_id || "";
+        // The current patient-owner relationship is the source of truth. Older
+        // hospitalization rows may retain the owner that existed at admission.
+        const ownerId = pet?.owner_id || row.owner_id || "";
         return { ...row, pet, owner: ownerId ? ownerById.get(ownerId) : undefined };
       }));
     } catch (error) {

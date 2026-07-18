@@ -119,6 +119,10 @@ export function Navbar() {
   const isActive = (path: string) => location.pathname === path;
 
   useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false);
@@ -274,10 +278,10 @@ export function Navbar() {
 
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
-      <div className="mx-auto flex h-16 w-full max-w-[1500px] items-center justify-between px-4 sm:px-5">
+      <div className="mx-auto flex h-16 w-full max-w-[1700px] items-center justify-between gap-3 px-4 sm:gap-4 sm:px-5 xl:gap-5 2xl:gap-8">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4 xl:gap-6">
-          <Link to="/" aria-label="MyVet – דף הבית" className="flex shrink-0 items-center transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg">
-            <div className="flex h-19 w-22 origin-right scale-[1.6] items-center justify-center transform">
+          <Link to="/" aria-label="MyVet – דף הבית" className="relative z-10 flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+            <div className="pointer-events-none flex h-19 w-22 origin-right scale-[1.6] items-center justify-center transform">
               <MyVetLogo color="white" showTagline={false} />
             </div>
           </Link>
@@ -286,7 +290,7 @@ export function Navbar() {
             onClick={() => setIsMobileMenuOpen((open) => !open)}
             aria-label={isMobileMenuOpen ? "סגור תפריט" : "פתח תפריט"}
             aria-expanded={isMobileMenuOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 md:hidden"
+            className="relative z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 md:hidden"
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -294,6 +298,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-1">
             <Link
               to="/appointments"
+              aria-current={isActive("/appointments") ? "page" : undefined}
               className={`px-1 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/appointments") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
@@ -302,6 +307,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/clients"
+              aria-current={isActive("/clients") ? "page" : undefined}
               className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/clients") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
@@ -310,6 +316,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/inventory"
+              aria-current={isActive("/inventory") ? "page" : undefined}
               className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/inventory") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
@@ -318,6 +325,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/digital-care"
+              aria-current={isActive("/digital-care") ? "page" : undefined}
               className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                 isActive("/digital-care") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
               }`}
@@ -327,6 +335,7 @@ export function Navbar() {
             {canAccessReportsPage() && (
               <Link
                 to="/reports"
+                aria-current={isActive("/reports") ? "page" : undefined}
                 className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
                   isActive("/reports") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
                 }`}
@@ -336,7 +345,7 @@ export function Navbar() {
             )}
           </div>
 
-          <div className="hidden lg:block w-64 xl:w-80" ref={searchRef}>
+          <div className="hidden w-52 shrink xl:block 2xl:w-72 min-[1800px]:w-80" ref={searchRef}>
             <div className="relative w-full">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 pointer-events-none" />
               {searchQuery && (
@@ -445,7 +454,7 @@ export function Navbar() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:gap-4">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 xl:gap-3 2xl:gap-4">
           <button
             type="button"
             onClick={openCommandCenter}
@@ -459,7 +468,7 @@ export function Navbar() {
           <div className="hidden lg:block w-px h-6 bg-white/20 ml-2"></div>
           <div className="flex items-center gap-2 bg-[#1e3a8a] rounded-xl px-2 sm:px-3 py-1.5 border border-white/10 shadow-inner" title={`${staffName} | ${staffLabel}`}>
             <StaffIcon className="w-4 h-4 text-blue-200 shrink-0" />
-            <span className="hidden text-[14px] font-medium text-white whitespace-nowrap sm:inline">
+            <span className="hidden text-[14px] font-medium text-white whitespace-nowrap min-[1450px]:inline">
               {staffName} <span className="text-blue-300/60 font-normal mx-1">|</span> {staffLabel}
             </span>
           </div>
@@ -476,12 +485,13 @@ export function Navbar() {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="mx-auto w-full max-w-[1500px] border-t border-white/10 bg-[#1e3a8a]/95 px-4 pb-3 pt-2 shadow-lg sm:px-5 md:hidden">
+        <div className="mx-auto w-full max-w-[1700px] border-t border-white/10 bg-[#1e3a8a]/95 px-4 pb-3 pt-2 shadow-lg sm:px-5 md:hidden">
           <div className="grid grid-cols-2 gap-2">
             {mobileNavItems.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
+                aria-current={isActive(item.to) ? "page" : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`rounded-xl px-3 py-2.5 text-center text-[14px] font-semibold transition ${isActive(item.to) ? "bg-white text-[#1e40af]" : "bg-white/10 text-white hover:bg-white/15"}`}
               >

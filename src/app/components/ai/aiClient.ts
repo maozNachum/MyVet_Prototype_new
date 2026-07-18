@@ -41,7 +41,10 @@ function cleanDisplayText(value: unknown, fallback: string, maxLength: number) {
   return !text || looksLikeBrokenEncoding(text) ? fallback : text;
 }
 
-function normalizeAssistantAnswer(value: unknown) {
+function normalizeAssistantAnswer(
+  value: unknown,
+  fallback = "VetBot החזיר תשובה שלא ניתן להציג בבטחה. נסה לנסח את הבקשה מחדש.",
+) {
   let text = String(value || "").trim();
   const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   if (fenced) text = fenced[1].trim();
@@ -53,7 +56,7 @@ function normalizeAssistantAnswer(value: unknown) {
       // A malformed JSON-looking answer is handled as regular text below.
     }
   }
-  return cleanDisplayText(text, "VetBot החזיר תשובה שלא ניתן להציג בבטחה. נסה לנסח את הבקשה מחדש.", 1_600);
+  return cleanDisplayText(text, fallback, 1_600);
 }
 
 function friendlyEdgeError(message?: string) {
@@ -156,6 +159,7 @@ function normalizeResponse(
   request: AiAssistantRequest,
   localRedactions: { total: number; categories: string[] },
 ): AiAssistantResult {
+  const actionPlan = normalizeActionPlan(data.actionPlan);
   const findings = Array.isArray(data.findings)
     ? data.findings.slice(0, 6).map((finding, index) => ({
         id: String(finding?.id || `finding-${index}`).slice(0, 80),
@@ -171,13 +175,13 @@ function normalizeResponse(
     : [];
 
   return {
-    answer: normalizeAssistantAnswer(data.answer),
+    answer: normalizeAssistantAnswer(data.answer, actionPlan?.summary),
     summary: data.summary ? cleanDisplayText(data.summary, "", 400) || undefined : undefined,
     urgency: normalizeUrgency(data.urgency),
     confidence: normalizeConfidence(data.confidence),
     findings,
     suggestedActions: normalizeSuggestedActions(data.suggestedActions, request.userRole),
-    actionPlan: normalizeActionPlan(data.actionPlan),
+    actionPlan,
     usedTools: Array.isArray(data.usedTools)
       ? data.usedTools.slice(0, 8).map((item) => redactSensitiveText(String(item)).slice(0, 80))
       : [],

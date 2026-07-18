@@ -81,7 +81,7 @@ export function redactSensitiveText(value: string, tracker?: RedactionTracker) {
   text = replaceTracked(text, /https?:\/\/[^\s)\]}]+/gi, "[קישור הוסר]", "link", tracker);
   text = replaceTracked(
     text,
-    /(?:כתובת|רחוב|רח׳|שדרות|שד׳|דרך)\s*[:\-]?\s*[^\n,;.!?]{2,70}/gi,
+    /(?:(?:כתובת|רחוב|רח׳|שדרות|שד׳)\s*[:\-]?\s*[^\n,;.!?]{2,70}|דרך\s+[\p{L}\s'״׳-]{2,50}\s+\d{1,4})/giu,
     "[כתובת הוסרה]",
     "address",
     tracker,

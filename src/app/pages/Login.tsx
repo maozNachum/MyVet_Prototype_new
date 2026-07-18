@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   ArrowRight,
   CalendarCheck,
@@ -75,10 +75,23 @@ function getFirstError(errors: FormErrors) {
   );
 }
 
-function ErrorText({ message }: { message?: string }) {
+function ErrorText({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p className="mt-2 text-[12px] font-semibold text-red-600">{message}</p>
+    <p id={id} role="alert" className="mt-2 text-[12px] font-semibold text-red-600">{message}</p>
+  );
+}
+
+function LoginLegalNotice() {
+  return (
+    <div className="mt-5 text-center text-[12px] leading-6 text-slate-500">
+      <p>© {new Date().getFullYear()} MyVet — מערכת הדגמה במסגרת פרויקט גמר</p>
+      <nav aria-label="קישורי מידע בכניסה" className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <Link to="/privacy" className="font-semibold text-[#1e40af] underline-offset-2 hover:underline">פרטיות</Link>
+        <Link to="/privacy#terms" className="font-semibold text-[#1e40af] underline-offset-2 hover:underline">תנאי שימוש</Link>
+        <Link to="/accessibility" className="font-semibold text-[#1e40af] underline-offset-2 hover:underline">נגישות</Link>
+      </nav>
+    </div>
   );
 }
 
@@ -551,7 +564,8 @@ export function Login() {
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden h-screen sticky top-0">
         <img
           src={heroImage}
-          alt="Happy pets"
+          alt=""
+          aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-l from-[#1e40af]/60 via-[#1e40af]/30 to-transparent" />
@@ -565,7 +579,7 @@ export function Login() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center bg-[radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(180deg,#f7faff_0%,#ffffff_100%)] px-4 py-5 sm:px-6 lg:h-screen lg:overflow-y-auto lg:py-4">
+      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center bg-[radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(180deg,#f7faff_0%,#ffffff_100%)] px-4 py-5 outline-none sm:px-6 lg:h-screen lg:overflow-y-auto lg:py-4">
         <div
           className={`w-full transition-[max-width] duration-300 ${
             role === null ? "max-w-[520px]" : "max-w-[440px]"
@@ -699,9 +713,7 @@ export function Login() {
                 </button>
               </div>
 
-              <p className="text-center text-gray-300 text-[12px] mt-6">
-                © 2026 MyVet. כל הזכויות שמורות.
-              </p>
+              <LoginLegalNotice />
             </div>
           )}
 
@@ -833,7 +845,9 @@ export function Login() {
                         <input
                           type="text"
                           id="fullName"
-                          value={fullName}
+                        value={fullName}
+                        aria-invalid={Boolean(formErrors.fullName)}
+                        aria-describedby={formErrors.fullName ? "fullName-error" : undefined}
                           onChange={(event) => {
                             setFullName(event.target.value);
                             clearFieldError("fullName");
@@ -842,7 +856,7 @@ export function Login() {
                           placeholder="הזינו שם מלא"
                         />
                       </div>
-                      <ErrorText message={formErrors.fullName} />
+                      <ErrorText id="fullName-error" message={formErrors.fullName} />
                     </div>
 
                     <div>
@@ -860,6 +874,8 @@ export function Login() {
                           inputMode="numeric"
                           id="idNumber"
                           value={idNumber}
+                          aria-invalid={Boolean(formErrors.idNumber)}
+                          aria-describedby={formErrors.idNumber ? "idNumber-error" : undefined}
                           onChange={(event) => {
                             setIdNumber(
                               onlyDigits(event.target.value).slice(0, 9),
@@ -870,7 +886,7 @@ export function Login() {
                           placeholder="הזינו תעודת זהות"
                         />
                       </div>
-                      <ErrorText message={formErrors.idNumber} />
+                      <ErrorText id="idNumber-error" message={formErrors.idNumber} />
                     </div>
 
                     <div>
@@ -888,6 +904,8 @@ export function Login() {
                           inputMode="tel"
                           id="phone"
                           value={phoneNumber}
+                          aria-invalid={Boolean(formErrors.phoneNumber)}
+                          aria-describedby={formErrors.phoneNumber ? "phone-error" : undefined}
                           onChange={(event) => {
                             setPhoneNumber(
                               onlyDigits(event.target.value).slice(0, 10),
@@ -898,7 +916,7 @@ export function Login() {
                           placeholder="הזינו מספר טלפון"
                         />
                       </div>
-                      <ErrorText message={formErrors.phoneNumber} />
+                      <ErrorText id="phone-error" message={formErrors.phoneNumber} />
                     </div>
                   </>
                 )}
@@ -918,6 +936,8 @@ export function Login() {
                         type="email"
                         id="email"
                         value={email}
+                        aria-invalid={Boolean(formErrors.email)}
+                        aria-describedby={formErrors.email ? "email-error" : undefined}
                         onChange={(event) => {
                           setEmail(event.target.value);
                           clearFieldError("email");
@@ -926,7 +946,7 @@ export function Login() {
                         placeholder="הזינו כתובת אימייל"
                       />
                     </div>
-                    <ErrorText message={formErrors.email} />
+                    <ErrorText id="email-error" message={formErrors.email} />
                   </div>
                 )}
 
@@ -944,6 +964,8 @@ export function Login() {
                       type={showPassword ? "text" : "password"}
                       id="password"
                       value={password}
+                      aria-invalid={Boolean(formErrors.password)}
+                      aria-describedby={formErrors.password ? "password-error" : undefined}
                       onChange={(event) => {
                         setPassword(event.target.value);
                         clearFieldError("password");
@@ -960,6 +982,8 @@ export function Login() {
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 cursor-pointer transition-colors"
+                      aria-label={showPassword ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
+                      aria-pressed={showPassword}
                     >
                       {showPassword ? (
                         <EyeOff className="w-[18px] h-[18px]" />
@@ -973,7 +997,7 @@ export function Login() {
                       לפחות 6 תווים, אות באנגלית ומספר.
                     </p>
                   )}
-                  <ErrorText message={formErrors.password} />
+                  <ErrorText id="password-error" message={formErrors.password} />
                 </div>
 
                 {((role === "owner" && isSignUp) || isPasswordRecovery) && (
@@ -992,6 +1016,8 @@ export function Login() {
                           type={showConfirmPassword ? "text" : "password"}
                           id="confirmPassword"
                           value={confirmPassword}
+                          aria-invalid={Boolean(formErrors.confirmPassword)}
+                          aria-describedby={formErrors.confirmPassword ? "confirmPassword-error" : undefined}
                           onChange={(event) => {
                             setConfirmPassword(event.target.value);
                             clearFieldError("confirmPassword");
@@ -1005,6 +1031,8 @@ export function Login() {
                             setShowConfirmPassword((prev) => !prev)
                           }
                           className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 cursor-pointer transition-colors"
+                          aria-label={showConfirmPassword ? "הסתרת אימות הסיסמה" : "הצגת אימות הסיסמה"}
+                          aria-pressed={showConfirmPassword}
                         >
                           {showConfirmPassword ? (
                             <EyeOff className="w-[18px] h-[18px]" />
@@ -1013,7 +1041,7 @@ export function Login() {
                           )}
                         </button>
                       </div>
-                      <ErrorText message={formErrors.confirmPassword} />
+                      <ErrorText id="confirmPassword-error" message={formErrors.confirmPassword} />
                     </div>
 
                     {role === "owner" && isSignUp && !isPasswordRecovery && (
@@ -1024,6 +1052,8 @@ export function Login() {
                           <input
                             type="checkbox"
                             checked={acceptedTerms}
+                            aria-invalid={Boolean(formErrors.acceptedTerms)}
+                            aria-describedby={formErrors.acceptedTerms ? "acceptedTerms-error" : undefined}
                             onChange={(event) => {
                               setAcceptedTerms(event.target.checked);
                               clearFieldError("acceptedTerms");
@@ -1039,7 +1069,7 @@ export function Login() {
                             המרפאה במקרה דחוף.
                           </span>
                         </label>
-                        <ErrorText message={formErrors.acceptedTerms} />
+                        <ErrorText id="acceptedTerms-error" message={formErrors.acceptedTerms} />
                       </div>
                     )}
                   </>
@@ -1064,11 +1094,15 @@ export function Login() {
                 <button
                   type="submit"
                   disabled={isLoading || isSendingPasswordReset}
+                  aria-busy={isLoading}
                   className={`w-full text-white py-3.5 rounded-xl transition-all shadow-lg cursor-pointer text-[16px] flex items-center justify-center gap-2 ${role === "owner" ? "bg-gradient-to-l from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-70 shadow-rose-500/20" : "bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-[#1e40af]/70 shadow-blue-500/20"}`}
                   style={{ fontWeight: 600 }}
                 >
                   {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                      <span className="sr-only">הבקשה מתבצעת, נא להמתין</span>
+                    </>
                   ) : (
                     <>
                       {role === "owner" ? (
@@ -1110,12 +1144,10 @@ export function Login() {
           )}
 
           {role !== null && (
-            <p className="text-center text-gray-300 text-[12px] mt-4">
-              © 2026 MyVet. כל הזכויות שמורות.
-            </p>
+            <LoginLegalNotice />
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

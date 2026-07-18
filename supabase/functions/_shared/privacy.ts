@@ -41,7 +41,7 @@ export function redactText(value: string, tracker: Tracker = { total: 0, categor
   text = trackedReplace(text, /\b\d{15}\b/g, "[MICROCHIP_REMOVED]", "microchip", tracker);
   text = trackedReplace(text, /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "[INTERNAL_ID_REMOVED]", "internal-id", tracker);
   text = trackedReplace(text, /https?:\/\/[^\s)\]}]+/gi, "[LINK_REMOVED]", "link", tracker);
-  text = trackedReplace(text, /(?:כתובת|רחוב|רח׳|שדרות|שד׳|דרך)\s*[:\-]?\s*[^\n,;.!?]{2,70}/gi, "[ADDRESS_REMOVED]", "address", tracker);
+  text = trackedReplace(text, /(?:(?:כתובת|רחוב|רח׳|שדרות|שד׳)\s*[:\-]?\s*[^\n,;.!?]{2,70}|דרך\s+[\p{L}\s'״׳-]{2,50}\s+\d{1,4})/giu, "[ADDRESS_REMOVED]", "address", tracker);
   text = trackedReplace(text, /(?:שם\s*(?:מלא|הבעלים|הלקוח)|בעלים|לקוח(?:ה)?)\s*[:\-]\s*[^\n,;.!?]{2,60}/gi, "[NAME_REMOVED]", "name", tracker);
   return text.slice(0, MAX_TEXT);
 }

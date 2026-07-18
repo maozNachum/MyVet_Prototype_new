@@ -30,6 +30,11 @@ const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer
 const vetbotAnswerSource = readFileSync("src/app/components/ai/AiStructuredAnswer.tsx", "utf8");
 const vetbotClientSource = readFileSync("src/app/components/ai/aiClient.ts", "utf8");
 const themeSource = readFileSync("src/styles/theme.css", "utf8");
+const layoutSource = readFileSync("src/app/pages/Layout.tsx", "utf8");
+const medicalReportsSource = readFileSync("src/app/components/ClientMedicalReports.tsx", "utf8");
+const hospitalizationSource = readFileSync("src/app/pages/Hospitalizations.tsx", "utf8");
+const reportMetricsSource = readFileSync("src/app/data/reportMetrics.ts", "utf8");
+const clientComplianceSource = readFileSync("src/app/components/reports/ClientCompliance.tsx", "utf8");
 
 test("VetBot writes only through expiring human-approved action requests", () => {
   assert.match(edgeFunction, /vetbot_audit_logs/);
@@ -61,6 +66,16 @@ test("VetBot stops stalled browser requests and hides broken encoded output", ()
   assert.match(vetbotClientSource, /VETBOT_CLIENT_TIMEOUT/);
   assert.match(vetbotClientSource, /looksLikeBrokenEncoding/);
   assert.match(vetbotClientSource, /VetBot החזיר תשובה שלא ניתן להציג בבטחה/);
+  assert.match(vetbotClientSource, /actionPlan\?\.summary/);
+});
+
+test("Staff access rejection does not globally sign out an owner session", () => {
+  assert.doesNotMatch(layoutSource, /catch\s*\{[\s\S]*supabase\.auth\.signOut\(\)/);
+});
+
+test("Owner medical documents are opened only with short-lived signed URLs", () => {
+  assert.doesNotMatch(medicalReportsSource, /window\.open\(doc\.file_url/);
+  assert.match(medicalReportsSource, /createSignedUrl\(doc\.file_path, 60 \* 5\)/);
 });
 
 test("VetBot does not display source labels in answers", () => {
@@ -224,14 +239,25 @@ test("Custom pending lab tests can be edited and removed before ordering", () =>
   assert.match(labOrderModalSource, /\{isEditing \? "שמור" : "ערוך"\}/);
   assert.match(labOrderModalSource, /<Trash2[^>]*\/> מחק/);
   assert.match(labOrderModalSource, /כבר נבחרה בדיקה בשם הזה/);
+  assert.match(labOrderModalSource, /useEffect\(\(\) => \{[\s\S]*setPendingTests\(\[\]\)[\s\S]*\}, \[isOpen, patientId\]\)/);
 });
 
-test("Dashboard keeps untreated overdue appointments visible and opens treatment", () => {
+test("Reports collapse duplicate reminders and avoid orphan pet labels", () => {
+  assert.match(reportMetricsSource, /export function dedupeReminders/);
+  assert.match(clientComplianceSource, /dedupeReminders\(filtered\.reminders\)/);
+  assert.match(reportMetricsSource, /"ללא חיה משויכת"/);
+});
+
+test("Hospitalization cards use the current patient owner", () => {
+  assert.match(hospitalizationSource, /const ownerId = pet\?\.owner_id \|\| row\.owner_id \|\| ""/);
+});
+
+test("Dashboard keeps untreated overdue appointments visible and opens the pet record", () => {
   assert.match(dashboardSource, /\.from\("medical_visits"\)[\s\S]*\.select\("appointment_id"\)/);
   assert.match(dashboardSource, /const isOverdue = isPast && !appointment\.hasTreatment/);
   assert.match(dashboardSource, /טרם התחיל טיפול/);
-  assert.match(dashboardSource, /setTreatmentPatient\(\{[\s\S]*appointmentId: appointment\.id/);
-  assert.match(dashboardSource, /appointmentId=\{treatmentPatient\.appointmentId\}/);
+  assert.doesNotMatch(dashboardSource, /isOverdueWithoutTreatment[\s\S]*setTreatmentPatient/);
+  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
   assert.match(treatmentModalSource, /showSuccessToast: false, appointmentId/);
   assert.match(medicalStoreSource, /appointment_id: options\.appointmentId \?\? null/);
 });

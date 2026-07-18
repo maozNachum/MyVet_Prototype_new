@@ -331,7 +331,7 @@ export function OwnerBookAppointment({
           ) : (
             <>
               {(validationError || slotError) && (
-                <div className="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-red-600 text-[13px] font-medium flex items-center gap-2">
+                <div role="alert" aria-live="assertive" className="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-red-600 text-[13px] font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
                   {validationError || slotError}
                 </div>

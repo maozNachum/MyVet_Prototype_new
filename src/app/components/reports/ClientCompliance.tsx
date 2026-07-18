@@ -4,6 +4,7 @@ import {
   DateRangeKey,
   ReminderRow,
   buildLookups,
+  dedupeReminders,
   daysBetween,
   fetchReportDataset,
   formatDate,
@@ -39,7 +40,7 @@ export function ClientCompliance({ dateRange }: ClientComplianceProps) {
       const { ownersById, patientsById } = buildLookups(dataset);
       const now = new Date();
 
-      const reminderRows = filtered.reminders.map((reminder) => {
+      const reminderRows = dedupeReminders(filtered.reminders).map((reminder) => {
         const patient = reminder.pet_id ? patientsById.get(Number(reminder.pet_id)) : null;
         const owner = reminder.owner_id ? ownersById.get(reminder.owner_id) : patient?.owner_id ? ownersById.get(patient.owner_id) : null;
         const dueDate = reminder.due_at ? new Date(reminder.due_at) : null;
