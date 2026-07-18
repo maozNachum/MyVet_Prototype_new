@@ -39,6 +39,7 @@ interface TreatmentModalProps {
   ownerName: string;
   ownerId?: string;
   patientId?: number;
+  appointmentId?: number;
   onSave?: (data: any) => void;
 }
 
@@ -238,6 +239,7 @@ export function TreatmentModal({
   ownerName,
   ownerId,
   patientId,
+  appointmentId,
   onSave,
 }: TreatmentModalProps) {
   const {
@@ -638,7 +640,7 @@ export function TreatmentModal({
         followUpRequired: payload.followUpRequired,
         followUpNotes: payload.followUpNotes,
         entryData: buildEntryData(),
-      }, { showSuccessToast: false });
+      }, { showSuccessToast: false, appointmentId });
 
       if (!savedVisit) return;
       medicalVisitSaved = true;

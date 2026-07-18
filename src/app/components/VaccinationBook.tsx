@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   Barcode,
   CalendarDays,
-  Camera,
   CheckCircle2,
   Download,
   FileImage,
@@ -14,6 +13,7 @@ import {
   ScanText,
   Syringe,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -186,9 +186,11 @@ export function VaccinationBook({
 
   const [scanError, setScanError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
+  const lastDetectedBarcodeRef = useRef("");
 
   const canEdit = mode === "staff";
 
@@ -317,11 +319,10 @@ export function VaccinationBook({
         try {
           const results = await detector.detect(currentVideo);
           const first = results[0]?.rawValue;
-          if (first) {
+          if (first && first !== lastDetectedBarcodeRef.current) {
+            lastDetectedBarcodeRef.current = first;
             setForm((prev) => ({ ...prev, barcode_value: first }));
             toast.success("הברקוד נקלט בהצלחה");
-            stopScanner();
-            return;
           }
         } catch (error) {
           console.warn("Barcode scan failed", error);
@@ -345,6 +346,7 @@ export function VaccinationBook({
 
   async function startScanner() {
     setScanError(null);
+    lastDetectedBarcodeRef.current = "";
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setScanError("לא ניתן לפתוח מצלמה בדפדפן הזה. אפשר להזין ברקוד ידנית או לצלם את המדבקה.");
@@ -369,6 +371,36 @@ export function VaccinationBook({
         ? "הרשאת המצלמה נחסמה. אשרו גישה למצלמה בהגדרות הדפדפן ונסו שוב."
         : "לא הצלחנו לפתוח מצלמה. ודאו שאין אפליקציה אחרת שמשתמשת בה ונסו שוב.");
       stopScanner();
+    }
+  }
+
+  async function captureCameraPhoto() {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight || isCapturingPhoto) {
+      setScanError("המצלמה עדיין נטענת. המתינו רגע ונסו לצלם שוב.");
+      return;
+    }
+
+    setIsCapturingPhoto(true);
+    setScanError(null);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Camera canvas is unavailable");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      if (!blob) throw new Error("Camera photo could not be created");
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      selectStickerFile(new File([blob], `vaccination-label-${timestamp}.jpg`, { type: "image/jpeg" }));
+      toast.success("תמונת המדבקה נלכדה בהצלחה");
+    } catch (error) {
+      console.error("Failed capturing vaccination label", error);
+      setScanError("לא הצלחנו ללכוד את התמונה. נסו שוב או בדקו את הרשאת המצלמה.");
+    } finally {
+      setIsCapturingPhoto(false);
     }
   }
 
@@ -928,19 +960,28 @@ export function VaccinationBook({
                   <div className="relative rounded-2xl overflow-hidden border border-blue-200 bg-slate-900 mb-3 aspect-video">
                     <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                     <div className="pointer-events-none absolute inset-[16%] rounded-xl border-2 border-white/90 shadow-[0_0_0_999px_rgba(15,23,42,0.28)]" />
-                    <span className="absolute bottom-3 inset-x-3 rounded-lg bg-slate-950/65 px-3 py-2 text-center text-white text-[12px] font-bold">מקמו את הברקוד בתוך המסגרת</span>
+                    <span className="pointer-events-none absolute inset-x-3 top-3 rounded-lg bg-slate-950/65 px-3 py-2 text-center text-[12px] font-bold text-white">מקמו את הברקוד במסגרת או צלמו את המדבקה</span>
+                    <button
+                      type="button"
+                      onClick={captureCameraPhoto}
+                      disabled={isCapturingPhoto}
+                      aria-label="לכידת תמונת מדבקת החיסון"
+                      className="absolute bottom-3 left-1/2 flex h-16 w-16 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-white/25 shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <span className="h-12 w-12 rounded-full bg-white shadow-inner" aria-hidden="true" />
+                    </button>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Field label="ברקוד / מזהה מדבקה">
                     <input value={form.barcode_value} onChange={(e) => setForm((prev) => ({ ...prev, barcode_value: e.target.value }))} className="input" placeholder="אפשר להזין ידנית" />
                   </Field>
-                  <Field label="צילום מדבקה / אריזה">
-                    <label className="h-[43px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors">
-                      <span className="text-gray-600 text-[13px] font-semibold truncate">{stickerFile ? stickerFile.name : "בחר קובץ או צלם"}</span>
-                      <span className="inline-flex items-center gap-1 text-blue-700 text-[12px] font-bold"><Camera className="w-4 h-4" /> צילום</span>
-                      <input type="file" accept="image/jpeg,image/png,application/pdf" capture="environment" className="hidden" onChange={(e) => selectStickerFile(e.target.files?.[0] || null)} />
+                  <Field label="העלאת קובץ מדבקה / אריזה">
+                    <label className="flex h-[43px] cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 transition-colors hover:bg-slate-50">
+                      <span className="truncate text-[13px] font-semibold text-gray-600">{stickerFile ? stickerFile.name : "בחר קובץ מהמכשיר"}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-bold text-blue-700"><Upload className="h-4 w-4" /> העלאה</span>
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => selectStickerFile(e.target.files?.[0] || null)} />
                     </label>
                   </Field>
                 </div>

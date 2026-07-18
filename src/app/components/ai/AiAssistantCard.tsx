@@ -6,7 +6,6 @@ import type { AiAssistantMode, AiQuickAction, AiUserRole } from "./aiTypes";
 type Props = {
   mode: AiAssistantMode;
   title: string;
-  subtitle: string;
   compactTitle?: string;
   quickActions: AiQuickAction[];
   buildContext: () => unknown | Promise<unknown>;
@@ -18,7 +17,6 @@ type Props = {
 export function AiAssistantCard({
   mode,
   title,
-  subtitle,
   compactTitle = "VetBot",
   quickActions,
   buildContext,
@@ -36,7 +34,7 @@ export function AiAssistantCard({
           type="button"
           onClick={() => !disabled && setIsOpen(true)}
           disabled={disabled}
-          title={disabledReason || subtitle}
+          title={disabledReason || "פתיחת VetBot"}
           className={`group inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-all ${
             disabled
               ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
@@ -61,7 +59,6 @@ export function AiAssistantCard({
         onClose={() => setIsOpen(false)}
         mode={mode}
         title={title}
-        subtitle={subtitle}
         quickActions={quickActions}
         buildContext={buildContext}
         userRole={userRole}

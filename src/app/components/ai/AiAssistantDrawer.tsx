@@ -20,7 +20,6 @@ type Props = {
   onClose: () => void;
   mode: AiAssistantMode;
   title: string;
-  subtitle?: string;
   quickActions: AiQuickAction[];
   buildContext: () => unknown | Promise<unknown>;
   userRole?: AiUserRole;
@@ -31,7 +30,6 @@ export function AiAssistantDrawer({
   onClose,
   mode,
   title,
-  subtitle,
   quickActions,
   buildContext,
   userRole = "unknown",
@@ -167,14 +165,13 @@ export function AiAssistantDrawer({
       <button type="button" aria-label="סגירת VetBot" onClick={onClose} className="absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px]" />
 
       <aside className="absolute left-0 top-0 flex h-full w-full max-w-[480px] flex-col border-r border-gray-100 bg-white shadow-2xl animate-in slide-in-from-left duration-200">
-        <div className="shrink-0 border-b border-gray-100 bg-gradient-to-l from-slate-950 to-blue-900 px-5 py-4 text-white">
+        <div className="min-h-[105px] shrink-0 border-b border-gray-100 bg-gradient-to-l from-slate-950 to-blue-900 px-5 py-4 text-white">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="truncate text-[18px] font-bold">{title}</h2>
                 <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-bold">AI</span>
               </div>
-              {subtitle && <p className="mt-1 text-[14px] font-medium leading-6 text-white/80">{subtitle}</p>}
             </div>
             <button type="button" onClick={onClose} aria-label="סגירת VetBot" className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-white/80 hover:bg-white/15 hover:text-white">
               <X className="h-5 w-5" />
@@ -297,7 +294,7 @@ export function AiAssistantDrawer({
               className="max-h-32 min-h-[48px] w-full resize-none bg-transparent px-2 py-1.5 text-[15px] font-medium leading-7 text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
             />
             <div className="flex items-center justify-between gap-3 pt-1">
-              <p className="text-[11px] text-gray-400">Enter לשליחה · המידע עובר צמצום אוטומטי</p>
+              <p className="text-[11px] text-gray-400">Enter לשליחה</p>
               <button type="button" onClick={() => send(input)} disabled={!input.trim() || isThinking || Boolean(actionLoadingId)} aria-label="שליחה ל-VetBot" className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-[#1e40af] text-white transition-colors hover:bg-[#1e3a8a] disabled:cursor-not-allowed disabled:bg-gray-300">
                 {isThinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>

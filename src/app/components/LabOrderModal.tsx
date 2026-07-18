@@ -6,6 +6,7 @@ import {
   Trash2,
   AlertTriangle,
   Check,
+  Pencil,
   Zap,
 } from "lucide-react";
 import { useLabStore, type LabOrder } from "../data/LabStore";
@@ -26,6 +27,7 @@ interface PendingTest {
   urgent: boolean;
   testDate: string;
   notes: string;
+  isCustom: boolean;
 }
 
 // Derived array from the central LAB_CATEGORIES config
@@ -65,6 +67,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
   const [customTestName, setCustomTestName] = useState("");
   const [customCategory, setCustomCategory] = useState<LabOrder["category"]>("blood");
   const [showCustom, setShowCustom] = useState(false);
+  const [editingTestId, setEditingTestId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -76,17 +79,38 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
       ? commonTests
       : commonTests.filter((t) => t.category === selectedCategory);
 
-  const addTest = (testName: string, category: LabOrder["category"]) => {
-    if (pendingTests.some((t) => t.testName === testName)) return;
+  const addTest = (testName: string, category: LabOrder["category"], isCustom = false) => {
+    if (pendingTests.some((t) => t.testName === testName)) return false;
     setPendingTests((prev) => [
       ...prev,
-      { id: Date.now(), testName, category, urgent: false, testDate: todayInputValue(), notes: "" },
+      { id: Date.now(), testName, category, urgent: false, testDate: todayInputValue(), notes: "", isCustom },
     ]);
     setError("");
+    return true;
   };
 
-  const removeTest = (id: number) =>
+  const removeTest = (id: number) => {
     setPendingTests((prev) => prev.filter((t) => t.id !== id));
+    if (editingTestId === id) setEditingTestId(null);
+  };
+
+  const updateTestDetails = (id: number, updates: Pick<PendingTest, "testName" | "category">) =>
+    setPendingTests((prev) => prev.map((test) => (test.id === id ? { ...test, ...updates } : test)));
+
+  const finishEditingTest = (test: PendingTest) => {
+    const name = test.testName.trim();
+    if (!name) {
+      setError("יש להזין שם לבדיקה המותאמת");
+      return;
+    }
+    if (pendingTests.some((candidate) => candidate.id !== test.id && candidate.testName.trim() === name)) {
+      setError("כבר נבחרה בדיקה בשם הזה");
+      return;
+    }
+    updateTestDetails(test.id, { testName: name, category: test.category });
+    setEditingTestId(null);
+    setError("");
+  };
 
   const toggleUrgent = (id: number) =>
     setPendingTests((prev) =>
@@ -105,14 +129,22 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
 
   const addCustomTest = () => {
     if (!customTestName.trim()) return;
-    addTest(customTestName.trim(), customCategory);
-    setCustomTestName("");
-    setShowCustom(false);
+    if (addTest(customTestName.trim(), customCategory, true)) {
+      setCustomTestName("");
+      setShowCustom(false);
+    } else {
+      setError("כבר נבחרה בדיקה בשם הזה");
+    }
   };
 
   const handleSubmit = async () => {
     if (pendingTests.length === 0) {
       setError("יש לבחור לפחות בדיקה אחת");
+      return;
+    }
+
+    if (pendingTests.some((test) => !test.testName.trim())) {
+      setError("יש להשלים שם לכל בדיקה לפני שליחת ההזמנה");
       return;
     }
 
@@ -376,13 +408,32 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                     {pendingTests.map((test) => {
                       const cat = categories.find((c) => c.id === test.category)!;
                       const CIcon = cat.icon;
+                      const isEditing = editingTestId === test.id;
                       return (
                         <div
                           key={test.id}
                           className="bg-gray-50/70 border border-gray-100 rounded-xl p-3.5"
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                            {isEditing ? (
+                              <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+                                <input
+                                  value={test.testName}
+                                  onChange={(event) => updateTestDetails(test.id, { testName: event.target.value, category: test.category })}
+                                  className="w-full rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                  placeholder="שם הבדיקה"
+                                  autoFocus
+                                />
+                                <select
+                                  value={test.category}
+                                  onChange={(event) => updateTestDetails(test.id, { testName: test.testName, category: event.target.value as LabOrder["category"] })}
+                                  className="rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                >
+                                  {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+                                </select>
+                              </div>
+                            ) : (
+                            <div className="flex min-w-0 items-center gap-2">
                               <div
                                 className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                                   cat.color.split(" ").slice(0, 1).join(" ")
@@ -390,7 +441,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                               >
                                 <CIcon className={`w-3.5 h-3.5 ${cat.color.split(" ")[1]}`} />
                               </div>
-                              <span className="text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>
+                              <span className="truncate text-gray-900 text-[14px]" style={{ fontWeight: 600 }}>
                                 {test.testName}
                               </span>
                               <span
@@ -400,6 +451,7 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                                 {cat.label}
                               </span>
                             </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => toggleUrgent(test.id)}
@@ -413,11 +465,22 @@ export function LabOrderModal({ isOpen, onClose, patientId, petName }: LabOrderM
                                 <Zap className="w-3 h-3" />
                                 דחוף
                               </button>
+                              {test.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() => isEditing ? finishEditingTest(test) : setEditingTestId(test.id)}
+                                  className="flex items-center gap-1 rounded-lg border border-blue-100 bg-white px-2.5 py-1 text-[12px] font-semibold text-blue-700 transition-colors hover:bg-blue-50"
+                                >
+                                  {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                                  {isEditing ? "שמור" : "ערוך"}
+                                </button>
+                              )}
                               <button
+                                type="button"
                                 onClick={() => removeTest(test.id)}
-                                className="text-gray-300 hover:text-red-400 cursor-pointer transition-colors"
+                                className="flex items-center gap-1 rounded-lg border border-red-100 bg-white px-2.5 py-1 text-[12px] font-semibold text-red-600 transition-colors hover:bg-red-50"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-3.5 w-3.5" /> מחק
                               </button>
                             </div>
                           </div>

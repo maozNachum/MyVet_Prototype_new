@@ -68,6 +68,7 @@ type PatientRow = {
 type AppointmentItem = {
   id: number;
   petId: number | null;
+  petSpecies: SpeciesType;
   petName: string;
   ownerName: string;
   ownerPhone: string;
@@ -80,6 +81,7 @@ type AppointmentItem = {
   department: string;
   notes: string;
   color: string;
+  hasTreatment: boolean;
 };
 
 type DashboardData = {
@@ -380,7 +382,7 @@ export function Dashboard() {
   const [isLoadingPatients, setIsLoadingPatients] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSavingPatient, setIsSavingPatient] = useState(false);
-  const [treatmentPatient, setTreatmentPatient] = useState<{ id: number; petName: string; petSpecies: string; ownerName: string } | null>(null);
+  const [treatmentPatient, setTreatmentPatient] = useState<{ id: number; petName: string; petSpecies: string; ownerName: string; appointmentId?: number } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData>({ appointments: [], conversations: [], labs: [], hospitalizations: [], payments: [], inventory: [] });
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
@@ -399,6 +401,19 @@ export function Dashboard() {
 
   const todaysAppointments = useMemo(() => dashboardData.appointments, [dashboardData.appointments]);
   const nowTime = useMemo(() => new Date(), [lastUpdated, dashboardData.appointments.length]);
+  const prioritizedTodaysAppointments = useMemo(() => {
+    const nowMs = nowTime.getTime();
+    const priority = (appointment: AppointmentItem) => {
+      if (appointment.hasTreatment) return 2;
+      const startsAt = new Date(appointment.startTime).getTime();
+      return !Number.isNaN(startsAt) && startsAt < nowMs ? 0 : 1;
+    };
+    return [...dashboardData.appointments].sort((left, right) => {
+      const priorityDifference = priority(left) - priority(right);
+      if (priorityDifference !== 0) return priorityDifference;
+      return new Date(left.startTime).getTime() - new Date(right.startTime).getTime();
+    });
+  }, [dashboardData.appointments, nowTime]);
   const nextAppointment = useMemo(() => {
     const nowMs = nowTime.getTime();
     return dashboardData.appointments.find((appointment) => {
@@ -407,12 +422,11 @@ export function Dashboard() {
     }) || null;
   }, [dashboardData.appointments, nowTime]);
   const remainingAppointmentsCount = useMemo(() => {
-    const nowMs = nowTime.getTime();
     return dashboardData.appointments.filter((appointment) => {
       const value = new Date(appointment.startTime).getTime();
-      return !Number.isNaN(value) && value >= nowMs;
+      return !appointment.hasTreatment && !Number.isNaN(value);
     }).length;
-  }, [dashboardData.appointments, nowTime]);
+  }, [dashboardData.appointments]);
   const videoAppointmentsCount = useMemo(() => dashboardData.appointments.filter((appointment) => appointment.mode === "video").length, [dashboardData.appointments]);
   const physicalAppointmentsCount = dashboardData.appointments.length - videoAppointmentsCount;
   const expectedDischarges = useMemo(() => dashboardData.hospitalizations.filter((item) => Boolean(item.expected_discharge_at)), [dashboardData.hospitalizations]);
@@ -514,16 +528,31 @@ export function Dashboard() {
       ]);
 
       const dashboardResults = [appointmentsResult, conversationsResult, labsResult, hospitalizationsResult, paymentsResult, inventoryResult];
-      setDashboardLoadWarning(dashboardResults.some((result) => (
+      const hasBaseLoadWarning = dashboardResults.some((result) => (
         result.status === "rejected" || Boolean(result.value.error)
-      )));
+      ));
 
       const rawAppointments = appointmentsResult.status === "fulfilled" && !appointmentsResult.value.error ? (appointmentsResult.value.data || []) as any[] : [];
+      const appointmentIds = rawAppointments.map((item) => Number(item.appointment_id)).filter(Number.isFinite);
+      const treatedAppointmentIds = new Set<number>();
+      let treatmentLookupFailed = false;
+      if (appointmentIds.length > 0) {
+        const { data: visitRows, error: visitsError } = await supabase
+          .from("medical_visits")
+          .select("appointment_id")
+          .in("appointment_id", appointmentIds);
+        treatmentLookupFailed = Boolean(visitsError);
+        if (!visitsError) {
+          for (const visit of visitRows || []) {
+            if (visit.appointment_id !== null) treatedAppointmentIds.add(Number(visit.appointment_id));
+          }
+        }
+      }
       const petIds = Array.from(new Set(rawAppointments.map((item) => item.pet_id).filter(Boolean).map((item) => Number(item))));
-      const petMap = new Map<number, { petName: string; ownerName: string; ownerPhone: string }>();
+      const petMap = new Map<number, { petName: string; petSpecies: string; ownerName: string; ownerPhone: string }>();
 
       if (petIds.length > 0) {
-        const { data: patientRows } = await supabase.from("patients").select("pet_id, pet_name, owner_id").in("pet_id", petIds);
+        const { data: patientRows } = await supabase.from("patients").select("pet_id, pet_name, species, owner_id").in("pet_id", petIds);
         const ownerIds = Array.from(new Set(((patientRows || []) as any[]).map((row) => row.owner_id).filter(Boolean)));
         const ownersById = new Map<string, OwnerRow>();
         if (ownerIds.length > 0) {
@@ -534,6 +563,7 @@ export function Dashboard() {
           const owner = row.owner_id ? ownersById.get(String(row.owner_id)) : undefined;
           petMap.set(Number(row.pet_id), {
             petName: row.pet_name || "מטופל",
+            petSpecies: row.species || "",
             ownerName: owner ? fullName(owner.owner_first_name, owner.owner_last_name) || "בעלים" : "בעלים",
             ownerPhone: owner?.phone || "",
           });
@@ -545,6 +575,7 @@ export function Dashboard() {
         return {
           id: Number(row.appointment_id),
           petId: row.pet_id ? Number(row.pet_id) : null,
+          petSpecies: normalizeSpecies(petInfo?.petSpecies),
           petName: petInfo?.petName || "מטופל",
           ownerName: petInfo?.ownerName || "בעלים",
           ownerPhone: petInfo?.ownerPhone || "",
@@ -557,8 +588,11 @@ export function Dashboard() {
           department: row.department || "",
           notes: row.notes || "",
           color: row.color || "",
+          hasTreatment: treatedAppointmentIds.has(Number(row.appointment_id)),
         } as AppointmentItem;
       });
+
+      setDashboardLoadWarning(hasBaseLoadWarning || treatmentLookupFailed);
 
       setDashboardData({
         appointments,
@@ -755,6 +789,18 @@ export function Dashboard() {
   ];
 
   const openAppointment = (appointment: AppointmentItem) => {
+    const appointmentTime = new Date(appointment.startTime).getTime();
+    const isOverdueWithoutTreatment = !Number.isNaN(appointmentTime) && appointmentTime < Date.now() && !appointment.hasTreatment;
+    if (appointment.petId && canTreat && isOverdueWithoutTreatment) {
+      setTreatmentPatient({
+        id: appointment.petId,
+        petName: appointment.petName,
+        petSpecies: appointment.petSpecies,
+        ownerName: appointment.ownerName,
+        appointmentId: appointment.id,
+      });
+      return;
+    }
     if (appointment.petId) {
       navigate(`/patients?selected=${appointment.petId}`);
       return;
@@ -898,7 +944,7 @@ export function Dashboard() {
             <div className="flex min-h-[62px] items-center justify-between gap-3 border-b border-blue-100/70 bg-gradient-to-l from-blue-50/90 via-white to-white px-5 py-3">
               <div>
                 <h2 className="text-[18px] font-extrabold text-slate-950">תורים להיום</h2>
-                <p className="mt-0.5 text-[12.5px] text-slate-600">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו להיום</p>
+                <p className="mt-0.5 text-[12.5px] text-slate-600">{dashboardData.appointments.length} תורים · {remainingAppointmentsCount} נותרו לטיפול היום</p>
               </div>
               <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 ring-1 ring-blue-100">
                 <Clock className="w-[18px] h-[18px]" />
@@ -938,21 +984,27 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {todaysAppointments.slice(0, 5).map((appointment) => {
+                  {prioritizedTodaysAppointments.slice(0, 5).map((appointment) => {
                     const appointmentTime = new Date(appointment.startTime).getTime();
                     const isPast = !Number.isNaN(appointmentTime) && appointmentTime < nowTime.getTime();
+                    const isOverdue = isPast && !appointment.hasTreatment;
+                    const isCompleted = appointment.hasTreatment;
                     const isNext = nextAppointment?.id === appointment.id;
                     const isPriority = isPriorityAppointment(appointment);
                     const isActivePriority = isPriority && !isPast;
-                    const appointmentClass = isPast
-                      ? "bg-slate-50/55 opacity-40 grayscale-[0.25] hover:opacity-60"
+                    const appointmentClass = isCompleted
+                      ? "bg-slate-50/55 opacity-45 grayscale-[0.25] hover:opacity-65"
+                      : isOverdue
+                      ? "bg-orange-50/80 ring-1 ring-inset ring-orange-200 hover:bg-orange-100/70"
                       : isActivePriority
                       ? "bg-amber-50/65 hover:bg-amber-50"
                       : isNext
                         ? "bg-blue-50/85 hover:bg-blue-100/70"
                         : "hover:bg-slate-50";
-                    const timeClass = isPast
+                    const timeClass = isCompleted
                       ? "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
+                      : isOverdue
+                      ? "bg-orange-100 text-orange-800 ring-1 ring-orange-300"
                       : isActivePriority
                       ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200"
                       : isNext
@@ -964,18 +1016,19 @@ export function Dashboard() {
                           {isActivePriority && <span className="h-10 w-1 shrink-0 rounded-full bg-amber-500" />}
                           <div className={`w-14 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 ${timeClass}`}>
                             <span className="text-[14px] font-extrabold leading-none">{appointment.timeLabel}</span>
-                            <span className="mt-1 text-[11px] opacity-75">{isActivePriority ? "דחוף" : isNext ? "הבא" : isPast ? "עבר" : "מתוכנן"}</span>
+                            <span className="mt-1 text-[11px] opacity-75">{isCompleted ? "טופל" : isOverdue ? "באיחור" : isActivePriority ? "דחוף" : isNext ? "הבא" : "מתוכנן"}</span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <p className={`${isPast ? "text-slate-600" : isActivePriority ? "text-amber-950" : "text-gray-950"} truncate text-[14px] font-extrabold`}>{appointment.type || "ביקור"}</p>
+                              <p className={`${isCompleted ? "text-slate-600" : isOverdue ? "text-orange-950" : isActivePriority ? "text-amber-950" : "text-gray-950"} truncate text-[14px] font-extrabold`}>{appointment.type || "ביקור"}</p>
+                              {isOverdue && <span className="rounded-full border border-orange-200 bg-white/90 px-2 py-0.5 text-[11px] font-bold text-orange-800">טרם התחיל טיפול</span>}
                               {isActivePriority && <span className="rounded-full border border-amber-200 bg-white/85 px-2 py-0.5 text-[11px] font-bold text-amber-800">עדיפות גבוהה</span>}
                               {appointment.mode === "video" && <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700">וידאו</span>}
                             </div>
-                            <p className={`mt-0.5 truncate text-[13px] ${isPast ? "text-slate-500" : "text-slate-700"}`}>{appointment.petName} · {appointment.ownerName}</p>
+                            <p className={`mt-0.5 truncate text-[13px] ${isCompleted ? "text-slate-500" : "text-slate-700"}`}>{appointment.petName} · {appointment.ownerName}</p>
                             <p className="truncate text-[13px] text-slate-500">{appointment.vetName || "רופא לא שובץ"}{appointment.room ? ` · ${appointment.room}` : appointment.mode === "video" ? " · דיגיטל" : ""}</p>
                           </div>
-                          <ArrowLeft className={`h-4 w-4 ${isActivePriority ? "text-amber-600" : "text-slate-400"} shrink-0`} />
+                          <ArrowLeft className={`h-4 w-4 ${isOverdue ? "text-orange-600" : isActivePriority ? "text-amber-600" : "text-slate-400"} shrink-0`} />
                         </div>
                       </button>
                     );
@@ -1084,7 +1137,7 @@ export function Dashboard() {
       )}
 
       {treatmentPatient && (
-        <TreatmentModal isOpen={Boolean(treatmentPatient)} onClose={() => setTreatmentPatient(null)} patientId={treatmentPatient.id} petName={treatmentPatient.petName} petSpecies={treatmentPatient.petSpecies} ownerName={treatmentPatient.ownerName} onSave={() => { setTreatmentPatient(null); setShowSuccessToast(true); setTimeout(() => setShowSuccessToast(false), 3000); }} />
+        <TreatmentModal isOpen={Boolean(treatmentPatient)} onClose={() => setTreatmentPatient(null)} patientId={treatmentPatient.id} appointmentId={treatmentPatient.appointmentId} petName={treatmentPatient.petName} petSpecies={treatmentPatient.petSpecies} ownerName={treatmentPatient.ownerName} onSave={() => { setTreatmentPatient(null); void loadDashboardData(false); setShowSuccessToast(true); setTimeout(() => setShowSuccessToast(false), 3000); }} />
       )}
     </main>
   );

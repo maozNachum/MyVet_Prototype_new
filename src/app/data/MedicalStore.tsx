@@ -80,7 +80,7 @@ interface MedicalStoreValue {
   loadMedicalData: () => Promise<void>;
   addVisit: (
     visit: Omit<MedicalVisit, "id">,
-    options?: { showSuccessToast?: boolean },
+    options?: { showSuccessToast?: boolean; appointmentId?: number | null },
   ) => Promise<MedicalVisit | null>;
   updateVisit: (id: number, updates: Partial<MedicalVisit>) => Promise<void>;
   deleteVisit: (id: number) => Promise<void>;
@@ -271,7 +271,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
 
   const addVisit = useCallback(async (
     visit: Omit<MedicalVisit, "id">,
-    options: { showSuccessToast?: boolean } = {},
+    options: { showSuccessToast?: boolean; appointmentId?: number | null } = {},
   ) => {
     setIsLoading(true);
     setError(null);
@@ -283,7 +283,7 @@ export function MedicalStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: insertError } = await supabase
         .from("medical_visits")
         .insert({
-          appointment_id: null,
+          appointment_id: options.appointmentId ?? null,
           pet_id: visit.patientId,
           visit_date: parseDateToIso(visit.date),
           vet_name: visit.vetName,

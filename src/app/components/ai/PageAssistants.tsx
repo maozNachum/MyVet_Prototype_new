@@ -29,7 +29,6 @@ export function DashboardAssistant({ attentionCount = 0 }: { attentionCount?: nu
       mode="dashboard"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="ממקד את מה שדורש טיפול ומה כדאי לבדוק בהמשך היום."
       userRole={role}
       quickActions={dashboardActions}
       buildContext={() => buildDashboardContext(role)}
@@ -57,7 +56,6 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
       mode="schedule"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מזהה עומסים, חלונות פנויים ותורים שדורשים טיפול."
       userRole={role}
       quickActions={scheduleActions}
       buildContext={() => buildScheduleContext({ appointments, viewMode, activeVet, role })}
@@ -80,7 +78,6 @@ export function InventoryAssistant({ items }: { items: any[] }) {
       mode="inventory"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מזהה חוסרים, פריטים קריטיים וסדר עדיפויות להזמנה."
       userRole={role}
       quickActions={inventoryActions}
       buildContext={() => buildInventoryContext({ items, role })}
@@ -103,7 +100,6 @@ export function DigitalCareAssistant({ conversation, messages, attachments }: { 
       mode="digital-care"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מסכם שיחות, מכין טיוטות ומציע את הפעולה הבאה."
       userRole={role}
       disabledReason={!conversation ? "בחר שיחה כדי להפעיל את VetBot." : null}
       quickActions={digitalActions}
@@ -127,7 +123,6 @@ export function MedicalRecordAssistant({ patient, visits, activeHospitalization 
       mode="medical-record"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מסכם ביקורים, מנסח הנחיות ומזהה פרטים חסרים."
       userRole={role}
       disabledReason={disabledReason}
       quickActions={medicalActions}
@@ -150,7 +145,6 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
       mode="clients"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מזהה פעולות שירות ומעקב נדרשות ללקוחות."
       userRole={role}
       quickActions={clientsActions}
       buildContext={() => buildClientsSummaryContext({ clients, role })}
@@ -186,7 +180,6 @@ export function ClientPortalAssistant({
       mode="portal"
       title="VetBot"
       compactTitle="VetBot"
-      subtitle="מכוון לתורים, פניות, קבצים ושיחות וידאו בפורטל."
       userRole="owner"
       quickActions={portalActions}
       buildContext={() => buildPortalContext({ pets, appointments, notifications, digitalConversations, billingItems })}

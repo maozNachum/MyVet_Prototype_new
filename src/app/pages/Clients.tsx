@@ -28,15 +28,17 @@ import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 import { askAiAssistant } from "../components/ai/aiClient";
-import { getStaffType } from "../data/staffAuth";
+import { getStaffId, getStaffType } from "../data/staffAuth";
 import {
   buildPetImportDrafts,
   getMissingPetImportFields,
   inferLocalPetColumnMapping,
+  normalizeImportedVisitType,
   parseAiPetColumnMapping,
   PET_IMPORT_FIELD_LABELS,
   readPetSpreadsheet,
   type PetImportDraft,
+  type PetImportLabOrder,
   type PetImportMedicalVisit,
   type PetImportVaccination,
 } from "../utils/petImport";
@@ -284,6 +286,7 @@ export function Clients() {
   const [petImportDrafts, setPetImportDrafts] = useState<PetImportDraft[]>([]);
   const [petImportMedicalHistory, setPetImportMedicalHistory] = useState<PetImportMedicalVisit[]>([]);
   const [petImportVaccinations, setPetImportVaccinations] = useState<PetImportVaccination[]>([]);
+  const [petImportLabOrders, setPetImportLabOrders] = useState<PetImportLabOrder[]>([]);
   const [selectedPetImportIndex, setSelectedPetImportIndex] = useState(0);
   const [petImportError, setPetImportError] = useState<string | null>(null);
   const [petImportSummary, setPetImportSummary] = useState<{
@@ -292,6 +295,7 @@ export function Clients() {
     aiUsed: boolean;
     medicalVisitCount: number;
     vaccinationCount: number;
+    labOrderCount: number;
     warning?: string;
   } | null>(null);
   const petFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -417,6 +421,7 @@ export function Clients() {
     setPetImportDrafts([]);
     setPetImportMedicalHistory([]);
     setPetImportVaccinations([]);
+    setPetImportLabOrders([]);
     setSelectedPetImportIndex(0);
     setPetImportError(null);
     setPetImportSummary(null);
@@ -430,6 +435,7 @@ export function Clients() {
     setPetImportDrafts([]);
     setPetImportMedicalHistory([]);
     setPetImportVaccinations([]);
+    setPetImportLabOrders([]);
     setPetImportError(null);
     setPetImportSummary(null);
   };
@@ -438,6 +444,7 @@ export function Clients() {
     setPetForm(INITIAL_PET_CREATE_FORM);
     setPetImportMedicalHistory([]);
     setPetImportVaccinations([]);
+    setPetImportLabOrders([]);
     setPetImportSummary(null);
     setPetImportError(null);
     setAddPetMode("manual");
@@ -449,6 +456,7 @@ export function Clients() {
     aiUsed: boolean,
     medicalVisitCount = petImportMedicalHistory.length,
     vaccinationCount = petImportVaccinations.length,
+    labOrderCount = petImportLabOrders.length,
     warning?: string,
   ) => {
     const missingLabels = getMissingPetImportFields(draft).map(
@@ -461,6 +469,7 @@ export function Clients() {
       aiUsed,
       medicalVisitCount,
       vaccinationCount,
+      labOrderCount,
       warning,
     });
     setPetImportError(null);
@@ -500,12 +509,14 @@ export function Clients() {
     setPetImportDrafts([]);
     setPetImportMedicalHistory([]);
     setPetImportVaccinations([]);
+    setPetImportLabOrders([]);
     setPetImportSummary(null);
 
     try {
       const spreadsheet = await readPetSpreadsheet(file);
       setPetImportMedicalHistory(spreadsheet.medicalHistory);
       setPetImportVaccinations(spreadsheet.vaccinations);
+      setPetImportLabOrders(spreadsheet.labOrders);
       const localMapping = inferLocalPetColumnMapping(spreadsheet.headers);
       let aiMapping = {};
       let aiUsed = false;
@@ -540,6 +551,7 @@ export function Clients() {
           aiUsed,
           spreadsheet.medicalHistory.length,
           spreadsheet.vaccinations.length,
+          spreadsheet.labOrders.length,
           warning,
         );
       } else {
@@ -549,6 +561,7 @@ export function Clients() {
           aiUsed,
           medicalVisitCount: spreadsheet.medicalHistory.length,
           vaccinationCount: spreadsheet.vaccinations.length,
+          labOrderCount: spreadsheet.labOrders.length,
           warning,
         });
       }
@@ -626,6 +639,7 @@ export function Clients() {
     let createdPetId: number | null = null;
     let createdVisitIds: number[] = [];
     let createdVaccinationIds: string[] = [];
+    let createdLabOrderIds: number[] = [];
     let importStage = "שמירת פרטי החיה";
 
     try {
@@ -663,19 +677,31 @@ export function Clients() {
               pet_id: createdPetId,
               visit_date: visit.visit_date,
               vet_name: visit.vet_name || "לא צוין",
-              reason: visit.title || visit.description || "רשומה רפואית מיובאת",
-              diagnosis: null,
+              reason:
+                visit.title ||
+                visit.chief_complaint ||
+                visit.description ||
+                "רשומה רפואית מיובאת",
+              diagnosis: visit.diagnosis || null,
               treatment: visit.description || null,
-              notes: "יובא מקובץ תיק רפואי לאחר אישור איש צוות.",
+              notes: [
+                visit.notes,
+                "יובא מקובץ תיק רפואי לאחר אישור איש צוות.",
+              ].filter(Boolean).join("\n"),
               attachments: "0",
-              visit_type: visit.visit_type || "imported_record",
-              urgency_level: "normal",
-              chief_complaint: visit.title || "רשומה רפואית מיובאת",
-              final_diagnosis: null,
-              follow_up_required: false,
-              follow_up_notes: null,
+              visit_type: normalizeImportedVisitType(visit.visit_type),
+              urgency_level: visit.urgency_level,
+              chief_complaint:
+                visit.chief_complaint ||
+                visit.title ||
+                "רשומה רפואית מיובאת",
+              final_diagnosis: visit.final_diagnosis || null,
+              follow_up_required: visit.follow_up_required,
+              follow_up_notes: visit.follow_up_notes || null,
               entry_data: {
+                entryType: normalizeImportedVisitType(visit.visit_type),
                 source: "medical-record-import",
+                sourceVisitType: visit.visit_type || null,
                 importedAt: new Date().toISOString(),
               },
             })),
@@ -722,12 +748,51 @@ export function Clients() {
         );
       }
 
+      if (petImportLabOrders.length > 0) {
+        importStage = "שמירת בדיקות המעבדה";
+        const { data: createdLabOrders, error: labOrdersError } = await supabase
+          .from("lab_orders")
+          .insert(
+            petImportLabOrders.map((order) => ({
+              pet_id: createdPetId,
+              visit_id: null,
+              test_name: order.test_name,
+              category: order.category,
+              status: order.status,
+              ordered_date: order.ordered_date,
+              test_date: order.test_date || null,
+              ordered_by: getStaffId(),
+              results: order.results || null,
+              normal_range: order.normal_range || null,
+              result_value: order.result_value || null,
+              result_status: order.result_status || null,
+              completed_date: order.completed_date || null,
+              notes: [
+                order.notes,
+                order.ordered_by_name
+                  ? `הוזמן במקור על ידי: ${order.ordered_by_name}`
+                  : "",
+                "יובא מקובץ תיק רפואי לאחר אישור איש צוות.",
+              ].filter(Boolean).join("\n"),
+              is_urgent: order.urgent,
+            })),
+          )
+          .select("lab_order_id");
+        if (labOrdersError) throw labOrdersError;
+        createdLabOrderIds = (createdLabOrders || []).map((record) =>
+          Number(record.lab_order_id),
+        );
+      }
+
       const importedDetails = [
         petImportMedicalHistory.length
           ? `${petImportMedicalHistory.length} רשומות רפואיות`
           : "",
         petImportVaccinations.length
           ? `${petImportVaccinations.length} חיסונים`
+          : "",
+        petImportLabOrders.length
+          ? `${petImportLabOrders.length} בדיקות מעבדה`
           : "",
       ].filter(Boolean);
       toast.success(
@@ -740,6 +805,7 @@ export function Clients() {
       setPetImportDrafts([]);
       setPetImportMedicalHistory([]);
       setPetImportVaccinations([]);
+      setPetImportLabOrders([]);
       setPetImportError(null);
       setPetImportSummary(null);
       await fetchClients();
@@ -757,6 +823,13 @@ export function Clients() {
         message: error instanceof Error ? error.message : "Unknown import error",
       });
       let rollbackFailed = false;
+      if (createdLabOrderIds.length > 0) {
+        const { error: rollbackError } = await supabase
+          .from("lab_orders")
+          .delete()
+          .in("lab_order_id", createdLabOrderIds);
+        rollbackFailed = rollbackFailed || Boolean(rollbackError);
+      }
       if (createdVaccinationIds.length > 0) {
         const { error: rollbackError } = await supabase
           .from("vaccinations")
@@ -923,7 +996,7 @@ export function Clients() {
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <div>
+          <div className="pr-5">
             <h2 className="text-gray-900 text-[20px] font-bold">החיות של הלקוח</h2>
             <p className="text-gray-500 text-[14px]">כל החיות המשויכות ללקוח</p>
           </div>
@@ -1093,6 +1166,7 @@ export function Clients() {
                       setPetImportDrafts([]);
                       setPetImportMedicalHistory([]);
                       setPetImportVaccinations([]);
+                      setPetImportLabOrders([]);
                       setPetImportError(null);
                     }}
                     disabled={isReadingPetFile}
@@ -1189,6 +1263,7 @@ export function Clients() {
                             petImportSummary.aiUsed,
                             petImportSummary.medicalVisitCount,
                             petImportSummary.vaccinationCount,
+                            petImportSummary.labOrderCount,
                             petImportSummary.warning,
                           )
                         }
@@ -1212,6 +1287,7 @@ export function Clients() {
                         setPetImportSummary(null);
                         setPetImportMedicalHistory([]);
                         setPetImportVaccinations([]);
+                        setPetImportLabOrders([]);
                         setPetForm(INITIAL_PET_CREATE_FORM);
                       }}
                       className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 hover:text-[#1e40af]"
@@ -1243,6 +1319,8 @@ export function Clients() {
                               {petImportSummary.medicalVisitCount} רשומות רפואיות
                               {" · "}
                               {petImportSummary.vaccinationCount} חיסונים
+                              {" · "}
+                              {petImportSummary.labOrderCount} בדיקות מעבדה
                             </p>
                             {petImportSummary.warning && (
                               <p className="mt-1">{petImportSummary.warning}</p>
@@ -1398,7 +1476,9 @@ export function Clients() {
                       )}
                       {isAddingPet
                         ? "מוסיף..."
-                        : petImportMedicalHistory.length > 0 || petImportVaccinations.length > 0
+                        : petImportMedicalHistory.length > 0 ||
+                            petImportVaccinations.length > 0 ||
+                            petImportLabOrders.length > 0
                           ? "הוספת חיה וכל הרשומות"
                           : "הוספת חיה"}
                     </button>

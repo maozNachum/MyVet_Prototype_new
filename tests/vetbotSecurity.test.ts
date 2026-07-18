@@ -18,8 +18,14 @@ const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
+const labOrderModalSource = readFileSync("src/app/components/LabOrderModal.tsx", "utf8");
 const appointmentStoreSource = readFileSync("src/app/data/AppointmentStore.tsx", "utf8");
 const dashboardSource = readFileSync("src/app/pages/Dashboard.tsx", "utf8");
+const appointmentScheduleSource = readFileSync("src/app/pages/AppointmentSchedule.tsx", "utf8");
+const dayAppointmentsModalSource = readFileSync("src/app/components/schedule/CalendarSidebar.tsx", "utf8");
+const departmentFilterSource = readFileSync("src/app/components/schedule/DeptFilterPanel.tsx", "utf8");
+const treatmentModalSource = readFileSync("src/app/components/TreatmentModal.tsx", "utf8");
+const medicalStoreSource = readFileSync("src/app/data/MedicalStore.tsx", "utf8");
 const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
 const vetbotAnswerSource = readFileSync("src/app/components/ai/AiStructuredAnswer.tsx", "utf8");
 const vetbotClientSource = readFileSync("src/app/components/ai/aiClient.ts", "utf8");
@@ -135,6 +141,14 @@ test("Owner cannot select a slot already occupied by their own appointment", () 
   assert.match(portalSource, /appointments=\{appointments\}/);
 });
 
+test("Owner booking disables days with no server-approved availability", () => {
+  assert.match(bookingSource, /const isUnavailable = day\.slots\.length === 0/);
+  assert.match(bookingSource, /disabled=\{isUnavailable\}/);
+  assert.match(bookingSource, /firstAvailable = nextWeek\.findIndex/);
+  assert.match(bookingSource, /היום שנבחר אינו זמין לקביעת תורים/);
+  assert.match(bookingSource, /לא זמין/);
+});
+
 test("VetBot uses the site typography and the application canvas keeps blue contrast", () => {
   assert.match(vetbotDrawerSource, /myvet-vetbot/);
   assert.match(themeSource, /\.myvet-vetbot[\s\S]*font-family:\s*"Heebo"/);
@@ -191,16 +205,64 @@ test("Appointment live refresh is published and duplicate error toasts are dedup
   assert.match(appointmentStoreSource, /book_appointment.*reschedule_appointment.*cancel_appointment/s);
 });
 
-test("Vaccination scanner connects the camera after the video element renders", () => {
+test("Vaccination scanner connects the camera and captures the label in the same view", () => {
   const startScanner = vaccinationSource.match(/async function startScanner\(\)[\s\S]*?\n  }/)?.[0] || "";
   assert.match(startScanner, /getUserMedia/);
   assert.doesNotMatch(startScanner, /if \(!window\.BarcodeDetector\)/);
   assert.match(vaccinationSource, /video\.srcObject = streamRef\.current/);
   assert.match(vaccinationSource, /autoPlay muted playsInline/);
+  assert.match(vaccinationSource, /async function captureCameraPhoto\(\)/);
+  assert.match(vaccinationSource, /context\.drawImage\(video/);
+  assert.match(vaccinationSource, /לכידת תמונת מדבקת החיסון/);
+  assert.match(vaccinationSource, /בחר קובץ מהמכשיר/);
+  assert.doesNotMatch(vaccinationSource, /capture="environment"/);
 });
 
-test("Dashboard appointments open the selected animal medical record", () => {
+test("Custom pending lab tests can be edited and removed before ordering", () => {
+  assert.match(labOrderModalSource, /isCustom: boolean/);
+  assert.match(labOrderModalSource, /finishEditingTest/);
+  assert.match(labOrderModalSource, /\{isEditing \? "שמור" : "ערוך"\}/);
+  assert.match(labOrderModalSource, /<Trash2[^>]*\/> מחק/);
+  assert.match(labOrderModalSource, /כבר נבחרה בדיקה בשם הזה/);
+});
+
+test("Dashboard keeps untreated overdue appointments visible and opens treatment", () => {
+  assert.match(dashboardSource, /\.from\("medical_visits"\)[\s\S]*\.select\("appointment_id"\)/);
+  assert.match(dashboardSource, /const isOverdue = isPast && !appointment\.hasTreatment/);
+  assert.match(dashboardSource, /טרם התחיל טיפול/);
+  assert.match(dashboardSource, /setTreatmentPatient\(\{[\s\S]*appointmentId: appointment\.id/);
+  assert.match(dashboardSource, /appointmentId=\{treatmentPatient\.appointmentId\}/);
+  assert.match(treatmentModalSource, /showSuccessToast: false, appointmentId/);
+  assert.match(medicalStoreSource, /appointment_id: options\.appointmentId \?\? null/);
+});
+
+test("Dashboard appointments still allow opening the selected animal medical record", () => {
   assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
+});
+
+test("Monthly calendar opens day appointments in an anchored popover instead of the sidebar", () => {
+  assert.match(dayAppointmentsModalSource, /export function DayAppointmentsPopover/);
+  assert.match(dayAppointmentsModalSource, /createPortal/);
+  assert.match(dayAppointmentsModalSource, /role="dialog"/);
+  assert.match(dayAppointmentsModalSource, /arrowPlacement/);
+  assert.match(dayAppointmentsModalSource, /overflow-y-auto overscroll-contain/);
+  assert.doesNotMatch(dayAppointmentsModalSource, /onClick=\{onClose\} className="fixed inset-0/);
+  assert.doesNotMatch(dayAppointmentsModalSource, />סגירה<\/button>/);
+  assert.match(dayAppointmentsModalSource, /קביעת תור ליום זה/);
+  assert.match(appointmentScheduleSource, /<DayAppointmentsPopover/);
+  assert.match(appointmentScheduleSource, /anchor=\{dayPopoverAnchor\}/);
+  assert.match(appointmentScheduleSource, /nav\.setSidebarOpen\(false\);[\s\S]*handleAppointmentAction\(appt, mode\)/);
+  assert.doesNotMatch(appointmentScheduleSource, /Day detail sidebar/);
+});
+
+test("Schedule department filtering uses one multi-select dropdown above the calendar", () => {
+  assert.match(appointmentScheduleSource, /grid w-full grid-cols-1 gap-3 sm:grid-cols-2[\s\S]*חיפוש מהיר ביומן[\s\S]*<DeptFilterPanel[\s\S]*departmentCounts=\{departmentCounts\}/);
+  assert.doesNotMatch(appointmentScheduleSource, /Right sidebar column[\s\S]*Department filter/);
+  assert.match(departmentFilterSource, /aria-haspopup="listbox"/);
+  assert.match(departmentFilterSource, /aria-multiselectable="true"/);
+  assert.match(departmentFilterSource, /אפשר לבחור מספר מחלקות יחד/);
+  assert.match(departmentFilterSource, /ביטול הסינון/);
+  assert.match(departmentFilterSource, /filteredCount.*totalCount/);
 });
 
 test("Medical images use expiring signed URLs and private storage", () => {

@@ -1,6 +1,7 @@
 import { Plus, Video } from "lucide-react";
 import { HEBREW_DAYS, getDeptConfig, getApptStatus } from "../../data/calendar-constants";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
+import type { DayPopoverAnchor } from "./CalendarSidebar";
 
 interface MonthlyViewProps {
   calendarCells: (number | null)[];
@@ -9,7 +10,7 @@ interface MonthlyViewProps {
   currentYear: number;
   isToday: (day: number) => boolean;
   getAppointments: (day: number, month?: number, year?: number) => CalendarAppointment[];
-  onDayClick: (day: number) => void;
+  onDayClick: (day: number, anchor: DayPopoverAnchor) => void;
   onCreateAppointment: (date: Date) => void;
 }
 
@@ -105,9 +106,9 @@ export function MonthlyView({
               key={day}
               role="button"
               tabIndex={0}
-              onClick={() => onDayClick(day)}
+              onClick={(event) => onDayClick(day, event.currentTarget.getBoundingClientRect())}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") onDayClick(day);
+                if (event.key === "Enter" || event.key === " ") onDayClick(day, event.currentTarget.getBoundingClientRect());
               }}
               className={`min-h-[130px] border-b border-l border-gray-50 p-1.5 text-right transition-all cursor-pointer group relative align-top ${
                 selected

@@ -182,7 +182,15 @@ export function OwnerBookAppointment({
       setSlotError(null);
       try {
         const nextWeek = await loadRealAvailability(appointments);
-        if (mounted) setWeek(nextWeek);
+        if (mounted) {
+          setWeek(nextWeek);
+          setSelectedDay((current) => {
+            if (nextWeek[current]?.slots.length) return current;
+            const firstAvailable = nextWeek.findIndex((day) => day.slots.length > 0);
+            return firstAvailable >= 0 ? firstAvailable : 0;
+          });
+          setSelectedTime(null);
+        }
       } catch (error) {
         console.error("Failed to load appointment availability", error);
         if (mounted) {
@@ -223,6 +231,7 @@ export function OwnerBookAppointment({
 
   const goToStep3 = async () => {
     if (!selectedTime) return setValidationError("בחרו שעה פנויה לפני שממשיכים");
+    if (!week[selectedDay]?.slots.length) return setValidationError("היום שנבחר אינו זמין לקביעת תורים");
     setIsLoadingSlots(true);
     try {
       const refreshedWeek = await loadRealAvailability(appointments);
@@ -398,13 +407,29 @@ export function OwnerBookAppointment({
                   ) : (
                     <div className="space-y-4">
                       <div className="flex gap-2 overflow-x-auto pb-2">
-                        {week.map((day, index) => (
-                          <button key={day.fullDateISO} onClick={() => { setSelectedDay(index); setSelectedTime(null); setValidationError(null); }} className={`min-w-[74px] p-3 rounded-xl border-2 transition-all cursor-pointer text-center ${selectedDay === index ? "border-[#1e40af] bg-blue-50" : "border-gray-100 bg-white hover:border-gray-200"}`}>
-                            <p className="text-[12px] text-gray-500">{day.isToday ? "היום" : day.dayName}</p>
-                            <p className="text-gray-900 text-[18px]" style={{ fontWeight: 700 }}>{day.dayNumber}</p>
-                            <p className="text-[11px] text-gray-400">{day.date}</p>
-                          </button>
-                        ))}
+                        {week.map((day, index) => {
+                          const isUnavailable = day.slots.length === 0;
+                          return (
+                            <button
+                              key={day.fullDateISO}
+                              type="button"
+                              disabled={isUnavailable}
+                              aria-label={`${day.isToday ? "היום" : `יום ${day.dayName}`} ${day.date}${isUnavailable ? " — לא זמין" : ""}`}
+                              onClick={() => { setSelectedDay(index); setSelectedTime(null); setValidationError(null); }}
+                              className={`min-w-[74px] rounded-xl border-2 p-3 text-center transition-all ${
+                                isUnavailable
+                                  ? "cursor-not-allowed border-slate-100 bg-slate-100/80 text-slate-400 opacity-65 grayscale"
+                                  : selectedDay === index
+                                    ? "cursor-pointer border-[#1e40af] bg-blue-50"
+                                    : "cursor-pointer border-gray-100 bg-white hover:border-gray-200"
+                              }`}
+                            >
+                              <p className={`text-[12px] ${isUnavailable ? "text-slate-400" : "text-gray-500"}`}>{day.isToday ? "היום" : day.dayName}</p>
+                              <p className={`text-[18px] ${isUnavailable ? "text-slate-400" : "text-gray-900"}`} style={{ fontWeight: 700 }}>{day.dayNumber}</p>
+                              <p className="text-[11px] text-gray-400">{isUnavailable ? "לא זמין" : day.date}</p>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

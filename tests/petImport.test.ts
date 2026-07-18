@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPetImportDrafts,
+  extractLabOrders,
   extractMedicalHistory,
+  normalizeImportedVisitType,
   extractMyVetPetDetails,
   extractVaccinations,
   getMissingPetImportFields,
@@ -131,6 +133,13 @@ test("pet import reads every valid row from the medical history sheet", () => {
       visit_type: "בדיקה",
       description: "בדיקה תקינה",
       vet_name: "ד״ר כהן",
+      diagnosis: "",
+      notes: "",
+      urgency_level: "normal",
+      chief_complaint: "",
+      final_diagnosis: "",
+      follow_up_required: false,
+      follow_up_notes: "",
     },
     {
       visit_date: "2026-06-03",
@@ -138,6 +147,89 @@ test("pet import reads every valid row from the medical history sheet", () => {
       visit_type: "שיניים",
       description: "ניקוי אבנית",
       vet_name: "ד״ר לוי",
+      diagnosis: "",
+      notes: "",
+      urgency_level: "normal",
+      chief_complaint: "",
+      final_diagnosis: "",
+      follow_up_required: false,
+      follow_up_notes: "",
+    },
+  ]);
+});
+
+test("pet import converts exported Hebrew visit labels to schema-safe codes", () => {
+  assert.equal(normalizeImportedVisitType("טיפול רפואי"), "full_exam");
+  assert.equal(normalizeImportedVisitType("בדיקה"), "full_exam");
+  assert.equal(normalizeImportedVisitType("שיניים"), "full_exam");
+  assert.equal(normalizeImportedVisitType("חיסון"), "vaccination");
+  assert.equal(normalizeImportedVisitType("שיחת וידאו"), "video_consultation");
+  assert.equal(normalizeImportedVisitType("video_consultation"), "video_consultation");
+  assert.equal(normalizeImportedVisitType("סוג ישן ולא מוכר"), "full_exam");
+});
+
+test("pet import preserves full visit details from MyVet-Export-v2", () => {
+  const [visit] = extractMedicalHistory([
+    [
+      "#", "תאריך", "כותרת", "סוג טיפול", "קוד סוג טיפול",
+      "תלונה עיקרית", "סיבת ביקור", "אבחנה", "טיפול", "הערות",
+      "רופא מטפל", "דחיפות", "קוד דחיפות", "אבחנה סופית",
+      "נדרש מעקב", "הערות מעקב",
+    ],
+    [
+      1, "2026-07-18", "צליעה", "בדיקה רפואית", "full_exam",
+      "צליעה ברגל ימין", "בדיקה", "חשד לנקע", "מנוחה", "ללא חום",
+      "ד״ר כהן", "חמור", "serious", "נקע", "כן", "ביקורת בעוד שבוע",
+    ],
+  ]);
+
+  assert.deepEqual(visit, {
+    visit_date: "2026-07-18",
+    title: "צליעה",
+    visit_type: "full_exam",
+    description: "מנוחה",
+    vet_name: "ד״ר כהן",
+    diagnosis: "חשד לנקע",
+    notes: "ללא חום",
+    urgency_level: "serious",
+    chief_complaint: "צליעה ברגל ימין",
+    final_diagnosis: "נקע",
+    follow_up_required: true,
+    follow_up_notes: "ביקורת בעוד שבוע",
+  });
+});
+
+test("pet import reads laboratory classification, result status and values", () => {
+  const orders = extractLabOrders([
+    [
+      "#", "שם הבדיקה", "קטגוריה", "קוד קטגוריה", "סטטוס",
+      "קוד סטטוס", "דחוף", "תאריך הזמנה", "הוזמן ע״י",
+      "תאריך בדיקה", "תאריך השלמה", "תוצאה כללית", "ערכים",
+      "טווח נורמלי", "סיווג תוצאה", "קוד סיווג תוצאה", "הערות",
+    ],
+    [
+      1, "בדיקת שתן כללית", "בדיקת שתן", "urine", "הושלמה",
+      "completed", "כן", "2026-07-10", "ד״ר כהן", "2026-07-11",
+      "2026-07-11", "חלבון מוגבר", "Protein 2+", "Negative",
+      "חריג", "abnormal", "נדרש מעקב",
+    ],
+  ]);
+
+  assert.deepEqual(orders, [
+    {
+      test_name: "בדיקת שתן כללית",
+      category: "urine",
+      status: "completed",
+      urgent: true,
+      ordered_date: "2026-07-10",
+      ordered_by_name: "ד״ר כהן",
+      test_date: "2026-07-11",
+      completed_date: "2026-07-11",
+      results: "חלבון מוגבר",
+      result_value: "Protein 2+",
+      normal_range: "Negative",
+      result_status: "abnormal",
+      notes: "נדרש מעקב",
     },
   ]);
 });

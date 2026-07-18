@@ -15,6 +15,7 @@ import {
   Paperclip,
   Phone,
   Plus,
+  RefreshCw,
   Search,
   Send,
   User,
@@ -1622,10 +1623,11 @@ export function DigitalCare() {
               <Plus className="w-4 h-4" /> שיחה חדשה
             </button>
             <button
+              type="button"
               onClick={loadData}
-              className="px-4 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 text-[13px] font-semibold transition-colors cursor-pointer"
+              className="flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
             >
-              רענן
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> רענן
             </button>
           </div>
         </header>
