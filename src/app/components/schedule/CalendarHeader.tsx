@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronRight, ChevronLeft, Plus, Search } from "lucide-react";
+import { ChevronRight, ChevronLeft, Plus } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAppointmentStore } from "../../data/AppointmentStore";
 import { NotificationPanel } from "../shared/NotificationPanel";
@@ -25,8 +25,6 @@ interface CalendarHeaderProps {
   onNav: (dir: "prev" | "next") => void;
   onToday: () => void;
   onCloseSidebar: () => void;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
   assistantAction?: ReactNode;
 }
 
@@ -35,7 +33,6 @@ export function CalendarHeader({
   currentMonth, currentYear,
   weekDays, dailyDate,
   onNav, onToday, onCloseSidebar,
-  searchQuery, onSearchChange,
   assistantAction,
 }: CalendarHeaderProps) {
   const navigate = useNavigate();
@@ -120,28 +117,6 @@ export function CalendarHeader({
             קביעת תור חדש
           </button>
         </div>
-      </div>
-
-      {/* Row 2: Search bar */}
-      <div className="relative max-w-md">
-        <Search className="absolute top-1/2 -translate-y-1/2 right-3.5 w-4 h-4 text-gray-500 font-medium pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="חיפוש מהיר ביומן — שם חיה, בעלים, סוג טיפול, וטרינר..."
-          dir="rtl"
-          className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-[14px] text-gray-700 placeholder:text-gray-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
-          style={{ fontFamily: "'Heebo', sans-serif" }}
-        />
-        {searchQuery && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-medium hover:text-gray-600 cursor-pointer transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" style={{ transform: "rotate(90deg)" }} />
-          </button>
-        )}
       </div>
     </div>
   );

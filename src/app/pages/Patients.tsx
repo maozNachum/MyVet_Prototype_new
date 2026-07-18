@@ -750,18 +750,7 @@ export function Patients() {
                 </button>
                 <button
                   onClick={() => {
-                    const formattedHistory = patientHistory.map(v => ({
-                      id: v.id,
-                      date: v.date,
-                      title: v.reason,
-                      description: v.treatment || v.diagnosis,
-                      vet: v.vetName,
-                      type: "טיפול רפואי"
-                    }));
-                    void exportMedicalRecord(
-                      selectedPatient as any,
-                      formattedHistory as any,
-                    ).catch((error) => {
+                    void exportMedicalRecord(selectedPatient as any).catch((error) => {
                       console.error("Failed exporting medical record", error);
                       toast.error("לא הצלחנו לייצא את התיק הרפואי");
                     });

@@ -33,6 +33,7 @@ export type PetSpreadsheetData = {
   rows: Record<string, unknown>[];
   medicalHistory: PetImportMedicalVisit[];
   vaccinations: PetImportVaccination[];
+  labOrders: PetImportLabOrder[];
 };
 
 export type PetImportMedicalVisit = {
@@ -41,7 +42,26 @@ export type PetImportMedicalVisit = {
   visit_type: string;
   description: string;
   vet_name: string;
+  diagnosis: string;
+  notes: string;
+  urgency_level: "normal" | "serious" | "critical";
+  chief_complaint: string;
+  final_diagnosis: string;
+  follow_up_required: boolean;
+  follow_up_notes: string;
 };
+
+export type ImportedMedicalVisitType =
+  | "full_exam"
+  | "vaccination"
+  | "weight_check"
+  | "prescription_only"
+  | "lab"
+  | "follow_up"
+  | "note"
+  | "hospitalization"
+  | "hospitalization_discharge"
+  | "video_consultation";
 
 export type PetImportVaccination = {
   vaccine_name: string;
@@ -53,6 +73,22 @@ export type PetImportVaccination = {
   next_due_date: string;
   expiry_date: string;
   administered_by: string;
+  notes: string;
+};
+
+export type PetImportLabOrder = {
+  test_name: string;
+  category: "blood" | "urine" | "imaging" | "biopsy" | "other";
+  status: "ordered" | "in-progress" | "completed";
+  urgent: boolean;
+  ordered_date: string;
+  ordered_by_name: string;
+  test_date: string;
+  completed_date: string;
+  results: string;
+  result_value: string;
+  normal_range: string;
+  result_status: "normal" | "abnormal" | "critical" | "";
   notes: string;
 };
 
@@ -149,6 +185,89 @@ function normalizeHeader(value: unknown) {
     .replace(/["'`׳״()[\]{}]/g, "")
     .replace(/[_./\\-]+/g, " ")
     .replace(/\s+/g, " ");
+}
+
+const IMPORTED_VISIT_TYPE_ALIASES: Record<string, ImportedMedicalVisitType> = {
+  "full exam": "full_exam",
+  checkup: "full_exam",
+  "בדיקה": "full_exam",
+  "בדיקה רפואית": "full_exam",
+  "טיפול רפואי": "full_exam",
+  surgery: "full_exam",
+  "ניתוח": "full_exam",
+  dental: "full_exam",
+  "שיניים": "full_exam",
+  emergency: "full_exam",
+  "חירום": "full_exam",
+  vaccination: "vaccination",
+  "חיסון": "vaccination",
+  "weight check": "weight_check",
+  "שקילה": "weight_check",
+  "prescription only": "prescription_only",
+  "מרשם": "prescription_only",
+  lab: "lab",
+  "מעבדה": "lab",
+  "בדיקת מעבדה": "lab",
+  "follow up": "follow_up",
+  "מעקב": "follow_up",
+  note: "note",
+  "הערה רפואית": "note",
+  hospitalization: "hospitalization",
+  "אשפוז": "hospitalization",
+  "hospitalization discharge": "hospitalization_discharge",
+  "שחרור מאשפוז": "hospitalization_discharge",
+  "video consultation": "video_consultation",
+  "שיחת וידאו": "video_consultation",
+};
+
+/** Converts spreadsheet labels to visit-type codes accepted by MyVet's schema. */
+export function normalizeImportedVisitType(
+  value: unknown,
+): ImportedMedicalVisitType {
+  return IMPORTED_VISIT_TYPE_ALIASES[normalizeHeader(value)] || "full_exam";
+}
+
+export function normalizeImportedUrgency(
+  value: unknown,
+): "normal" | "serious" | "critical" {
+  const normalized = normalizeHeader(value);
+  if (["critical", "קריטי"].includes(normalized)) return "critical";
+  if (["serious", "חמור", "דחוף"].includes(normalized)) return "serious";
+  return "normal";
+}
+
+export function normalizeImportedLabCategory(
+  value: unknown,
+): PetImportLabOrder["category"] {
+  const normalized = normalizeHeader(value);
+  if (["blood", "דם", "בדיקת דם"].includes(normalized)) return "blood";
+  if (["urine", "שתן", "בדיקת שתן"].includes(normalized)) return "urine";
+  if (["imaging", "הדמיה"].includes(normalized)) return "imaging";
+  if (["biopsy", "ביופסיה"].includes(normalized)) return "biopsy";
+  return "other";
+}
+
+export function normalizeImportedLabStatus(
+  value: unknown,
+): PetImportLabOrder["status"] {
+  const normalized = normalizeHeader(value);
+  if (["completed", "הושלמה", "הושלם"].includes(normalized)) return "completed";
+  if (["in progress", "בביצוע"].includes(normalized)) return "in-progress";
+  return "ordered";
+}
+
+export function normalizeImportedLabResultStatus(
+  value: unknown,
+): PetImportLabOrder["result_status"] {
+  const normalized = normalizeHeader(value);
+  if (["normal", "תקין"].includes(normalized)) return "normal";
+  if (["abnormal", "חריג"].includes(normalized)) return "abnormal";
+  if (["critical", "קריטי"].includes(normalized)) return "critical";
+  return "";
+}
+
+function parseSpreadsheetBoolean(value: unknown) {
+  return ["true", "yes", "כן", "1"].includes(normalizeHeader(value));
 }
 
 function isSupportedFile(file: File) {
@@ -291,6 +410,7 @@ export function extractMedicalHistory(
     "reason",
     "title",
   );
+  const typeCodeIndex = findColumnIndex(headers, "קוד סוג טיפול", "visit type code");
   const typeIndex = findColumnIndex(headers, "סוג טיפול", "visit type", "type");
   const descriptionIndex = findColumnIndex(
     headers,
@@ -306,19 +426,109 @@ export function extractMedicalHistory(
     "וטרינר",
     "vet",
   );
+  const diagnosisIndex = findColumnIndex(headers, "אבחנה", "diagnosis");
+  const notesIndex = findColumnIndex(headers, "הערות", "notes");
+  const urgencyCodeIndex = findColumnIndex(headers, "קוד דחיפות", "urgency code");
+  const urgencyIndex = findColumnIndex(headers, "דחיפות", "רמת דחיפות", "urgency");
+  const complaintIndex = findColumnIndex(
+    headers,
+    "תלונה עיקרית",
+    "chief complaint",
+  );
+  const finalDiagnosisIndex = findColumnIndex(
+    headers,
+    "אבחנה סופית",
+    "final diagnosis",
+  );
+  const followUpIndex = findColumnIndex(
+    headers,
+    "נדרש מעקב",
+    "follow up required",
+  );
+  const followUpNotesIndex = findColumnIndex(
+    headers,
+    "הערות מעקב",
+    "follow up notes",
+  );
 
   return matrix
     .slice(headerIndex + 1)
     .map((row) => ({
       visit_date: normalizeBirthDate(cellAt(row, dateIndex)),
       title: cleanValue(cellAt(row, titleIndex)),
-      visit_type: cleanValue(cellAt(row, typeIndex)),
+      visit_type: cleanValue(
+        cellAt(row, typeCodeIndex) || cellAt(row, typeIndex),
+      ),
       description: cleanValue(cellAt(row, descriptionIndex)),
       vet_name: cleanValue(cellAt(row, vetIndex)),
+      diagnosis: cleanValue(cellAt(row, diagnosisIndex)),
+      notes: cleanValue(cellAt(row, notesIndex)),
+      urgency_level: normalizeImportedUrgency(
+        cellAt(row, urgencyCodeIndex) || cellAt(row, urgencyIndex),
+      ),
+      chief_complaint: cleanValue(cellAt(row, complaintIndex)),
+      final_diagnosis: cleanValue(cellAt(row, finalDiagnosisIndex)),
+      follow_up_required: parseSpreadsheetBoolean(cellAt(row, followUpIndex)),
+      follow_up_notes: cleanValue(cellAt(row, followUpNotesIndex)),
     }))
     .filter((visit) =>
       Boolean(visit.visit_date && (visit.title || visit.description)),
     );
+}
+
+export function extractLabOrders(matrix: unknown[][]): PetImportLabOrder[] {
+  const headerIndex = matrix.findIndex((row) => {
+    const normalized = row.map(normalizeHeader);
+    return normalized.includes("שם הבדיקה") && (
+      normalized.includes("קטגוריה") ||
+      normalized.includes("קוד קטגוריה")
+    );
+  });
+  if (headerIndex < 0) return [];
+
+  const headers = matrix[headerIndex];
+  const index = (...aliases: string[]) => findColumnIndex(headers, ...aliases);
+  const testNameIndex = index("שם הבדיקה", "test name");
+  const categoryCodeIndex = index("קוד קטגוריה", "category code");
+  const categoryIndex = index("קטגוריה", "category");
+  const statusCodeIndex = index("קוד סטטוס", "status code");
+  const statusIndex = index("סטטוס", "status");
+  const urgentIndex = index("דחוף", "urgent");
+  const orderedDateIndex = index("תאריך הזמנה", "ordered date");
+  const orderedByIndex = index("הוזמן ע״י", "הוזמן על ידי", "ordered by");
+  const testDateIndex = index("תאריך בדיקה", "test date");
+  const completedDateIndex = index("תאריך השלמה", "completed date");
+  const resultsIndex = index("תוצאה כללית", "תוצאות", "results");
+  const resultValueIndex = index("ערכים", "ערך תוצאה", "result value");
+  const normalRangeIndex = index("טווח נורמלי", "normal range");
+  const resultStatusCodeIndex = index("קוד סיווג תוצאה", "result status code");
+  const resultStatusIndex = index("סיווג תוצאה", "סטטוס תוצאה", "result status");
+  const notesIndex = index("הערות", "notes");
+
+  return matrix
+    .slice(headerIndex + 1)
+    .map((row) => ({
+      test_name: cleanValue(cellAt(row, testNameIndex)),
+      category: normalizeImportedLabCategory(
+        cellAt(row, categoryCodeIndex) || cellAt(row, categoryIndex),
+      ),
+      status: normalizeImportedLabStatus(
+        cellAt(row, statusCodeIndex) || cellAt(row, statusIndex),
+      ),
+      urgent: parseSpreadsheetBoolean(cellAt(row, urgentIndex)),
+      ordered_date: normalizeBirthDate(cellAt(row, orderedDateIndex)),
+      ordered_by_name: cleanOptionalValue(cellAt(row, orderedByIndex)),
+      test_date: normalizeBirthDate(cellAt(row, testDateIndex)),
+      completed_date: normalizeBirthDate(cellAt(row, completedDateIndex)),
+      results: cleanOptionalValue(cellAt(row, resultsIndex)),
+      result_value: cleanOptionalValue(cellAt(row, resultValueIndex)),
+      normal_range: cleanOptionalValue(cellAt(row, normalRangeIndex)),
+      result_status: normalizeImportedLabResultStatus(
+        cellAt(row, resultStatusCodeIndex) || cellAt(row, resultStatusIndex),
+      ),
+      notes: cleanOptionalValue(cellAt(row, notesIndex)),
+    }))
+    .filter((order) => Boolean(order.test_name && order.ordered_date));
 }
 
 export function extractVaccinations(
@@ -390,11 +600,17 @@ export async function readPetSpreadsheet(file: File): Promise<PetSpreadsheetData
   const vaccinationsSheetName = workbook.SheetNames.find((name) =>
     normalizeHeader(name).includes("חיסונים"),
   );
+  const labOrdersSheetName = workbook.SheetNames.find((name) =>
+    normalizeHeader(name).includes("בדיקות מעבדה"),
+  );
   const medicalHistory = historySheetName
     ? extractMedicalHistory(getSheetMatrix(workbook, historySheetName))
     : [];
   const vaccinations = vaccinationsSheetName
     ? extractVaccinations(getSheetMatrix(workbook, vaccinationsSheetName))
+    : [];
+  const labOrders = labOrdersSheetName
+    ? extractLabOrders(getSheetMatrix(workbook, labOrdersSheetName))
     : [];
 
   const myVetSheetName = workbook.SheetNames.find((name) =>
@@ -416,6 +632,7 @@ export async function readPetSpreadsheet(file: File): Promise<PetSpreadsheetData
         rows: [extracted.row],
         medicalHistory,
         vaccinations,
+        labOrders,
       };
     }
   }
@@ -464,6 +681,7 @@ export async function readPetSpreadsheet(file: File): Promise<PetSpreadsheetData
     rows,
     medicalHistory,
     vaccinations,
+    labOrders,
   };
 }
 

@@ -89,7 +89,7 @@ export function useCalendarNav() {
     setCurrentMonth(TODAY.getMonth());
     setCurrentYear(TODAY.getFullYear());
     setSelectedDay(TODAY.getDate());
-    setSidebarOpen(true);
+    setSidebarOpen(false);
     setWeekStart(() => { const d = new Date(TODAY); d.setDate(d.getDate() - d.getDay()); return d; });
     setDailyDate(new Date(TODAY));
   };

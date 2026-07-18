@@ -7,11 +7,11 @@ import { CalendarHeader } from "../components/schedule/CalendarHeader";
 import { MonthlyView } from "../components/schedule/MonthlyView";
 import { WeeklyView } from "../components/schedule/WeeklyView";
 import { DailyView } from "../components/schedule/DailyView";
-import { CalendarSidebar } from "../components/schedule/CalendarSidebar";
+import { DayAppointmentsPopover, type DayPopoverAnchor } from "../components/schedule/CalendarSidebar";
 import { DeptFilterPanel } from "../components/schedule/DeptFilterPanel";
 import { AppointmentActionModal } from "../components/schedule/AppointmentActionModal";
 import { ClinicAvailabilitySettings } from "../components/schedule/ClinicAvailabilitySettings";
-import { Clock3, Stethoscope, Users } from "lucide-react";
+import { Clock3, Search, Stethoscope, Users, X } from "lucide-react";
 import { useStaffMembers, uniqueNames } from "../data/staffDirectory";
 import { ScheduleAssistant } from "../components/ai/PageAssistants";
 
@@ -31,6 +31,7 @@ export function AppointmentSchedule() {
   const [activeDepts, setActiveDepts] = useState<Set<string>>(new Set());
   const [activeVet, setActiveVet] = useState<string>("all");
   const [showAvailabilitySettings, setShowAvailabilitySettings] = useState(false);
+  const [dayPopoverAnchor, setDayPopoverAnchor] = useState<DayPopoverAnchor | null>(null);
 
   const toggleDept = (dept: string) => {
     setActiveDepts((prev) => {
@@ -57,6 +58,24 @@ export function AppointmentSchedule() {
     const fromAppointments = Array.from(vetCounts.keys()).filter((name) => name && name !== "טרם שובץ");
     return ["all", ...uniqueNames([...staffNames, ...fromAppointments])];
   }, [vetCounts, vetStaff]);
+
+  const departmentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const query = searchQuery.trim().toLowerCase();
+    for (const appointment of calendarAppointments) {
+      if (activeVet !== "all" && appointment.vet !== activeVet) continue;
+      if (query && ![
+        appointment.petName,
+        appointment.ownerName,
+        appointment.type,
+        appointment.vet,
+        appointment.department,
+        appointment.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה",
+      ].join(" ").toLowerCase().includes(query)) continue;
+      counts.set(appointment.department, (counts.get(appointment.department) || 0) + 1);
+    }
+    return counts;
+  }, [activeVet, calendarAppointments, searchQuery]);
 
   const openDigitalCareForAppointment = useCallback(
     (appt: CalendarAppointment) => {
@@ -89,6 +108,24 @@ export function AppointmentSchedule() {
     },
     [actions, openDigitalCareForAppointment]
   );
+
+  const handleDayAppointmentAction = useCallback(
+    (appt: CalendarAppointment, mode: any) => {
+      nav.setSidebarOpen(false);
+      handleAppointmentAction(appt, mode);
+    },
+    [handleAppointmentAction, nav]
+  );
+
+  const closeDayPopover = useCallback(() => {
+    nav.setSidebarOpen(false);
+    setDayPopoverAnchor(null);
+  }, [nav]);
+
+  const openDayPopover = useCallback((day: number, anchor: DayPopoverAnchor) => {
+    setDayPopoverAnchor(anchor);
+    nav.handleDayClick(day);
+  }, [nav]);
 
   const openNewAppointmentAt = useCallback(
     (date: Date, time = "09:00") => {
@@ -223,8 +260,6 @@ export function AppointmentSchedule() {
         onNav={nav.goNav}
         onToday={nav.goToToday}
         onCloseSidebar={() => nav.setSidebarOpen(false)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
         assistantAction={
           <>
             <button type="button" onClick={() => setShowAvailabilitySettings(true)} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-[13px] font-bold text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50">
@@ -249,17 +284,31 @@ export function AppointmentSchedule() {
       <div className="flex gap-5 items-start">
         {/* ── Calendar area ── */}
         <div className="flex-1 min-w-0 relative">
-          {/* Status legend - top left corner */}
-          <div className="absolute -top-14 left-0 flex items-center gap-4 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-100 shadow-sm">
-            <span className="text-gray-500 font-medium text-[12px]" style={{ fontWeight: 600 }}>
-              תצוגת היומן:
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full shrink-0 bg-gray-400" />
-              <span className="text-gray-500 text-[11.5px]" style={{ fontWeight: 500 }}>
-                תורים פעילים במערכת
-              </span>
+          <div className="mb-3 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="חיפוש מהיר ביומן — שם חיה, בעלים, סוג טיפול, וטרינר..."
+                dir="rtl"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-[14px] font-medium text-gray-700 shadow-sm transition-all placeholder:text-gray-500 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery("")} aria-label="ניקוי החיפוש" className="absolute left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
+            <DeptFilterPanel
+              activeDepts={activeDepts}
+              onToggle={toggleDept}
+              onClearAll={clearDepts}
+              totalCount={totalCount}
+              filteredCount={filteredCount}
+              departmentCounts={departmentCounts}
+            />
           </div>
           {nav.viewMode === "monthly" && (
             <MonthlyView
@@ -269,7 +318,7 @@ export function AppointmentSchedule() {
               currentYear={nav.currentYear}
               isToday={nav.isToday}
               getAppointments={filteredGetAppointments}
-              onDayClick={nav.handleDayClick}
+              onDayClick={openDayPopover}
               onCreateAppointment={(date) => openNewAppointmentAt(date)}
             />
           )}
@@ -360,31 +409,25 @@ export function AppointmentSchedule() {
               })}
             </div>
           </div>
-
-          {/* Day detail sidebar — monthly only, when a day is selected */}
-          {nav.sidebarOpen &&
-            nav.selectedDay !== null &&
-            nav.viewMode === "monthly" && (
-              <CalendarSidebar
-                selectedDay={nav.selectedDay}
-                currentMonth={nav.currentMonth}
-                currentYear={nav.currentYear}
-                appointments={filteredSidebarAppointments}
-                onClose={() => nav.setSidebarOpen(false)}
-                onApptAction={handleAppointmentAction}
-              />
-            )}
-
-          {/* Department filter — always visible */}
-          <DeptFilterPanel
-            activeDepts={activeDepts}
-            onToggle={toggleDept}
-            onClearAll={clearDepts}
-            totalCount={totalCount}
-            filteredCount={filteredCount}
-          />
         </div>
       </div>
+
+      {nav.sidebarOpen && nav.selectedDay !== null && nav.viewMode === "monthly" && dayPopoverAnchor && (
+        <DayAppointmentsPopover
+          selectedDay={nav.selectedDay}
+          currentMonth={nav.currentMonth}
+          currentYear={nav.currentYear}
+          appointments={filteredSidebarAppointments}
+          anchor={dayPopoverAnchor}
+          onClose={closeDayPopover}
+          onCreateAppointment={() => {
+            const date = new Date(nav.currentYear, nav.currentMonth, nav.selectedDay!);
+            closeDayPopover();
+            openNewAppointmentAt(date);
+          }}
+          onApptAction={handleDayAppointmentAction}
+        />
+      )}
 
       {/* Appointment action modal */}
       {actions.selectedAppt && (
