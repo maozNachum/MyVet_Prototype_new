@@ -35,6 +35,7 @@ const medicalReportsSource = readFileSync("src/app/components/ClientMedicalRepor
 const hospitalizationSource = readFileSync("src/app/pages/Hospitalizations.tsx", "utf8");
 const reportMetricsSource = readFileSync("src/app/data/reportMetrics.ts", "utf8");
 const clientComplianceSource = readFileSync("src/app/components/reports/ClientCompliance.tsx", "utf8");
+const patientsSource = readFileSync("src/app/pages/Patients.tsx", "utf8");
 
 test("VetBot writes only through expiring human-approved action requests", () => {
   assert.match(edgeFunction, /vetbot_audit_logs/);
@@ -250,6 +251,11 @@ test("Reports collapse duplicate reminders and avoid orphan pet labels", () => {
 
 test("Hospitalization cards use the current patient owner", () => {
   assert.match(hospitalizationSource, /const ownerId = pet\?\.owner_id \|\| row\.owner_id \|\| ""/);
+});
+
+test("Patient list selects the tenant-safe owner relationship explicitly", () => {
+  assert.match(patientsSource, /owner:owners!patients_clinic_owner_fkey/);
+  assert.doesNotMatch(patientsSource, /owner:owners\s*\(/);
 });
 
 test("Dashboard keeps untreated overdue appointments visible and opens the pet record", () => {

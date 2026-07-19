@@ -310,7 +310,7 @@ export function Patients() {
             weight,
             neutered_status,
             owner_id,
-            owner:owners (
+            owner:owners!patients_clinic_owner_fkey (
               owner_id,
               owner_first_name,
               owner_last_name,
