@@ -146,6 +146,22 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  [data-sonner-toaster] [data-sonner-toast] {
+    direction: rtl;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] [data-content] {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] [data-title],
+  [data-sonner-toaster] [data-sonner-toast] [data-description] {
+    width: 100%;
+    text-align: center;
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
