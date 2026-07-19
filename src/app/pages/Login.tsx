@@ -48,16 +48,29 @@ function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
-function splitFullName(value: string) {
-  const parts = value.trim().split(/\s+/).filter(Boolean);
-  return {
-    firstName: parts[0] || "",
-    lastName: parts.slice(1).join(" ") || "",
-  };
-}
-
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
+  const rawMessage =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+
+  if (/[\u0590-\u05ff]/.test(rawMessage)) return rawMessage;
+  if (/already registered|user already exists/i.test(rawMessage)) {
+    return "כבר קיים חשבון עבור האימייל הזה. נסו להתחבר או לאפס סיסמה.";
+  }
+  if (/signup.*disabled/i.test(rawMessage)) {
+    return "ההרשמה אינה זמינה כרגע. פנו למרפאה לקבלת עזרה.";
+  }
+  if (/rate limit|too many requests/i.test(rawMessage)) {
+    return "בוצעו יותר מדי ניסיונות הרשמה. המתינו כמה דקות ונסו שוב.";
+  }
+  if (/invalid.*email|email.*invalid/i.test(rawMessage)) {
+    return "כתובת האימייל אינה תקינה. בדקו אותה ונסו שוב.";
+  }
+  if (/database error saving new user|owner_signup_/i.test(rawMessage)) {
+    return "לא ניתן להשלים את ההרשמה. ודאו שתעודת הזהות והאימייל תואמים לפרטי הלקוח במרפאה, או פנו לצוות המרפאה.";
+  }
+
   return "אירעה שגיאה. נסו שוב בעוד רגע.";
 }
 
@@ -249,42 +262,6 @@ export function Login() {
       if (role === "owner" && isSignUp) {
         setIsLoading(true);
 
-        const { data: existingOwner, error: existingOwnerError } =
-          await supabase
-            .from("owners")
-            .select("owner_id, auth_user_id, email")
-            .eq("owner_id", normalizedId)
-            .maybeSingle();
-
-        if (existingOwnerError) throw existingOwnerError;
-
-        if (existingOwner?.auth_user_id) {
-          setFormErrors({ idNumber: "כבר קיים חשבון עבור תעודת הזהות הזו." });
-          throw new Error(
-            "כבר קיים חשבון עבור תעודת הזהות הזו. נסו להתחבר או פנו למרפאה.",
-          );
-        }
-
-        if (existingOwner) {
-          const existingEmail = String(existingOwner.email || "")
-            .trim()
-            .toLowerCase();
-
-          if (!existingEmail) {
-            const message =
-              "ברשומת הלקוח הקיימת לא שמור אימייל. כדי לחבר חשבון באופן בטוח, פנו למרפאה לעדכון הפרטים.";
-            setFormErrors({ idNumber: message, email: message });
-            throw new Error(message);
-          }
-
-          if (existingEmail !== normalizedEmail) {
-            const message =
-              "האימייל שהוזן אינו תואם לאימייל השמור במרפאה עבור תעודת הזהות הזו. פנו למרפאה לבדיקת הפרטים.";
-            setFormErrors({ email: message });
-            throw new Error(message);
-          }
-        }
-
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
@@ -294,6 +271,8 @@ export function Login() {
               role: "owner",
               owner_id: normalizedId,
               full_name: fullName.trim(),
+              phone: normalizedPhone,
+              terms_version: TERMS_VERSION,
             },
           },
         });
@@ -301,35 +280,28 @@ export function Login() {
         if (error) throw error;
         if (!data.user) throw new Error("המשתמש לא נוצר במערכת האימות.");
 
-        const { firstName, lastName } = splitFullName(fullName);
-        const ownerProfilePayload = {
-          auth_user_id: data.user.id,
-          owner_first_name: firstName,
-          owner_last_name: lastName,
-          phone: normalizedPhone,
-          terms_accepted_at: new Date().toISOString(),
-          terms_version: TERMS_VERSION,
-        };
-
-        if (existingOwner) {
-          const { error: updateOwnerError } = await supabase
-            .from("owners")
-            .update(ownerProfilePayload)
-            .eq("owner_id", normalizedId);
-
-          if (updateOwnerError) throw updateOwnerError;
-        } else {
-          const { error: insertOwnerError } = await supabase
-            .from("owners")
-            .insert({
-              owner_id: normalizedId,
-              ...ownerProfilePayload,
-              email: normalizedEmail,
-            });
-          if (insertOwnerError) throw insertOwnerError;
+        if (
+          Array.isArray(data.user.identities) &&
+          data.user.identities.length === 0
+        ) {
+          throw new Error(
+            "כבר קיים חשבון עבור האימייל הזה. נסו להתחבר או לאפס סיסמה.",
+          );
         }
 
         if (data.session) {
+          const { data: createdOwner, error: createdOwnerError } = await supabase
+            .from("owners")
+            .select("owner_id")
+            .eq("auth_user_id", data.user.id)
+            .maybeSingle();
+
+          if (createdOwnerError || !createdOwner) {
+            throw new Error(
+              "החשבון נוצר, אך פרופיל הלקוח לא הושלם. פנו למרפאה לפני ניסיון נוסף.",
+            );
+          }
+
           setFormMessage("החשבון נוצר בהצלחה! מעביר אותך לאזור האישי...");
           setTimeout(() => navigate("/portal"), 900);
         } else {
@@ -365,30 +337,26 @@ export function Login() {
         if (ownerByAuthError) throw ownerByAuthError;
 
         if (!ownerByAuth) {
-          const { data: ownerByEmail, error: ownerByEmailError } =
-            await supabase
-              .from("owners")
-              .select("owner_id, auth_user_id, email")
-              .eq("email", normalizedEmail)
-              .maybeSingle();
+          const { data: claimedOwnerId, error: claimOwnerError } =
+            await supabase.rpc("claim_owner_profile");
 
-          if (ownerByEmailError) throw ownerByEmailError;
+          if (claimOwnerError) throw claimOwnerError;
 
-          if (!ownerByEmail) {
+          if (!claimedOwnerId) {
             await supabase.auth.signOut();
             throw new Error(
               "לא נמצא אזור אישי שמחובר לחשבון הזה. פנו למרפאה לחיבור החשבון.",
             );
           }
 
-          if (!ownerByEmail.auth_user_id) {
-            const { error: linkOwnerError } = await supabase
-              .from("owners")
-              .update({ auth_user_id: data.user.id })
-              .eq("owner_id", ownerByEmail.owner_id);
+          const { data: claimedOwner, error: claimedOwnerError } = await supabase
+            .from("owners")
+            .select("owner_id, auth_user_id, email")
+            .eq("auth_user_id", data.user.id)
+            .maybeSingle();
 
-            if (linkOwnerError) throw linkOwnerError;
-          }
+          if (claimedOwnerError) throw claimedOwnerError;
+          if (!claimedOwner) throw new Error("פרופיל הלקוח לא קושר לחשבון.");
         }
 
         navigate("/portal");

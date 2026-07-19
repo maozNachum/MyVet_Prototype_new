@@ -157,23 +157,28 @@ Kill Switches נשארים `false` במצב רגיל. באירוע תקלה מפ
 
 ## 7. סדר Migrations המחייב
 
-לא הוכח שהרשימה הבאה הוחלה על Supabase חי. בסביבת Preview בלבד יש להריץ לפי הסדר:
+הרשימה הבאה הוחלה על פרויקט Supabase המקושר ב־19.07.2026 לאחר אישור מפורש. כל יכולות ה־AI החדשות נשארו כבויות:
 
 1. `20260716213752_ai_tenant_foundation.sql`
 2. `20260716213800_ai_data_model.sql`
 3. `20260716213806_ai_rls_and_rpc_hardening.sql`
 4. `20260716213812_ai_storage_security.sql`
 5. `20260717120000_visit_summary_workflow.sql`
-6. `20260717150000_digitalcare_transcription_workflow.sql`
-7. `20260717160000_secure_medical_record_rag.sql`
-8. `20260717160500_secure_medical_record_rag_rpc.sql`
-9. `20260717173000_client_summary_workflow.sql`
-10. `20260717180000_follow_up_suggestion_workflow.sql`
-11. `20260717190000_ai_feature_flag_fail_closed.sql`
+6. `20260717145900_allow_trusted_migration_tenant_writes.sql`
+7. `20260717150000_digitalcare_transcription_workflow.sql`
+8. `20260717160000_secure_medical_record_rag.sql`
+9. `20260717160500_secure_medical_record_rag_rpc.sql`
+10. `20260717173000_client_summary_workflow.sql`
+11. `20260717180000_follow_up_suggestion_workflow.sql`
+12. `20260717190000_ai_feature_flag_fail_closed.sql`
+13. `20260718230634_vetbot_inventory_create_action.sql`
+14. `20260719123000_secure_owner_signup.sql`
+15. `20260719150000_allow_supabase_auth_owner_signup.sql`
+16. `20260719151000_sanitize_owner_signup_metadata.sql`
 
 OCR אינו דורש Migration נפרדת.
 
-## 8. Edge Functions שטרם אומתו ב־Preview
+## 8. Edge Functions שנפרסו לפרויקט המקושר
 
 - `visit-summary`
 - `digitalcare-transcription`
@@ -182,7 +187,7 @@ OCR אינו דורש Migration נפרדת.
 - `client-summary`
 - `follow-up-suggestions`
 
-בנוסף יש לאמת שהגרסה החיה של `ai-assistant` תואמת לקוד בריפו.
+גם `ai-assistant` נפרסה מחדש מהקוד בריפו. כל שבע הפונקציות פעילות עם `verify_jwt=true`, ובדיקת smoke ללא JWT החזירה `401` לכולן.
 
 אין לפרוס Functions אלה ל־Production לפני Preview, בדיקות הרשאה ו־Go מפורש.
 
@@ -191,6 +196,9 @@ OCR אינו דורש Migration נפרדת.
 - Production Build: PASS, ‏1,828 modules.
 - `npm run test:vetbot`: PASS, ‏120/120.
 - Type Check: PASS.
+- Current full regression run: PASS, 175/175.
+- Current production build: PASS, 1,830 modules.
+- Connected owner-registration E2E: PASS. Auth user and owner profile were created and linked, the portal loaded, one-time signup metadata was removed, and all synthetic test rows were deleted.
 - Frontend secrets: PASS.
 - Hardening: ‏5/5.
 - PGlite migration/RLS: ‏11/11.
@@ -207,11 +215,11 @@ OCR אינו דורש Migration נפרדת.
 
 ### לפני הפעלת AI חדש
 
-- Supabase Preview נפרד מ־Production.
-- החלת 11 Migrations.
+- Supabase Preview נפרד לבדיקות E2E עתידיות לפני הפעלת היכולות החדשות.
+- בדיקות E2E מאומתות מול משתמשים מחוברים לאחר החלת 14 ה־Migrations.
 - נתונים סינתטיים לשתי מרפאות ושני בעלים.
 - בדיקות cross-tenant, owner isolation, role escalation ו־Storage.
-- פריסת Edge Functions ל־Preview.
+- בדיקת Edge Functions עם משתמשים מורשים ולא־מורשים; הפריסה עצמה הושלמה.
 - בדיקת ספק אמיתי וכשל ספק לכל יכולת.
 - כיול OCR ו־RAG.
 - E2E בדפדפן ב־desktop ובנייד.
@@ -227,7 +235,7 @@ OCR אינו דורש Migration נפרדת.
 
 ## 11. הפעולה הבאה המומלצת
 
-הפעולה הבאה היחידה היא להקים Supabase Preview נפרד, ללא מידע אמיתי, ולהחיל בו את 11 ה־Migrations לפי הסדר כאשר כל ה־Flags עדיין כבויים.
+הפעולה הבאה היחידה היא להריץ E2E מחובר על ההרשמה, VetBot והזרימות הקיימות כאשר כל יכולות ה־AI החדשות עדיין כבויות. אין להפעיל RAG, OCR, סיכום לקוח או הצעות מעקב לפני בדיקת ספק והרשאות ייעודית.
 
 לאחר מכן:
 
@@ -288,4 +296,4 @@ git diff --check
 - נבדק עם ספק אמיתי.
 - נפרס ל־Production.
 
-נכון ל־Snapshot זה, יכולות שלבים 3–8 נמצאות בשלוש הקטגוריות הראשונות בלבד. אין לטעון שהן אומתו ב־Preview, אצל ספק אמיתי או ב־Production.
+נכון ל־Snapshot זה, המיגרציות ופונקציות השרת הוחלו בפרויקט המקושר, אך יכולות שלבים 3–8 עדיין כבויות ולא אומתו מקצה לקצה מול ספק אמיתי. אין להציג אותן כמוכנות להפעלה רק משום שה־Backend נפרס.

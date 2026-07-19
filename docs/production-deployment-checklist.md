@@ -1,6 +1,6 @@
 # MyVet — Checklist לפריסת Production
 
-עודכן: 17.07.2026
+עודכן: 19.07.2026
 
 מסמך זה אינו אישור לפריסה.
 
@@ -12,38 +12,48 @@
 - [ ] נוצר Supabase Preview Branch מבודד וגיבוי/נקודת שחזור.
 - [ ] קיימים משתמשים ונתונים סינתטיים בלבד.
 
-## סדר Migrations שטרם אומת על Supabase חי
+## סדר Migrations שהוחל על פרויקט Supabase המקושר
+
+הוחל ב־19.07.2026 לאחר אישור מפורש. כל יכולות ה־AI החדשות נשארו כבויות.
 
 1. `20260716213752_ai_tenant_foundation.sql`
 2. `20260716213800_ai_data_model.sql`
 3. `20260716213806_ai_rls_and_rpc_hardening.sql`
 4. `20260716213812_ai_storage_security.sql`
 5. `20260717120000_visit_summary_workflow.sql`
-6. `20260717150000_digitalcare_transcription_workflow.sql`
-7. `20260717160000_secure_medical_record_rag.sql`
-8. `20260717160500_secure_medical_record_rag_rpc.sql`
-9. `20260717173000_client_summary_workflow.sql`
-10. `20260717180000_follow_up_suggestion_workflow.sql`
-11. `20260717190000_ai_feature_flag_fail_closed.sql`
+6. `20260717145900_allow_trusted_migration_tenant_writes.sql`
+7. `20260717150000_digitalcare_transcription_workflow.sql`
+8. `20260717160000_secure_medical_record_rag.sql`
+9. `20260717160500_secure_medical_record_rag_rpc.sql`
+10. `20260717173000_client_summary_workflow.sql`
+11. `20260717180000_follow_up_suggestion_workflow.sql`
+12. `20260717190000_ai_feature_flag_fail_closed.sql`
+13. `20260718230634_vetbot_inventory_create_action.sql`
+14. `20260719123000_secure_owner_signup.sql`
+15. `20260719150000_allow_supabase_auth_owner_signup.sql`
+16. `20260719151000_sanitize_owner_signup_metadata.sql`
 
-- [ ] `migration list` תואם ואין drift.
-- [ ] `db push --dry-run` עבר.
+- [x] `migration list` תואם ואין drift.
+- [x] `db push --dry-run` עבר.
 - [ ] pgvector ו־HNSW אומתו בקטלוג וב־`EXPLAIN`.
-- [ ] RLS ו־FORCE RLS פעילים בכל טבלה רגישה.
-- [ ] אין Policy רחבה; Grants של RPC מצומצמים.
-- [ ] Advisors של Security ו־Performance נבדקו.
+- [x] RLS ו־FORCE RLS פעילים בכל טבלת AI רגישה.
+- [x] אין Policy רחבה בטבלאות הרגישות; Grants של RPC מצומצמים.
+- [x] Advisors של Security ו־Performance נבדקו; אזהרות legacy/הגדרות Auth נשארו לתיעוד.
+- [x] הרשמת בעלים יוצרת/מקשרת פרופיל רק בצד השרת ורק לאחר אימות אימייל; עבר smoke טרנזקציוני ללא שמירת נתוני בדיקה.
+- [x] אין SELECT או INSERT אנונימי ישיר לטבלת `owners` במהלך הרשמה.
+- [x] הרשמה נבדקה דרך הממשק מול Supabase המקושר: יצירת Auth, קישור פרופיל, כניסה לפורטל וניקוי metadata עברו; נתוני הבדיקה נמחקו.
 
-## Edge Functions שדורשות Preview
+## Edge Functions שנפרסו לפרויקט המקושר
 
 - [ ] `ai-assistant` — התאמת הגרסה החיה לקוד ו־smoke של שני הבוטים.
-- [ ] `visit-summary`
-- [ ] `digitalcare-transcription`
-- [ ] `medical-record-rag`
-- [ ] `document-ocr`
-- [ ] `client-summary`
-- [ ] `follow-up-suggestions`
+- [x] `visit-summary`
+- [x] `digitalcare-transcription`
+- [x] `medical-record-rag`
+- [x] `document-ocr`
+- [x] `client-summary`
+- [x] `follow-up-suggestions`
 
-לכולן: `verify_jwt=true`, CORS allowlist, `auth.getUser()`, Secrets שרתיים בלבד וללא Stack Trace למשתמש.
+לכולן: `verify_jwt=true`; בדיקת smoke ללא JWT החזירה `401`. בדיקת E2E עם משתמש מחובר עדיין נדרשת לפני הפעלת יכולת חדשה.
 
 ## משתני Environment — שמות בלבד
 

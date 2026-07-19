@@ -18,6 +18,7 @@ const rollbackPaths = [
 ];
 const stage3MigrationPath = "supabase/migrations/20260717120000_visit_summary_workflow.sql";
 const stage3RollbackPath = "supabase/rollback/stage3/01_remove_visit_summary_workflow.sql";
+const trustedMigrationGuardPath = "supabase/migrations/20260717145900_allow_trusted_migration_tenant_writes.sql";
 const stage4MigrationPath = "supabase/migrations/20260717150000_digitalcare_transcription_workflow.sql";
 const stage4RollbackPaths = [
   "supabase/rollback/stage4/01_disable_digitalcare_ai.sql",
@@ -990,6 +991,7 @@ test("Stage 9 seeds disabled AI flags for every clinic and prevents fail-open de
   const db = await createDatabase();
   try {
     await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, trustedMigrationGuardPath);
     await applySqlFile(db, stage4MigrationPath);
     await applySqlFile(db, stage7MigrationPath);
     await applySqlFile(db, stage8MigrationPath);
@@ -1034,6 +1036,7 @@ test("Stage 4 DigitalCare requires consent, isolates tenants and keeps AI output
   const db = await createDatabase();
   try {
     await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, trustedMigrationGuardPath);
     await applySqlFile(db, stage4MigrationPath);
     const seed = await seedTwoClinics(db);
     const appointmentA = await db.query(
@@ -1148,6 +1151,7 @@ test("Stage 4 empty Preview rollback restores the Stage 3 surface", async () => 
   const db = await createDatabase();
   try {
     await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, trustedMigrationGuardPath);
     await applySqlFile(db, stage4MigrationPath);
     for (const path of stage4RollbackPaths) await applySqlFile(db, path);
     assert.equal((await db.query("select to_regprocedure('public.myvet_begin_digitalcare_capture(uuid,bigint,bigint,text,boolean,boolean,boolean,text,text,bigint)') as value")).rows[0].value, null);
@@ -1168,6 +1172,7 @@ test("Stage 5 RAG authorization derives tenant and owner scope and keeps raw chu
   const db = await createDatabase();
   try {
     await applySqlFile(db, stage3MigrationPath);
+    await applySqlFile(db, trustedMigrationGuardPath);
     await applySqlFile(db, stage4MigrationPath);
     for (const path of stage5MigrationPaths) await applyStage5SqlForPGlite(db, path);
     const seed = await seedTwoClinics(db);

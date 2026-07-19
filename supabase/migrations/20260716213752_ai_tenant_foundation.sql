@@ -19,6 +19,26 @@ insert into public.clinics (slug, display_name)
 values ('myvet-primary', 'MyVet')
 on conflict (slug) do nothing;
 
+-- Normalize the single legacy value used by older MyVet builds before the
+-- tenant backfill updates medical_visits. The current constrained equivalent
+-- of `checkup` is `full_exam`; no clinical text or visit details are changed.
+update public.medical_visits
+set visit_type = 'full_exam'
+where visit_type = 'checkup';
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.medical_visits'::regclass
+      and conname = 'medical_visits_visit_type_check'
+  ) then
+    alter table public.medical_visits
+      validate constraint medical_visits_visit_type_check;
+  end if;
+end $$;
+
 alter table public.clinics enable row level security;
 revoke all on table public.clinics from anon;
 grant select on table public.clinics to authenticated;

@@ -6,6 +6,14 @@ const tenant = readFileSync("supabase/migrations/20260716213752_ai_tenant_founda
 const model = readFileSync("supabase/migrations/20260716213800_ai_data_model.sql", "utf8");
 const rls = readFileSync("supabase/migrations/20260716213806_ai_rls_and_rpc_hardening.sql", "utf8");
 const storage = readFileSync("supabase/migrations/20260716213812_ai_storage_security.sql", "utf8");
+const trustedMigrationGuard = readFileSync(
+  "supabase/migrations/20260717145900_allow_trusted_migration_tenant_writes.sql",
+  "utf8",
+);
+const authOwnerSignupGuard = readFileSync(
+  "supabase/migrations/20260719150000_allow_supabase_auth_owner_signup.sql",
+  "utf8",
+);
 const combined = `${tenant}\n${model}\n${rls}\n${storage}`;
 
 test("Stage 2 creates a server-derived tenant foundation with composite entity keys", () => {
@@ -15,6 +23,8 @@ test("Stage 2 creates a server-derived tenant foundation with composite entity k
   assert.match(tenant, /patients_clinic_owner_fkey/);
   assert.match(tenant, /unique \(clinic_id, pet_id\)/);
   assert.match(tenant, /primary key \(clinic_id, weekday\)/);
+  assert.match(tenant, /set visit_type = 'full_exam'[\s\S]*where visit_type = 'checkup'/);
+  assert.match(tenant, /validate constraint medical_visits_visit_type_check/);
   assert.match(rls, /private\.myvet_validate_legacy_tenant_scope/);
   assert.match(rls, /OWNER_PET_SCOPE_MISMATCH/);
   assert.match(rls, /create trigger b_myvet_validate_tenant_scope/);
@@ -102,6 +112,30 @@ test("identity-sequence grants match the columns declared by the data migration"
   assert.match(rls, /ai_rate_limit_windows_rate_limit_id_seq/i);
   assert.doesNotMatch(rls, /ai_audit_events_event_id_seq/i);
   assert.doesNotMatch(rls, /ai_rate_limit_windows_window_id_seq/i);
+});
+
+test("trusted migration writes use role membership without opening browser writes", () => {
+  assert.match(trustedMigrationGuard, /pg_has_role\(session_user,\s*'postgres',\s*'member'\)/i);
+  assert.match(trustedMigrationGuard, /jwt_role\s*=\s*'service_role'\s+or\s+trusted_database_session/i);
+  assert.match(trustedMigrationGuard, /raise exception 'AUTH_REQUIRED'/i);
+  assert.match(
+    trustedMigrationGuard,
+    /revoke all on function private\.myvet_enforce_tenant_write\(\)\s+from public, anon, authenticated, service_role/i,
+  );
+  assert.doesNotMatch(trustedMigrationGuard, /session_user\s+in\s*\([^)]*authenticator/i);
+});
+
+test("Supabase Auth owner signup bypass is narrow and nested-trigger only", () => {
+  assert.match(authOwnerSignupGuard, /session_user\s*=\s*'supabase_auth_admin'/i);
+  assert.match(authOwnerSignupGuard, /tg_table_name\s*=\s*'owners'/i);
+  assert.match(authOwnerSignupGuard, /tg_op\s+in\s*\('INSERT',\s*'UPDATE'\)/i);
+  assert.match(authOwnerSignupGuard, /pg_trigger_depth\(\)\s*>\s*1/i);
+  assert.match(authOwnerSignupGuard, /or\s+trusted_auth_owner_signup/i);
+  assert.match(
+    authOwnerSignupGuard,
+    /revoke all on function private\.myvet_enforce_tenant_write\(\)\s+from public, anon, authenticated, service_role/i,
+  );
+  assert.doesNotMatch(authOwnerSignupGuard, /session_user\s*=\s*'authenticator'/i);
 });
 
 test("RPC compatibility functions fail closed and no function remains executable by anon", () => {
