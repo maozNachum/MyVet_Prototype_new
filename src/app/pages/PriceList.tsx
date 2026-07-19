@@ -295,10 +295,11 @@ export function PriceList() {
             type="button"
             onClick={loadServices}
             disabled={isLoading}
+            aria-busy={isLoading}
             className="h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2 text-[14px] font-semibold disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            רענן
+            {isLoading ? "מרענן..." : "רענן"}
           </button>
           <button
             type="button"

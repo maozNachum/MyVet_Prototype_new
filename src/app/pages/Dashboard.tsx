@@ -387,6 +387,7 @@ export function Dashboard() {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData>({ appointments: [], conversations: [], labs: [], hospitalizations: [], payments: [], inventory: [] });
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false);
   const [dashboardLoadWarning, setDashboardLoadWarning] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
 
@@ -517,6 +518,7 @@ export function Dashboard() {
 
   async function loadDashboardData(showLoading = true) {
     if (showLoading) setIsDashboardLoading(true);
+    else setIsDashboardRefreshing(true);
     try {
       const { start, end } = todayRange();
       const [appointmentsResult, conversationsResult, labsResult, hospitalizationsResult, paymentsResult, inventoryResult] = await Promise.allSettled([
@@ -617,6 +619,7 @@ export function Dashboard() {
       setDashboardLoadWarning(true);
     } finally {
       setIsDashboardLoading(false);
+      setIsDashboardRefreshing(false);
     }
   }
 
@@ -817,8 +820,9 @@ export function Dashboard() {
 
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end shrink-0">
             <span className="basis-full pb-1 text-[13px] text-slate-500 sm:basis-auto sm:px-2 sm:pb-0">עודכן {lastUpdated || "--:--"}</span>
-            <button type="button" onClick={() => loadDashboardData(false)} className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30">
-              <RefreshCw className={`w-4 h-4 ${isDashboardLoading ? "animate-spin" : ""}`} /> רענן
+            <button type="button" onClick={() => void loadDashboardData(false)} disabled={isDashboardLoading || isDashboardRefreshing} aria-busy={isDashboardLoading || isDashboardRefreshing} className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+              <RefreshCw className={`w-4 h-4 ${(isDashboardLoading || isDashboardRefreshing) ? "animate-spin" : ""}`} />
+              {(isDashboardLoading || isDashboardRefreshing) ? "מרענן..." : "רענן"}
             </button>
             <DashboardAssistant attentionCount={clinicAttentionCount} />
             {isSecretary ? (

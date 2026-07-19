@@ -364,10 +364,11 @@ export function SmartWorklist() {
           type="button"
           onClick={() => void loadData(true)}
           disabled={isLoading}
+          aria-busy={isLoading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          רענן
+          {isLoading ? "מרענן..." : "רענן"}
         </button>
       </div>
 

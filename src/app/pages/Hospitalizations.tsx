@@ -331,8 +331,9 @@ export function Hospitalizations() {
             <p className="text-gray-500 text-[15px] mt-1">מעקב אחר מטופלים מאושפזים ושחרורים</p>
           </div>
         </div>
-        <button type="button" onClick={() => void loadData()} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center gap-2 cursor-pointer">
-          <RefreshCw className="w-4 h-4" /> רענן
+        <button type="button" onClick={() => void loadData()} disabled={loading} aria-busy={loading} className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {loading ? "מרענן..." : "רענן"}
         </button>
       </header>
 

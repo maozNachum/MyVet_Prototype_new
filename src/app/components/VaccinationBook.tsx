@@ -723,9 +723,12 @@ export function VaccinationBook({
           <button
             type="button"
             onClick={loadVaccinations}
-            className="h-10 px-3 rounded-2xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-[13px] font-bold flex items-center gap-2 cursor-pointer transition-colors"
+            disabled={isLoading}
+            aria-busy={isLoading}
+            className="h-10 px-3 rounded-2xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-[13px] font-bold flex items-center gap-2 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw className="w-4 h-4" /> רענן
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {isLoading ? "מרענן..." : "רענן"}
           </button>
           <button
             type="button"

@@ -465,9 +465,12 @@ export function ClinicFlowboard() {
               void refreshAppointments();
               void loadFlowboard(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors text-[14px] font-semibold"
+            disabled={isLoading || isLoadingAppointments}
+            aria-busy={isLoading || isLoadingAppointments}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors text-[14px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw className="w-4 h-4" /> רענן
+            {(isLoading || isLoadingAppointments) ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {(isLoading || isLoadingAppointments) ? "מרענן..." : "רענן"}
           </button>
           <button
             type="button"

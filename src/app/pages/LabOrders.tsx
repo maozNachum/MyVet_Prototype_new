@@ -350,9 +350,12 @@ export function LabOrders() {
         <button
           type="button"
           onClick={() => void loadData()}
-          className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center gap-2 cursor-pointer"
+          disabled={loading}
+          aria-busy={loading}
+          className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-[13px] font-bold flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RefreshCw className="w-4 h-4" /> רענן
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {loading ? "מרענן..." : "רענן"}
         </button>
       </header>
 

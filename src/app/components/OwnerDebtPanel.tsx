@@ -197,6 +197,7 @@ export function OwnerDebtPanel({ ownerId, ownerName }: OwnerDebtPanelProps) {
             type="button"
             onClick={loadOpenPayments}
             disabled={isLoading}
+            aria-busy={isLoading}
             className="px-3 py-2 rounded-xl border border-white/70 bg-white/70 text-gray-700 hover:bg-white transition-colors text-[12px] font-bold disabled:opacity-60"
           >
             {isLoading ? "בודק..." : "רענן"}
