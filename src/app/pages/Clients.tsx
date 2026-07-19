@@ -1012,7 +1012,6 @@ export function Clients() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <h3 className="text-gray-900 text-[17px] font-semibold mb-1">אין חיות משויכות ללקוח הזה</h3>
-            <p className="text-gray-500 text-[14px] mb-4">אפשר להוסיף חיה חדשה והיא תקושר אוטומטית ל־owner_id של הלקוח.</p>
             <button
               onClick={openAddPetModal}
               className="inline-flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-5 py-2.5 rounded-xl transition-colors cursor-pointer text-[13px] font-semibold"
