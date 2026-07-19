@@ -68,7 +68,7 @@ test("model configuration is server-owned, bounded and keeps the existing Gemini
     AI_REQUEST_TIMEOUT_MS: "999999",
     AI_RATE_LIMIT_PER_MINUTE: "0",
   }));
-  assert.deepEqual(config.models, ["custom-model", "gemini-3.5-flash", "gemini-2.5-flash"]);
+  assert.deepEqual(config.models, ["custom-model", "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"]);
   assert.equal(config.requestTimeoutMs, 20_000);
   assert.equal(config.requestsPerMinute, 1);
 });

@@ -736,7 +736,7 @@ export function Dashboard() {
     }
   };
 
-  const inputClass = (field: keyof NewPatientForm) => `w-full px-3.5 py-2.5 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${formErrors[field] ? "border-red-300 bg-red-50/50 focus:ring-red-500/20" : "border-gray-200 bg-white focus:ring-orange-500/20"}`;
+  const inputClass = (field: keyof NewPatientForm) => `w-full px-3.5 py-2.5 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${formErrors[field] ? "border-red-300 bg-red-50/50 focus:ring-red-500/20" : "border-gray-200 bg-white focus:border-blue-400 focus:ring-blue-500/20"}`;
   const renderError = (field: keyof NewPatientForm) => formErrors[field] ? <p className="mt-1 text-[13px] text-red-500 font-medium">{formErrors[field]}</p> : null;
   const renderInput = (label: string, field: keyof NewPatientForm, placeholder: string, required = false, type = "text") => (
     <div>
@@ -1051,7 +1051,7 @@ export function Dashboard() {
       {showWalkInPicker && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4" onClick={closeModal}>
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-l from-orange-500 to-amber-500 px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-l from-blue-600 to-[#1e40af] px-6 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 {modalView === "new-patient" ? <button onClick={() => { setModalView("list"); setNewForm(emptyForm); setFormErrors({}); }} className="text-white/70 hover:text-white cursor-pointer p-1"><ArrowRight className="w-5 h-5" /></button> : <ClipboardPlus className="w-5 h-5 text-white/80" />}
                 <div>
@@ -1068,17 +1068,17 @@ export function Dashboard() {
                   <div className="relative">
                     <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
                     {walkInSearch && <button onClick={() => setWalkInSearch("")} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>}
-                    <input type="text" placeholder="חיפוש לפי שם חיה, בעלים, טלפון, שבב..." value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} className="w-full pr-11 pl-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300" autoFocus />
+                    <input type="text" placeholder="חיפוש לפי שם חיה, בעלים, טלפון, שבב..." value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} className="w-full pr-11 pl-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" autoFocus />
                   </div>
                   {loadError && <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-red-600 text-[13px]"><AlertCircle className="w-4 h-4" />{loadError}</div>}
-                  <button onClick={() => setModalView("new-patient")} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 text-orange-700 hover:bg-orange-100 rounded-xl transition-colors cursor-pointer text-[14px] font-semibold"><UserPlus className="w-4 h-4" /> מטופל חדש שלא קיים במערכת</button>
+                  <button onClick={() => setModalView("new-patient")} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer text-[14px] font-semibold"><UserPlus className="w-4 h-4" /> מטופל חדש שלא קיים במערכת</button>
                 </div>
                 <div className="overflow-y-auto px-5 pb-5 max-h-[50vh] space-y-2">
                   {isLoadingPatients ? <div className="py-10 text-center text-gray-500 text-[14px]"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />טוען מטופלים...</div> : filteredPatients.length === 0 ? <div className="py-10 text-center text-gray-400 text-[14px]">לא נמצאו מטופלים מתאימים.</div> : filteredPatients.map((patient) => {
                     const Icon = patient.petSpecies === "dog" ? Dog : patient.petSpecies === "cat" ? Cat : PawPrint;
                     return (
-                      <button key={patient.id} onClick={() => handleSelectPatient(patient)} className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all text-right cursor-pointer group">
-                        <div className="w-11 h-11 rounded-xl bg-gray-50 group-hover:bg-orange-50 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-orange-500" /></div>
+                      <button key={patient.id} onClick={() => handleSelectPatient(patient)} className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all text-right cursor-pointer group">
+                        <div className="w-11 h-11 rounded-xl bg-gray-50 group-hover:bg-blue-50 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-blue-600" /></div>
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-900 text-[15px] font-semibold truncate">{patient.petName} <span className="text-gray-400 font-normal">· {patient.speciesLabel}</span></p>
                           <p className="text-gray-500 text-[13px] truncate">{patient.ownerName}</p>
@@ -1120,7 +1120,7 @@ export function Dashboard() {
                   </div>
                 </section>
                 <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-1">
-                  <button onClick={validateAndSave} disabled={isSavingPatient} className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white transition-colors cursor-pointer text-[14px] font-semibold flex items-center justify-center gap-2">{isSavingPatient ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{staffType === "nurse" ? "שמור ופתח תיעוד" : "שמור והתחל רשומה"}</button>
+                  <button onClick={validateAndSave} disabled={isSavingPatient} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] font-semibold flex items-center justify-center gap-2">{isSavingPatient ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{staffType === "nurse" ? "שמור ופתח תיעוד" : "שמור והתחל רשומה"}</button>
                   <button onClick={() => setModalView("list")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] font-medium">חזרה</button>
                 </div>
               </div>

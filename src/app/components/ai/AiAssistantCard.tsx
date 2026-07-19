@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, Sparkles } from "lucide-react";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
+import type { AiConversationContextIdentity } from "./aiConversationStorage";
 import type { AiAssistantMode, AiQuickAction, AiUserRole } from "./aiTypes";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   userRole?: AiUserRole;
   disabledReason?: string | null;
   attentionCount?: number;
+  contextIdentity: AiConversationContextIdentity;
 };
 
 export function AiAssistantCard({
@@ -23,6 +25,7 @@ export function AiAssistantCard({
   userRole = "unknown",
   disabledReason,
   attentionCount = 0,
+  contextIdentity,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const disabled = Boolean(disabledReason);
@@ -62,6 +65,7 @@ export function AiAssistantCard({
         quickActions={quickActions}
         buildContext={buildContext}
         userRole={userRole}
+        contextIdentity={contextIdentity}
       />
     </>
   );

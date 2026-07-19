@@ -202,7 +202,7 @@ function normalizeActionPlan(value: unknown): AiActionPlan | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Partial<AiActionPlan>;
   const allowedStatuses = new Set(["needs_details", "needs_confirmation", "blocked", "executed", "rejected", "failed"]);
-  const allowedTypes = new Set(["book_appointment", "reschedule_appointment", "cancel_appointment", "adjust_inventory", "archive_conversation", "restore_conversation", "set_conversation_priority", "set_lab_urgency", "block_booking_time", "draft_message", "navigate", "forbidden", "none"]);
+  const allowedTypes = new Set(["book_appointment", "reschedule_appointment", "cancel_appointment", "adjust_inventory", "create_inventory_item", "archive_conversation", "restore_conversation", "set_conversation_priority", "set_lab_urgency", "block_booking_time", "draft_message", "navigate", "forbidden", "none"]);
   if (!allowedStatuses.has(String(raw.status)) || !allowedTypes.has(String(raw.type))) return undefined;
   return {
     requestId: typeof raw.requestId === "string" ? raw.requestId.slice(0, 80) : undefined,

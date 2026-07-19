@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, Loader2, RefreshCw, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertCircle, ChevronDown, Info, Loader2, RefreshCw, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router";
 import { askAiAssistant, decideAiAction, recordAiFeedback } from "./aiClient";
 import { buildLocalProactiveBriefing } from "./aiProactiveEngine";
 import { AiStructuredAnswer } from "./AiStructuredAnswer";
+import { buildAiContinuationQuestion, getAiContextTransitionMessage, loadAiConversation, saveAiConversation } from "./aiConversationStorage";
+import type { AiConversationContextIdentity } from "./aiConversationStorage";
 import type {
   AiAssistantMode,
   AiAssistantResult,
@@ -23,6 +25,7 @@ type Props = {
   quickActions: AiQuickAction[];
   buildContext: () => unknown | Promise<unknown>;
   userRole?: AiUserRole;
+  contextIdentity: AiConversationContextIdentity;
 };
 
 export function AiAssistantDrawer({
@@ -33,14 +36,19 @@ export function AiAssistantDrawer({
   quickActions,
   buildContext,
   userRole = "unknown",
+  contextIdentity,
 }: Props) {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<AiChatMessage[]>([]);
+  const [messages, setMessages] = useState<AiChatMessage[]>(() => loadAiConversation<AiChatMessage>("main").messages);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isPreparingBriefing, setIsPreparingBriefing] = useState(false);
   const [proactiveBriefing, setProactiveBriefing] = useState<AiAssistantResult | null>(null);
-  const [memorySummary, setMemorySummary] = useState("");
+  const [isBriefingExpanded, setIsBriefingExpanded] = useState(false);
+  const [memorySummary, setMemorySummary] = useState(() => loadAiConversation<AiChatMessage>("main").memorySummary || "");
+  const [activeContext, setActiveContext] = useState<AiConversationContextIdentity | undefined>(() => loadAiConversation<AiChatMessage>("main").activeContext);
+  const [historyStartIndex, setHistoryStartIndex] = useState(() => loadAiConversation<AiChatMessage>("main").historyStartIndex || 0);
+  const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [feedbackByMessage, setFeedbackByMessage] = useState<Record<number, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [lastFailedQuestion, setLastFailedQuestion] = useState("");
@@ -48,11 +56,26 @@ export function AiAssistantDrawer({
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<unknown>(null);
+  const messagesRef = useRef(messages);
+  const activeContextRef = useRef(activeContext);
+  const historyStartIndexRef = useRef(historyStartIndex);
 
   useEffect(() => {
     if (!isOpen) return;
     const id = window.setTimeout(() => inputRef.current?.focus(), 80);
     let active = true;
+    contextRef.current = null;
+    const transitionMessage = getAiContextTransitionMessage(activeContextRef.current, contextIdentity);
+    if (transitionMessage) {
+      const nextHistoryStart = messagesRef.current.length;
+      historyStartIndexRef.current = nextHistoryStart;
+      setHistoryStartIndex(nextHistoryStart);
+      setMemorySummary("");
+      setContextNotice(transitionMessage);
+      setIsBriefingExpanded(false);
+    }
+    activeContextRef.current = contextIdentity;
+    setActiveContext(contextIdentity);
     setIsPreparingBriefing(true);
     Promise.resolve(buildContext())
       .then((context) => {
@@ -70,11 +93,19 @@ export function AiAssistantDrawer({
       active = false;
       window.clearTimeout(id);
     };
-  }, [isOpen, mode, buildContext]);
+  }, [isOpen, mode, buildContext, contextIdentity.key, contextIdentity.label]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, isThinking, error]);
+
+  useEffect(() => {
+    saveAiConversation("main", messages, memorySummary, { activeContext, historyStartIndex });
+  }, [activeContext, historyStartIndex, memorySummary, messages]);
 
   if (!isOpen) return null;
 
@@ -94,6 +125,7 @@ export function AiAssistantDrawer({
 
     setError(null);
     setLastFailedQuestion("");
+    setContextNotice(null);
     setInput("");
     const nextMessages: AiChatMessage[] = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
@@ -102,11 +134,12 @@ export function AiAssistantDrawer({
     try {
       const context = contextRef.current ?? await buildContext();
       contextRef.current = context;
+      const requestHistory = nextMessages.slice(historyStartIndexRef.current).slice(-8);
       const result = await askAiAssistant({
         mode,
-        question: trimmed,
+        question: buildAiContinuationQuestion(requestHistory, trimmed),
         context,
-        history: nextMessages.slice(-8),
+        history: requestHistory,
         memorySummary,
         userRole,
       });
@@ -187,24 +220,52 @@ export function AiAssistantDrawer({
           </p>
         </div>
 
+        <div className="shrink-0 border-b border-slate-100 bg-white px-5 py-2">
+          <p className="truncate text-[11.5px] font-semibold text-slate-500">
+            <span className="font-extrabold text-[#1e40af]">הקשר פעיל:</span> {contextIdentity.label}
+          </p>
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50/60 px-5 py-4">
           <div className="space-y-4 pb-4">
-            {messages.length === 0 && (
-              <>
-                {isPreparingBriefing && (
-                  <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-3 text-[13px] font-semibold text-slate-500 shadow-sm">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> מכין תדריך מקומי ומוגן...
-                  </div>
-                )}
-                {!isPreparingBriefing && proactiveBriefing && (
-                  <div className="rounded-2xl border border-blue-100 bg-white px-4 py-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <p className="flex items-center gap-2 text-[13px] font-extrabold text-slate-900"><Sparkles className="h-4 w-4 text-blue-600" /> תדריך יזום</p>
-                      <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">בוצע מקומית</span>
-                    </div>
+            {contextNotice && (
+              <div className="flex items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-3 text-[12.5px] font-semibold leading-6 text-blue-950" role="status">
+                <Info className="mt-1 h-4 w-4 shrink-0 text-blue-600" />
+                <span>{contextNotice}</span>
+              </div>
+            )}
+            {(isPreparingBriefing || proactiveBriefing) && (
+              <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => proactiveBriefing && setIsBriefingExpanded((current) => !current)}
+                  disabled={isPreparingBriefing || !proactiveBriefing}
+                  aria-expanded={isBriefingExpanded}
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-right disabled:cursor-wait"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    {isPreparingBriefing ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" /> : <Sparkles className="h-4 w-4 shrink-0 text-blue-600" />}
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-extrabold text-slate-900">{isPreparingBriefing ? "בודק מה חשוב עכשיו..." : "מה כדאי לבדוק היום"}</span>
+                      {!isPreparingBriefing && proactiveBriefing && (
+                        <span className="block truncate text-[11.5px] font-medium text-slate-500">
+                          {proactiveBriefing.findings.length > 0 ? `${proactiveBriefing.findings.length} נושאים מחכים לבדיקה · לחץ להצגה` : "אין כרגע נושאים חריגים · לחץ לפרטים"}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  {!isPreparingBriefing && <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isBriefingExpanded ? "rotate-180" : ""}`} />}
+                </button>
+                {isBriefingExpanded && proactiveBriefing && (
+                  <div className="border-t border-blue-50 px-4 py-3">
                     <AiStructuredAnswer result={proactiveBriefing} onAction={handleAction} compact />
                   </div>
                 )}
+              </div>
+            )}
+
+            {messages.length === 0 && (
+              <>
                 {quickActions.length > 0 && (
                   <div className="rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-sm">
                     <p className="mb-2.5 text-[13px] font-bold text-gray-500">פעולות מהירות</p>

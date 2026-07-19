@@ -15,6 +15,12 @@ function staffRole() {
   return getStaffType();
 }
 
+const dashboardContext = { key: "dashboard", label: "מרכז המרפאה" };
+const scheduleContext = { key: "schedule", label: "יומן התורים" };
+const inventoryContext = { key: "inventory", label: "ניהול המלאי" };
+const clientsContext = { key: "clients", label: "ניהול הלקוחות" };
+const portalContext = { key: "portal", label: "פורטל הלקוחות" };
+
 const dashboardActions: AiQuickAction[] = [
   { label: "מה לטפל קודם?", prompt: "תן לי סדר עדיפויות קצר להיום לפי מצב המרפאה, כולל כפתורים או מסכים שכדאי לפתוח." },
   { label: "קבע תור בעזרת VetBot", prompt: "אני רוצה לקבוע תור. שאל אותי רק את הפרטים שחסרים לך ואל תבצע לפני שאאשר." },
@@ -33,6 +39,7 @@ export function DashboardAssistant({ attentionCount = 0 }: { attentionCount?: nu
       quickActions={dashboardActions}
       buildContext={() => buildDashboardContext(role)}
       attentionCount={attentionCount}
+      contextIdentity={dashboardContext}
     />
   );
 }
@@ -60,6 +67,7 @@ export function ScheduleAssistant({ appointments, viewMode, activeVet }: { appoi
       quickActions={scheduleActions}
       buildContext={() => buildScheduleContext({ appointments, viewMode, activeVet, role })}
       attentionCount={attentionCount}
+      contextIdentity={scheduleContext}
     />
   );
 }
@@ -81,6 +89,7 @@ export function InventoryAssistant({ items }: { items: any[] }) {
       userRole={role}
       quickActions={inventoryActions}
       buildContext={() => buildInventoryContext({ items, role })}
+      contextIdentity={inventoryContext}
     />
   );
 }
@@ -94,6 +103,12 @@ const digitalActions: AiQuickAction[] = [
 
 export function DigitalCareAssistant({ conversation, messages, attachments }: { conversation: any | null; messages: any[]; attachments: any[] }) {
   const role = staffRole();
+  const conversationRef = Number(conversation?.conversation_id || conversation?.id) || 0;
+  const petName = String(conversation?.pet?.pet_name || conversation?.pet?.name || "").trim();
+  const contextIdentity = {
+    key: `digital-care:${conversationRef || "unselected"}`,
+    label: petName ? `השיחה הדיגיטלית של ${petName}` : "השיחה הדיגיטלית שנבחרה",
+  };
 
   return (
     <AiAssistantCard
@@ -104,6 +119,7 @@ export function DigitalCareAssistant({ conversation, messages, attachments }: { 
       disabledReason={!conversation ? "בחר שיחה כדי להפעיל את VetBot." : null}
       quickActions={digitalActions}
       buildContext={() => buildDigitalCareContext({ conversation, messages, attachments, role })}
+      contextIdentity={contextIdentity}
     />
   );
 }
@@ -117,6 +133,12 @@ const medicalActions: AiQuickAction[] = [
 export function MedicalRecordAssistant({ patient, visits, activeHospitalization }: { patient: any; visits: any[]; activeHospitalization?: any }) {
   const role = staffRole();
   const disabledReason = role === "secretary" ? "פעולות רפואיות זמינות לצוות רפואי בלבד." : null;
+  const patientRef = Number(patient?.pet?.pet_id || patient?.pet?.id || patient?.pet_id || patient?.id) || 0;
+  const patientName = String(patient?.pet?.name || patient?.pet?.pet_name || patient?.pet_name || patient?.name || "").trim();
+  const contextIdentity = {
+    key: `medical-record:${patientRef || "unselected"}`,
+    label: patientName ? `התיק הרפואי של ${patientName}` : "התיק הרפואי שנבחר",
+  };
 
   return (
     <AiAssistantCard
@@ -127,6 +149,7 @@ export function MedicalRecordAssistant({ patient, visits, activeHospitalization 
       disabledReason={disabledReason}
       quickActions={medicalActions}
       buildContext={() => buildMedicalRecordContext({ patient, visits, activeHospitalization, role })}
+      contextIdentity={contextIdentity}
     />
   );
 }
@@ -148,6 +171,7 @@ export function ClientsAssistant({ clients }: { clients: any[] }) {
       userRole={role}
       quickActions={clientsActions}
       buildContext={() => buildClientsSummaryContext({ clients, role })}
+      contextIdentity={clientsContext}
     />
   );
 }
@@ -183,6 +207,7 @@ export function ClientPortalAssistant({
       userRole="owner"
       quickActions={portalActions}
       buildContext={() => buildPortalContext({ pets, appointments, notifications, digitalConversations, billingItems })}
+      contextIdentity={portalContext}
     />
   );
 }

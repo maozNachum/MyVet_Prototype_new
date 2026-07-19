@@ -21,8 +21,8 @@ export interface AiModelConfiguration {
 }
 
 export function getAiModelConfiguration(env: EnvReader): AiModelConfiguration {
-  const configuredModel = (env("GEMINI_MODEL") || "gemini-3.5-flash").trim();
-  const fallbackModels = (env("AI_GEMINI_FALLBACK_MODELS") || "gemini-3.5-flash,gemini-2.5-flash")
+  const configuredModel = (env("GEMINI_MODEL") || "gemini-2.5-flash-lite").trim();
+  const fallbackModels = (env("AI_GEMINI_FALLBACK_MODELS") || "gemini-2.5-flash-lite,gemini-2.5-flash,gemini-3.5-flash")
     .split(",")
     .map((model) => model.trim())
     .filter(Boolean);

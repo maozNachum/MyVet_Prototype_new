@@ -31,6 +31,7 @@ import {
 } from "../../data/reportMetrics";
 import { toast } from "sonner";
 import { askAiAssistant } from "../ai/aiClient";
+import { loadAiConversation, saveAiConversation } from "../ai/aiConversationStorage";
 import { getStaffType } from "../../data/staffAuth";
 
 export type ReportInsightContext =
@@ -814,7 +815,7 @@ export function AIInsightsPanel({
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadAiConversation<ChatMessage>("reports").messages);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"chat" | "insights">("chat");
@@ -861,6 +862,10 @@ export function AIInsightsPanel({
     if (!showAll || drawerTab !== "chat") return;
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatMessages, showAll, drawerTab, isChatLoading]);
+
+  useEffect(() => {
+    saveAiConversation("reports", chatMessages);
+  }, [chatMessages]);
 
   const criticalCount = insights.filter(
     (insight) => insight.severity === "critical",

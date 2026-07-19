@@ -18,6 +18,7 @@ import { AVAILABLE_DATE_STRINGS, AVAILABLE_TIMES } from "../data/calendar-consta
 import { exportOwnerMedicalRecord } from "../hooks/useExportOwnerRecord";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { ClientPortalAssistant } from "../components/ai/PageAssistants";
+import { clearAiConversations } from "../components/ai/aiConversationStorage";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
@@ -384,6 +385,7 @@ export function ClientPortal() {
       return;
     }
 
+    clearAiConversations();
     clearStaffSession();
     navigate("/login", { replace: true });
   }, [isStaffPreview, navigate]);

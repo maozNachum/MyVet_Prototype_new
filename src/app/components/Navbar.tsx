@@ -9,6 +9,7 @@ import {
   INVENTORY_CATEGORIES,
   INVENTORY_CATEGORY_FALLBACK,
 } from "../data/categoryConfig";
+import { clearAiConversations } from "./ai/aiConversationStorage";
 
 type PatientSearchItem = {
   id: number;
@@ -99,6 +100,7 @@ export function Navbar() {
     try {
       await supabase.auth.signOut();
     } finally {
+      clearAiConversations();
       clearStaffSession();
       navigate("/login", { replace: true });
     }

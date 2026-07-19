@@ -1,7 +1,7 @@
 import { AiGatewayError } from "./errors.ts";
 import type { VetBotMode } from "./types.ts";
 
-export const VETBOT_OUTPUT_SCHEMA_VERSION = "2026-07-16.1";
+export const VETBOT_OUTPUT_SCHEMA_VERSION = "2026-07-19.1";
 export const VISIT_SUMMARY_OUTPUT_SCHEMA_VERSION = "2026-07-17.1";
 export const DIGITALCARE_TRANSCRIPT_SCHEMA_VERSION = "2026-07-17.1";
 export const RAG_ANSWER_SCHEMA_VERSION = "2026-07-17.1";
@@ -290,6 +290,7 @@ const ACTION_TYPES = [
   "reschedule_appointment",
   "cancel_appointment",
   "adjust_inventory",
+  "create_inventory_item",
   "archive_conversation",
   "restore_conversation",
   "set_conversation_priority",
@@ -362,6 +363,9 @@ export const VETBOT_RESPONSE_SCHEMA: Record<string, unknown> = {
         itemName: { type: "string" },
         inventoryOperation: { type: "string", enum: ["set", "add", "remove"] },
         quantity: { type: "number" },
+        itemCategory: { type: "string", enum: ["medication", "equipment", "consumable", "other"] },
+        lowStockThreshold: { type: "number" },
+        unitPrice: { type: "number" },
         conversationRef: { type: "integer" },
         priority: { type: "string", enum: ["normal", "urgent"] },
         labOrderRef: { type: "integer" },
@@ -636,7 +640,7 @@ const ACTION_FIELDS = [
   "type", "intentSummary", "missingFields", "patientName", "patientSpecies",
   "appointmentRef", "appointmentDate", "appointmentTime", "currentAppointmentDate",
   "currentAppointmentTime", "appointmentType", "appointmentMode", "urgency", "itemName",
-  "inventoryOperation", "quantity", "conversationRef", "priority", "labOrderRef", "testName",
+  "inventoryOperation", "quantity", "itemCategory", "lowStockThreshold", "unitPrice", "conversationRef", "priority", "labOrderRef", "testName",
   "isUrgent", "blockDate", "blockStart", "blockEnd", "allDay", "reason",
 ] as const;
 
@@ -653,13 +657,16 @@ function validateActionProposal(value: unknown) {
   for (const key of ["appointmentRef", "conversationRef", "labOrderRef"] as const) {
     if (item[key] !== undefined && !Number.isInteger(item[key])) invalid();
   }
-  if (item.quantity !== undefined && (typeof item.quantity !== "number" || !Number.isFinite(item.quantity))) invalid();
+  for (const key of ["quantity", "lowStockThreshold", "unitPrice"] as const) {
+    if (item[key] !== undefined && (typeof item[key] !== "number" || !Number.isFinite(item[key]))) invalid();
+  }
   if (item.isUrgent !== undefined && typeof item.isUrgent !== "boolean") invalid();
   if (item.allDay !== undefined && typeof item.allDay !== "boolean") invalid();
   if (item.appointmentMode !== undefined) enumeration(item.appointmentMode, ["physical", "video"] as const);
   if (item.urgency !== undefined) enumeration(item.urgency, ["normal", "urgent"] as const);
   if (item.priority !== undefined) enumeration(item.priority, ["normal", "urgent"] as const);
   if (item.inventoryOperation !== undefined) enumeration(item.inventoryOperation, ["set", "add", "remove"] as const);
+  if (item.itemCategory !== undefined) enumeration(item.itemCategory, ["medication", "equipment", "consumable", "other"] as const);
   return item;
 }
 

@@ -22,7 +22,7 @@
     "test:hardening": "node --experimental-strip-types --test tests/finalHardening.test.ts",
     "test:accessibility": "node --experimental-strip-types --test tests/accessibilityFoundation.test.ts",
     "test:rag-calibration": "node --experimental-strip-types scripts/calibrate-rag-similarity.mjs",
-    "test:vetbot": "node --experimental-strip-types --test tests/aiPrivacy.test.ts tests/vetbotSecurity.test.ts tests/petImport.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseSecurity.test.ts tests/aiStage2DatabaseIntegration.test.mjs tests/visitSummarySecurity.test.ts tests/digitalCareAiSecurity.test.ts tests/ragSecurity.test.ts tests/documentOcrSecurity.test.ts tests/clientSummarySecurity.test.ts tests/followUpSuggestionsSecurity.test.ts tests/finalHardening.test.ts tests/accessibilityFoundation.test.ts tests/timeZone.test.ts",
+    "test:vetbot": "node --experimental-strip-types --test tests/aiPrivacy.test.ts tests/vetbotSecurity.test.ts tests/vetbotActionUnderstanding.test.ts tests/vetbotConversationPersistence.test.ts tests/petImport.test.ts tests/aiGatewayInfrastructure.test.ts tests/aiStage2DatabaseSecurity.test.ts tests/aiStage2DatabaseIntegration.test.mjs tests/visitSummarySecurity.test.ts tests/digitalCareAiSecurity.test.ts tests/ragSecurity.test.ts tests/documentOcrSecurity.test.ts tests/clientSummarySecurity.test.ts tests/followUpSuggestionsSecurity.test.ts tests/finalHardening.test.ts tests/accessibilityFoundation.test.ts tests/timeZone.test.ts",
     "test:anon-access": "node scripts/verify-anonymous-access.mjs"
   },
   "dependencies": {

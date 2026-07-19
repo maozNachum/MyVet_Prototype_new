@@ -42,6 +42,7 @@ export type AiActionType =
   | "reschedule_appointment"
   | "cancel_appointment"
   | "adjust_inventory"
+  | "create_inventory_item"
   | "archive_conversation"
   | "restore_conversation"
   | "set_conversation_priority"
