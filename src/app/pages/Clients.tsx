@@ -1764,7 +1764,7 @@ export function Clients() {
 
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 text-[14px] mb-2 font-medium">תעודת זהות / owner_id</label>
+                <label className="block text-gray-700 text-[14px] mb-2 font-medium">תעודת זהות</label>
                 <input
                   value={createForm.owner_id}
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, owner_id: e.target.value }))}
