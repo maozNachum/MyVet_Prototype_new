@@ -398,7 +398,7 @@ export function Inventory() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
+    <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">

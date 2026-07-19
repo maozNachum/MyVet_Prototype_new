@@ -320,7 +320,7 @@ export function Hospitalizations() {
   ];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8" dir="rtl">
+    <main className="w-full px-4 py-7 sm:px-6 sm:py-8" dir="rtl">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">

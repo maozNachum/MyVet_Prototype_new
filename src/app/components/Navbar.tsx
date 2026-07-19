@@ -280,7 +280,7 @@ export function Navbar() {
 
   return (
     <nav className="bg-[#1e40af] text-white shadow-md sticky top-0 z-50 w-full">
-      <div className="mx-auto flex h-16 w-full max-w-[1700px] items-center justify-between gap-3 px-4 sm:gap-4 sm:px-5 xl:gap-5 2xl:gap-8">
+      <div className="flex h-16 w-full items-center justify-between gap-3 px-4 sm:gap-4 sm:px-5 xl:gap-5 2xl:gap-8">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4 xl:gap-6">
           <Link to="/" aria-label="MyVet – דף הבית" className="relative z-10 flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
             <div className="pointer-events-none flex h-19 w-22 origin-right scale-[1.6] items-center justify-center transform">
@@ -487,7 +487,7 @@ export function Navbar() {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="mx-auto w-full max-w-[1700px] border-t border-white/10 bg-[#1e3a8a]/95 px-4 pb-3 pt-2 shadow-lg sm:px-5 md:hidden">
+        <div className="w-full border-t border-white/10 bg-[#1e3a8a]/95 px-4 pb-3 pt-2 shadow-lg sm:px-5 md:hidden">
           <div className="grid grid-cols-2 gap-2">
             {mobileNavItems.map((item) => (
               <Link

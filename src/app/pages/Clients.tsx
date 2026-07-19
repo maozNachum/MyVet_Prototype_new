@@ -926,7 +926,7 @@ export function Clients() {
 
   if (selectedClient) {
     return (
-      <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
+      <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
         <button
           onClick={backToList}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
@@ -1607,7 +1607,7 @@ export function Clients() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
+    <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 rounded-xl p-2.5">

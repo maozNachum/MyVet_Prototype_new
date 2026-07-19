@@ -675,7 +675,7 @@ export function Patients() {
     const PetIcon = pet.speciesType === "cat" ? Cat : Dog;
 
     return (
-      <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
+      <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
         <button
           onClick={() => setSelectedPatient(null)}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
@@ -1122,7 +1122,7 @@ export function Patients() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 sm:py-8">
+    <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
       <div className="flex items-center gap-3 mb-8">
         <div className="bg-blue-100 rounded-xl p-2.5">
           <Users className="w-6 h-6 text-[#1e40af]" />

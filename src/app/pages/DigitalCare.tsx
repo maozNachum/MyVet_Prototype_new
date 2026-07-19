@@ -1600,7 +1600,7 @@ export function DigitalCare() {
       className="min-h-screen bg-transparent px-4 py-7 sm:px-6 sm:py-8"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
-      <div className="max-w-[1500px] mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-gray-900 text-[30px] font-bold mb-1">

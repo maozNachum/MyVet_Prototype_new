@@ -801,7 +801,7 @@ export function Dashboard() {
   };
 
   return (
-    <main className="relative mx-auto min-h-[calc(100vh-84px)] max-w-[1500px] px-4 py-3 sm:px-5" dir="rtl">
+    <main className="relative min-h-[calc(100vh-84px)] w-full px-4 py-3 sm:px-5" dir="rtl">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[220px] rounded-b-[42px] bg-[radial-gradient(circle_at_82%_0%,rgba(37,99,235,0.17),transparent_46%),radial-gradient(circle_at_12%_16%,rgba(14,165,233,0.08),transparent_34%)]" />
       {showSuccessToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3">

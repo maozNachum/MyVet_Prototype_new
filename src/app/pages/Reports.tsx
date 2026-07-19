@@ -61,7 +61,7 @@ export function Reports() {
   };
 
   return (
-    <main className="max-w-[1400px] mx-auto px-4 py-6 min-h-screen sm:px-6">
+    <main className="min-h-screen w-full px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3.5 mb-6">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1e40af] to-[#6366f1] flex items-center justify-center shadow-md shrink-0">
           <BarChart3 className="w-6 h-6 text-white" />

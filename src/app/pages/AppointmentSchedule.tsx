@@ -245,7 +245,7 @@ export function AppointmentSchedule() {
 
   return (
     <main
-      className="max-w-[1600px] mx-auto px-4 py-6 sm:px-6"
+      className="w-full px-4 py-6 sm:px-6"
       dir="rtl"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
