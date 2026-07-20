@@ -221,7 +221,7 @@ export function Login() {
     if (!EMAIL_REGEX.test(normalizedEmail)) {
       errors.email =
         role === "owner"
-          ? "הזינו אימייל תקין של האזור האישי."
+          ? "הזן/י מייל תקין"
           : "הזינו אימייל צוות תקין.";
     }
     if (!password.trim()) errors.password = "הזינו סיסמה.";
