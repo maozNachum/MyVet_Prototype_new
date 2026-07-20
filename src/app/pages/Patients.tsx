@@ -69,7 +69,7 @@ const patientSchema = z.object({
   ownerName: z.string().min(2, "שם הבעלים חייב להכיל לפחות 2 אותיות"),
   address: z.string().min(2, "חובה להזין כתובת מגורים"),
   phone: z.string().regex(ISRAELI_PHONE, "פורמט טלפון לא תקין (לדוגמה: 050-1234567)"),
-  email: z.string().email("כתובת אימייל לא תקינה").optional().or(z.literal("")),
+  email: z.string().email("כתובת האימייל לא תקין").optional().or(z.literal("")),
   microchipNumber: z.string().optional(),
   petName: z.string().min(1, "חובה להזין את שם החיה"),
   species: z.enum(["dog", "cat", "bird", "rabbit", "hamster", "other"], {
