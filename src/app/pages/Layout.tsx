@@ -9,6 +9,7 @@ import { clearStaffSession, type StaffType } from "../data/staffAuth";
 import { MedicalStoreProvider } from "../data/MedicalStore";
 import { AppointmentStoreProvider } from "../data/AppointmentStore";
 import { LabStoreProvider } from "../data/LabStore";
+import { AiAssistantShell } from "../components/ai/AiAssistantShell";
 
 export function Layout() {
   const navigate = useNavigate();
@@ -63,23 +64,25 @@ export function Layout() {
   }
 
   return (
-    <div
-      dir="rtl"
-      className="myvet-app-canvas min-h-screen flex flex-col"
-      style={{ fontFamily: "'Heebo', sans-serif" }}
-    >
-      <MedicalStoreProvider>
-        <AppointmentStoreProvider>
-          <LabStoreProvider>
-            <Navbar />
-            <CommandCenter />
-            <div id="main-content" tabIndex={-1} className="flex-1 outline-none">
-              <Outlet />
-            </div>
-            <Footer />
-          </LabStoreProvider>
-        </AppointmentStoreProvider>
-      </MedicalStoreProvider>
-    </div>
+    <AiAssistantShell area="staff">
+      <div
+        dir="rtl"
+        className="myvet-app-canvas min-h-screen flex flex-col"
+        style={{ fontFamily: "'Heebo', sans-serif" }}
+      >
+        <MedicalStoreProvider>
+          <AppointmentStoreProvider>
+            <LabStoreProvider>
+              <Navbar />
+              <CommandCenter />
+              <div id="main-content" tabIndex={-1} className="flex-1 outline-none">
+                <Outlet />
+              </div>
+              <Footer />
+            </LabStoreProvider>
+          </AppointmentStoreProvider>
+        </MedicalStoreProvider>
+      </div>
+    </AiAssistantShell>
   );
 }

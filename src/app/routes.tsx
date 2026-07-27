@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 import { canAccessReportsPage } from "./data/staffAuth";
+import { AiAssistantShell } from "./components/ai/AiAssistantShell";
 
 const Layout = lazy(() => import("./pages/Layout").then((module) => ({ default: module.Layout })));
 const Login = lazy(() => import("./pages/Login").then((module) => ({ default: module.Login })));
@@ -23,6 +24,14 @@ function ReportsRoute() {
   return canAccessReportsPage() ? <Reports /> : <Navigate to="/" replace />;
 }
 
+function ClientPortalRoute() {
+  return (
+    <AiAssistantShell area="portal">
+      <ClientPortal />
+    </AiAssistantShell>
+  );
+}
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -30,11 +39,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/portal",
-    Component: ClientPortal,
+    Component: ClientPortalRoute,
   },
   {
     path: "/owner-preview",
-    Component: ClientPortal,
+    Component: ClientPortalRoute,
   },
   {
     path: "/privacy",

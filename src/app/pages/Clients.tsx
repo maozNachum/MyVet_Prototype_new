@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 import { askAiAssistant } from "../components/ai/aiClient";
+import { ClientsAssistant } from "../components/ai/PageAssistants";
 import { getStaffId, getStaffType } from "../data/staffAuth";
 import {
   buildPetImportDrafts,
@@ -1607,6 +1608,7 @@ export function Clients() {
 
   return (
     <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
+      <ClientsAssistant clients={clients} />
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 rounded-xl p-2.5">

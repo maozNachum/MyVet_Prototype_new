@@ -26,6 +26,7 @@ type Props = {
   buildContext: () => unknown | Promise<unknown>;
   userRole?: AiUserRole;
   contextIdentity: AiConversationContextIdentity;
+  desktopDocked?: boolean;
 };
 
 export function AiAssistantDrawer({
@@ -37,6 +38,7 @@ export function AiAssistantDrawer({
   buildContext,
   userRole = "unknown",
   contextIdentity,
+  desktopDocked = false,
 }: Props) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<AiChatMessage[]>(() => loadAiConversation<AiChatMessage>("main").messages);
@@ -94,6 +96,15 @@ export function AiAssistantDrawer({
       window.clearTimeout(id);
     };
   }, [isOpen, mode, buildContext, contextIdentity.key, contextIdentity.label]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -194,10 +205,23 @@ export function AiAssistantDrawer({
   }
 
   return createPortal(
-    <div className="myvet-vetbot fixed inset-0 z-[260]" dir="rtl">
-      <button type="button" aria-label="סגירת VetBot" onClick={onClose} className="absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px]" />
+    <div className="myvet-vetbot pointer-events-none fixed inset-0 z-[260]" dir="rtl">
+      <button
+        type="button"
+        aria-label="סגירת VetBot"
+        onClick={onClose}
+        className={`pointer-events-auto absolute inset-0 cursor-default bg-gray-900/25 backdrop-blur-[1px] ${
+          desktopDocked ? "min-[1440px]:hidden" : ""
+        }`}
+      />
 
-      <aside className="absolute left-0 top-0 flex h-full w-full max-w-[480px] flex-col border-r border-gray-100 bg-white shadow-2xl animate-in slide-in-from-left duration-200">
+      <aside
+        role="dialog"
+        aria-label={title}
+        className={`pointer-events-auto absolute left-0 top-0 flex h-full w-full flex-col border-r border-gray-100 bg-white shadow-2xl animate-in slide-in-from-left duration-200 ${
+          desktopDocked ? "max-w-[480px] min-[1440px]:max-w-[440px]" : "max-w-[480px]"
+        }`}
+      >
         <div className="min-h-[105px] shrink-0 border-b border-gray-100 bg-gradient-to-l from-slate-950 to-blue-900 px-5 py-4 text-white">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

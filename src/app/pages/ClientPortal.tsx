@@ -3002,47 +3002,13 @@ export function ClientPortal() {
         onAppointmentCreated={refreshPortalData}
       />
 
-      <div className="portal-floating-ai fixed bottom-24 left-3 z-[240] md:bottom-5 md:left-4">
-        <ClientPortalAssistant
-          pets={pets}
-          appointments={appointments}
-          notifications={portalNotifications}
-          digitalConversations={digitalConversations}
-          paymentsByPet={paymentsByPet}
-        />
-      </div>
-
-      <style>{`
-        .portal-floating-ai > div > button {
-          width: 58px;
-          height: 58px;
-          border-radius: 22px;
-          padding: 0;
-          border: 1px solid rgba(191, 219, 254, 0.9);
-          background: linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #7c3aed 100%);
-          color: white;
-          box-shadow: 0 18px 40px rgba(37, 99, 235, 0.28);
-        }
-        .portal-floating-ai > div > button:hover {
-          background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 52%, #6d28d9 100%);
-          transform: translateY(-1px);
-        }
-        .portal-floating-ai > div > button > span:first-of-type {
-          width: 30px;
-          height: 30px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.18);
-          box-shadow: none;
-        }
-        .portal-floating-ai > div > button > span:first-of-type svg {
-          width: 18px;
-          height: 18px;
-        }
-        .portal-floating-ai > div > button > span:nth-of-type(2),
-        .portal-floating-ai > div > button > svg {
-          display: none;
-        }
-      `}</style>
+      <ClientPortalAssistant
+        pets={pets}
+        appointments={appointments}
+        notifications={portalNotifications}
+        digitalConversations={digitalConversations}
+        paymentsByPet={paymentsByPet}
+      />
       <Footer />
     </div>
   );
