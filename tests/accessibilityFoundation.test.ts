@@ -29,6 +29,14 @@ test("global keyboard focus and reduced-motion preferences remain visible", () =
   assert.match(theme, /prefers-reduced-motion:\s*reduce/);
 });
 
+test("global toast messages use RTL and centered text", () => {
+  const toaster = read("src/app/components/ui/sonner.tsx");
+  const theme = read("src/styles/theme.css");
+  assert.match(toaster, /dir="rtl"/);
+  assert.match(theme, /\[data-sonner-toast\] \[data-content\][\s\S]*text-align:\s*center/);
+  assert.match(theme, /\[data-title\],[\s\S]*\[data-description\][\s\S]*text-align:\s*center/);
+});
+
 test("critical icon-only controls have accessible names", () => {
   const login = read("src/app/pages/Login.tsx");
   const portal = read("src/app/pages/ClientPortal.tsx");

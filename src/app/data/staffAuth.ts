@@ -37,6 +37,14 @@ export function canPerformTreatment(): boolean {
 }
 
 /**
+ * מחיקת מטופל מוחקת גם מידע רפואי ותפעולי מקושר ולכן שמורה למנהל מרפאה.
+ * ההרשאה האמיתית נאכפת שוב בתוך פונקציית Supabase.
+ */
+export function canDeletePatients(): boolean {
+  return getStaffType() === "clinic_admin";
+}
+
+/**
  * צ׳אט פנימי/תפעולי בלבד:
  * אחות ומזכירה.
  */

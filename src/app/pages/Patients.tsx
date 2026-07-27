@@ -13,7 +13,7 @@ import { PrescriptionDocumentModal } from "../components/PrescriptionDocumentMod
 import { HospitalizationModal, type HospitalizationRecord } from "../components/HospitalizationModal";
 import { useMedicalStore } from "../data/MedicalStore";
 import { exportMedicalRecord } from "../hooks/useExportMedicalRecord";
-import { canEditMedicalRecords, canPerformTreatment } from "../data/staffAuth";
+import { canDeletePatients, canEditMedicalRecords, canPerformTreatment } from "../data/staffAuth";
 import { LabResultsPanel } from "../components/LabResultsPanel";
 import { useSearchFilter } from "../hooks/useSearchFilter";
 import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
@@ -68,7 +68,7 @@ const patientSchema = z.object({
   ownerName: z.string().min(2, "שם הבעלים חייב להכיל לפחות 2 אותיות"),
   address: z.string().min(2, "חובה להזין כתובת מגורים"),
   phone: z.string().regex(ISRAELI_PHONE, "פורמט טלפון לא תקין (לדוגמה: 050-1234567)"),
-  email: z.string().email("כתובת אימייל לא תקינה").optional().or(z.literal("")),
+  email: z.string().email("כתובת האימייל לא תקין").optional().or(z.literal("")),
   microchipNumber: z.string().optional(),
   petName: z.string().min(1, "חובה להזין את שם החיה"),
   species: z.enum(["dog", "cat", "bird", "rabbit", "hamster", "other"], {
@@ -309,7 +309,7 @@ export function Patients() {
             weight,
             neutered_status,
             owner_id,
-            owner:owners (
+            owner:owners!patients_clinic_owner_fkey (
               owner_id,
               owner_first_name,
               owner_last_name,
@@ -641,7 +641,7 @@ export function Patients() {
     if (!selectedPatient || isDeletingPet) return;
 
     const confirmDelete = window.confirm(
-      `האם למחוק את המטופל ${selectedPatient.pet.name}? פעולה זו תמחק את רשומת החיה מהמערכת.`
+      `האם למחוק לצמיתות את המטופל ${selectedPatient.pet.name}?\n\nהפעולה תמחק גם את התורים, ההיסטוריה הרפואית ושאר הרשומות המקושרות לחיה, ולא ניתן לבטל אותה.`
     );
 
     if (!confirmDelete) return;
@@ -649,10 +649,9 @@ export function Patients() {
     try {
       setIsDeletingPet(true);
 
-      const { error } = await supabase
-        .from('patients')
-        .delete()
-        .eq('pet_id', selectedPatient.id);
+      const { error } = await supabase.rpc("myvet_delete_patient", {
+        p_pet_id: selectedPatient.id,
+      });
 
       if (error) throw error;
 
@@ -663,7 +662,17 @@ export function Patients() {
       toast.success("המטופל נמחק בהצלחה");
     } catch (error) {
       console.error("Supabase Delete Patient Error:", error);
-      toast.error("אירעה שגיאה בעת מחיקת המטופל");
+      const code = typeof error === "object" && error && "code" in error
+        ? String((error as { code?: unknown }).code || "")
+        : "";
+
+      if (code === "42883" || code === "PGRST202") {
+        toast.error("פונקציית המחיקה עדיין לא הותקנה בבסיס הנתונים");
+      } else if (code === "42501") {
+        toast.error("רק מנהל מרפאה רשאי למחוק מטופל");
+      } else {
+        toast.error("מחיקת המטופל נכשלה. לא בוצע שינוי בתיק");
+      }
     } finally {
       setIsDeletingPet(false);
     }
@@ -758,13 +767,15 @@ export function Patients() {
                 >
                   <Download className="w-4 h-4" /> ייצוא תיק
                 </button>
-                <button
-                  onClick={handleDeletePatient}
-                  disabled={isDeletingPet}
-                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-bold transition-colors ${isDeletingPet ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400" : "cursor-pointer border-red-100 bg-red-50 text-red-700 hover:bg-red-100"}`}
-                >
-                  <Trash2 className="w-4 h-4" /> {isDeletingPet ? "מוחק..." : "מחיקה"}
-                </button>
+                {canDeletePatients() && (
+                  <button
+                    onClick={handleDeletePatient}
+                    disabled={isDeletingPet}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-bold transition-colors ${isDeletingPet ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400" : "cursor-pointer border-red-100 bg-red-50 text-red-700 hover:bg-red-100"}`}
+                  >
+                    <Trash2 className="w-4 h-4" /> {isDeletingPet ? "מוחק..." : "מחיקה"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
