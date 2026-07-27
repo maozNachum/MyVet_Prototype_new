@@ -20,7 +20,6 @@ import { MedicalRecordAssistant } from "../components/ai/PageAssistants";
 import { PatientMedicalTimeline } from "../components/PatientMedicalTimeline";
 import { OwnerDebtPanel } from "../components/OwnerDebtPanel";
 import { VaccinationBook } from "../components/VaccinationBook";
-import { MedicalRecordRagPanel } from "../components/MedicalRecordRagPanel";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -821,10 +820,6 @@ export function Patients() {
         </div>
 
         <div className="mb-8">
-          {canEditMedicalRecords() && (
-            <MedicalRecordRagPanel petId={selectedPatient.id} petName={pet.name} />
-          )}
-
           <VaccinationBook
             patientId={selectedPatient.id}
             petName={pet.name}
