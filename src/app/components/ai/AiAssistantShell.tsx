@@ -144,7 +144,7 @@ export function AiAssistantShell({ children, area = "staff" }: AiAssistantShellP
       </div>
 
       {registration && !isOpen && (
-        <div className={`fixed left-3 ${mobilePosition} z-[240] md:bottom-auto md:left-0 md:top-1/2 md:-translate-y-1/2`}>
+        <div className={`fixed left-3 ${mobilePosition} z-[240] md:bottom-auto md:left-1 md:top-1/2 md:-translate-y-1/2`}>
           <button
             ref={launcherRef}
             type="button"
@@ -152,19 +152,36 @@ export function AiAssistantShell({ children, area = "staff" }: AiAssistantShellP
             disabled={disabled}
             aria-label={registration.disabledReason || "פתיחת VetBot"}
             title={registration.disabledReason || "פתיחת VetBot"}
-            className={`group relative flex h-13 w-13 items-center justify-center rounded-2xl border shadow-[0_14px_34px_rgba(30,64,175,0.24)] transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/60 md:h-28 md:w-12 md:flex-col md:gap-2 md:rounded-l-none md:rounded-r-2xl ${
+            className={`group relative flex h-[52px] w-[52px] items-center justify-center rounded-2xl border backdrop-blur-sm transition-[background-color,border-color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/50 md:h-[58px] md:w-[48px] ${
               disabled
-                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                : "cursor-pointer border-blue-200/80 bg-gradient-to-b from-[#2563eb] to-[#1e40af] text-white hover:w-14 hover:from-blue-600 hover:to-blue-900"
+                ? "cursor-not-allowed border-slate-200 bg-slate-100/95 text-slate-400 shadow-sm"
+                : "cursor-pointer border-blue-100 bg-white/95 text-[#1e40af] shadow-[0_10px_26px_rgba(30,64,175,0.14)] hover:border-blue-200 hover:bg-blue-50/95 hover:shadow-[0_12px_30px_rgba(30,64,175,0.2)] active:scale-[0.97]"
             }`}
           >
-            <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="hidden text-[12px] font-extrabold tracking-wide md:block md:[writing-mode:vertical-rl] md:rotate-180">
-              {registration.compactTitle}
+            <span
+              className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                disabled ? "bg-slate-200/70" : "bg-blue-50 group-hover:bg-blue-100"
+              }`}
+              aria-hidden="true"
+            >
+              <Sparkles className="h-[19px] w-[19px] shrink-0" />
             </span>
+            <span
+              aria-hidden="true"
+              dir="rtl"
+              className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] font-bold text-slate-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block"
+            >
+              פתיחת {registration.compactTitle}
+            </span>
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-3 right-0 hidden w-[3px] rounded-l-full md:block ${
+                disabled ? "bg-slate-300" : "bg-[#2563eb]"
+              }`}
+            />
             {attentionCount > 0 && !disabled && (
               <span
-                className="absolute -right-1.5 -top-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold text-white ring-2 ring-white md:-right-2"
+                className="absolute right-0 top-0 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#dc2626] px-1 text-[9px] font-extrabold leading-none text-white ring-2 ring-white"
                 aria-label={`${attentionCount} נושאים לבדיקה`}
               >
                 {attentionCount > 99 ? "99+" : attentionCount}
