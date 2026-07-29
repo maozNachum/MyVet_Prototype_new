@@ -108,7 +108,6 @@ VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
 ```
 
-אין להכניס ל־`.env`, לקוד הלקוח או ל־Git מפתחות כמו `GEMINI_API_KEY`, מפתח `service_role`, סיסמת בסיס נתונים או סודות אחרים. סודות צד שרת נשמרים ב־Supabase Edge Function Secrets.
 
 ## פקודות שימושיות
 
