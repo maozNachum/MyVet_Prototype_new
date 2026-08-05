@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Plus, Video } from "lucide-react";
+import { AlertTriangle, Plus, Video } from "lucide-react";
 import {
   HEBREW_DAYS,
   TIMELINE_HOURS,
@@ -7,6 +7,7 @@ import {
   isSameDateObj,
   getDeptConfig,
   getApptStatus,
+  isAppointmentPast,
 } from "../../data/calendar-constants";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
 
@@ -25,7 +26,9 @@ function WeeklyApptCard({
   onClick: () => void;
 }) {
   const dept = getDeptConfig(appt.department);
-  const status = getApptStatus(appt.id);
+  const status = getApptStatus(appt.status);
+  const isPast = isAppointmentPast(appt.year, appt.month, appt.day, appt.endTime);
+  const isMuted = isPast || appt.status === "completed" || appt.status === "cancelled";
 
   return (
     <button
@@ -33,7 +36,7 @@ function WeeklyApptCard({
         event.stopPropagation();
         onClick();
       }}
-      className={`relative w-full text-right rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] mb-1.5 ${dept.bg}`}
+      className={`relative mb-1.5 w-full cursor-pointer overflow-hidden rounded-xl text-right transition-all hover:shadow-md ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
       style={{
         borderWidth: 1,
         borderStyle: "solid",
@@ -42,19 +45,19 @@ function WeeklyApptCard({
         borderRightColor: dept.borderColor,
       }}
     >
-      <span
-        className={`absolute top-1.5 left-1.5 w-2 h-2 rounded-full ${status.dotColor}`}
-        title={status.label}
-      />
-
       <div className="px-2 py-2 pr-3 space-y-0.5">
-        <p className={`text-[13px] leading-tight ${dept.text} truncate`} style={{ fontWeight: 700 }}>
+        <p className={`truncate text-[13px] font-bold leading-tight ${dept.text} ${appt.status === "cancelled" ? "line-through" : ""}`}>
           {appt.time}–{appt.endTime} | {appt.petName}
         </p>
         <p className="text-[10.5px] text-gray-600 leading-tight truncate" style={{ fontWeight: 500 }}>
           {appt.ownerName}
         </p>
-        <div className="flex items-center gap-1 truncate">
+        <div className="flex items-center gap-1.5 truncate">
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${status.badgeClass}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${status.dotColor}`} />
+            {status.label}
+          </span>
+          {appt.color === "red" && <AlertTriangle className="h-3 w-3 shrink-0 text-red-600" aria-label="חירום" />}
           <p className="text-[10px] text-gray-500 leading-tight truncate" style={{ fontWeight: 400 }}>
             {appt.type}
           </p>

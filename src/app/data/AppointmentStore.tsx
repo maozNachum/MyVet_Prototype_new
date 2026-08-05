@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, ty
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
 import { safeHebrewLabel } from "../utils/displayText";
+import type { AppointmentStatus } from "./calendar-constants";
 
 export type PetSpecies = "dog" | "cat" | "other";
 export type AppointmentMode = "physical" | "video";
@@ -27,6 +28,7 @@ export interface CalendarAppointment {
   room: string;
   type: string;
   appointmentMode: AppointmentMode;
+  status: AppointmentStatus;
   color: string;
   notes: string;
 }
@@ -48,6 +50,7 @@ interface AppointmentStoreValue {
   notifications: AppNotification[];
   isLoading: boolean;
   error: string | null;
+  supportsAppointmentStatus: boolean;
   refreshAppointments: () => Promise<void>;
   unreadCount: (target: "owner" | "staff") => number;
   markAllRead: (target: "owner" | "staff") => void;
@@ -56,6 +59,7 @@ interface AppointmentStoreValue {
   deleteAppointment: (id: number, by: "owner" | "staff") => Promise<void>;
   rescheduleAppointment: (id: number, newDay: number, newMonth: number, newYear: number, newTime: string, newEndTime: string, by: "owner" | "staff") => Promise<void>;
   editAppointment: (id: number, updates: Partial<CalendarAppointment>, by: "owner" | "staff") => Promise<void>;
+  updateAppointmentStatus: (id: number, status: AppointmentStatus) => Promise<void>;
 }
 
 const AppointmentStoreContext = createContext<AppointmentStoreValue | null>(null);
@@ -77,6 +81,16 @@ function normalizeSpecies(species?: string | null): PetSpecies {
 
 function normalizeAppointmentMode(value?: string | null): AppointmentMode {
   return value === "video" ? "video" : "physical";
+}
+
+function normalizeAppointmentStatus(value?: string | null): AppointmentStatus {
+  return ["scheduled", "arrived", "in_progress", "completed", "cancelled"].includes(String(value || ""))
+    ? (value as AppointmentStatus)
+    : "scheduled";
+}
+
+function isMissingStatusColumn(error: { code?: string; message?: string } | null) {
+  return error?.code === "42703" || /column .*status.* does not exist/i.test(error?.message || "");
 }
 
 export function appointmentModeLabel(mode?: AppointmentMode | string | null) {
@@ -157,6 +171,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
   const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [supportsAppointmentStatus, setSupportsAppointmentStatus] = useState(true);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const refreshInFlightRef = useRef<Promise<void> | null>(null);
   const refreshQueuedRef = useRef(false);
@@ -191,10 +206,22 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       setIsLoading(true);
 
       try {
-      const { data: appointmentRows, error: appointmentsError } = await supabase
+      let { data: appointmentRows, error: appointmentsError } = await supabase
         .from("appointments")
-        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes")
+        .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes, status")
         .order("start_time", { ascending: true });
+
+      if (isMissingStatusColumn(appointmentsError)) {
+        const fallback = await supabase
+          .from("appointments")
+          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes")
+          .order("start_time", { ascending: true });
+        appointmentRows = fallback.data as typeof appointmentRows;
+        appointmentsError = fallback.error;
+        setSupportsAppointmentStatus(false);
+      } else if (!appointmentsError) {
+        setSupportsAppointmentStatus(true);
+      }
 
       if (appointmentsError) throw appointmentsError;
 
@@ -259,6 +286,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           room: safeHebrewLabel(row.room, appointmentMode === "video" ? "דיגיטל" : "—"),
           type: row.appointment_type || "ביקור",
           appointmentMode,
+          status: normalizeAppointmentStatus(row.status),
           color: row.color || "blue",
           notes: row.notes || "",
         };
@@ -576,6 +604,38 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
     [calendarAppointments, pushNotification]
   );
 
+  const updateAppointmentStatus = useCallback(async (id: number, status: AppointmentStatus) => {
+    if (!supportsAppointmentStatus) {
+      const message = "עדכון סטטוס יהיה זמין לאחר החלת מיגרציית התורים בבסיס הנתונים";
+      toast.error(message);
+      throw new Error(message);
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({ status })
+        .eq("appointment_id", id);
+
+      if (updateError) throw updateError;
+
+      setCalendarAppointments((prev) => prev.map((appointment) =>
+        appointment.id === id ? { ...appointment, status } : appointment
+      ));
+      toast.success("סטטוס התור עודכן");
+    } catch (err: any) {
+      console.error("Error updating appointment status:", err);
+      setError(err?.message || "שגיאה בעדכון סטטוס התור");
+      toast.error("לא הצלחנו לעדכן את סטטוס התור");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supportsAppointmentStatus]);
+
   return (
     <AppointmentStoreContext.Provider
       value={{
@@ -583,6 +643,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         notifications,
         isLoading,
         error,
+        supportsAppointmentStatus,
         refreshAppointments,
         unreadCount,
         markAllRead,
@@ -591,6 +652,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         deleteAppointment,
         rescheduleAppointment,
         editAppointment,
+        updateAppointmentStatus,
       }}
     >
       {children}

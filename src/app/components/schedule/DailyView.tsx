@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Calendar, Plus, Video } from "lucide-react";
+import { AlertTriangle, Calendar, Plus, Video } from "lucide-react";
 import {
   HEBREW_MONTHS,
   TIMELINE_HOURS,
   getHebrewDayName,
   getDeptConfig,
   getApptStatus,
+  isAppointmentPast,
 } from "../../data/calendar-constants";
 import { PetIcon } from "../shared/PetIcon";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
@@ -81,7 +82,9 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
               >
                 {hourAppts.map((appt) => {
                   const dept = getDeptConfig(appt.department);
-                  const status = getApptStatus(appt.id);
+                  const status = getApptStatus(appt.status);
+                  const isPast = isAppointmentPast(appt.year, appt.month, appt.day, appt.endTime);
+                  const isMuted = isPast || appt.status === "completed" || appt.status === "cancelled";
                   return (
                     <button
                       key={appt.id}
@@ -89,7 +92,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         event.stopPropagation();
                         onApptClick(appt);
                       }}
-                      className={`relative w-full text-right flex items-center gap-4 px-4 py-3 rounded-xl mb-2 cursor-pointer transition-all hover:shadow-md group/card ${dept.bg}`}
+                      className={`group/card relative mb-2 flex w-full cursor-pointer items-center gap-4 rounded-xl px-4 py-3 text-right transition-all hover:shadow-md ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
                       style={{
                         borderWidth: 1,
                         borderStyle: "solid",
@@ -98,11 +101,6 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         borderRightColor: dept.borderColor,
                       }}
                     >
-                      <span
-                        className={`absolute top-2 left-2 w-2 h-2 rounded-full ${status.dotColor}`}
-                        title={status.label}
-                      />
-
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/80 border shrink-0 group-hover/card:scale-105 transition-transform"
                         style={{ borderColor: `${dept.borderColor}40` }}
@@ -112,9 +110,14 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`text-[14px] ${dept.text}`} style={{ fontWeight: 700 }}>
+                          <span className={`text-[14px] font-bold ${dept.text} ${appt.status === "cancelled" ? "line-through" : ""}`}>
                             {appt.time}–{appt.endTime} | {appt.petName}
                           </span>
+                          {appt.color === "red" && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-red-100 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                              <AlertTriangle className="h-3 w-3" /> חירום
+                            </span>
+                          )}
                         </div>
                         <p className="text-gray-600 text-[12.5px] mt-0.5" style={{ fontWeight: 500 }}>
                           {appt.ownerName}
@@ -139,7 +142,10 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                           {appt.department}
                         </span>
                         <span className="text-gray-500 font-medium text-[13px]">{appt.appointmentMode === "video" ? "דיגיטל" : appt.room}</span>
-                        <span className={`w-2 h-2 rounded-full ${status.dotColor}`} title={status.label} />
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-bold ${status.badgeClass}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${status.dotColor}`} />
+                          {status.label}
+                        </span>
                       </div>
                     </button>
                   );

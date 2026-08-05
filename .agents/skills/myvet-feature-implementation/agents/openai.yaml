@@ -1,0 +1,4 @@
+interface:
+  display_name: "MyVet Feature Implementation"
+  short_description: "Implement complete MyVet feature workflows"
+  default_prompt: "Use $myvet-feature-implementation to implement and verify this MyVet feature end to end."

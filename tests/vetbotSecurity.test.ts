@@ -10,6 +10,7 @@ const availabilityMigration = readFileSync("supabase/migrations/20260716145453_c
 const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181935_reliable_realtime_and_payment_settlement.sql", "utf8");
 const paymentMethodFixMigration = readFileSync("supabase/migrations/20260716200815_fix_portal_demo_payment_method.sql", "utf8");
 const actionMigration = readFileSync("supabase/migrations/20260716194751_vetbot_action_orchestration.sql", "utf8");
+const appointmentStatusMigration = readFileSync("supabase/migrations/20260805185316_appointment_status_workflow.sql", "utf8");
 const actionEngine = readFileSync("supabase/functions/_shared/vetbotActions.ts", "utf8");
 const aiGateway = readFileSync("supabase/functions/_shared/ai/gateway.ts", "utf8");
 const aiSchemas = readFileSync("supabase/functions/_shared/ai/schemas.ts", "utf8");
@@ -288,13 +289,24 @@ test("Monthly calendar opens day appointments in an anchored popover instead of 
 });
 
 test("Schedule department filtering uses one multi-select dropdown above the calendar", () => {
-  assert.match(appointmentScheduleSource, /grid w-full grid-cols-1 gap-3 sm:grid-cols-2[\s\S]*חיפוש מהיר ביומן[\s\S]*<DeptFilterPanel[\s\S]*departmentCounts=\{departmentCounts\}/);
+  assert.match(appointmentScheduleSource, /grid w-full grid-cols-1 gap-3[\s\S]*חיפוש מהיר ביומן[\s\S]*<DeptFilterPanel[\s\S]*departmentCounts=\{departmentCounts\}/);
   assert.doesNotMatch(appointmentScheduleSource, /Right sidebar column[\s\S]*Department filter/);
   assert.match(departmentFilterSource, /aria-haspopup="listbox"/);
   assert.match(departmentFilterSource, /aria-multiselectable="true"/);
   assert.match(departmentFilterSource, /אפשר לבחור מספר מחלקות יחד/);
   assert.match(departmentFilterSource, /ביטול הסינון/);
   assert.match(departmentFilterSource, /filteredCount.*totalCount/);
+});
+
+test("Appointment status is persisted, staff-only and visible as text in the schedule", () => {
+  assert.match(appointmentStatusMigration, /add column if not exists status text/);
+  assert.match(appointmentStatusMigration, /scheduled.*arrived.*in_progress.*completed.*cancelled/);
+  assert.match(appointmentStatusMigration, /myvet_is_active_staff/);
+  assert.match(appointmentStatusMigration, /before update of status/);
+  assert.match(appointmentStatusMigration, /revoke all on function public\.myvet_guard_appointment_status_update\(\) from public, anon/);
+  assert.match(appointmentStoreSource, /updateAppointmentStatus/);
+  assert.match(appointmentScheduleSource, /<AppointmentStatusFilter/);
+  assert.match(dayAppointmentsModalSource, /getApptStatus\(appt\.status\)/);
 });
 
 test("Medical images use expiring signed URLs and private storage", () => {

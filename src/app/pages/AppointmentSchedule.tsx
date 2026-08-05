@@ -11,15 +11,18 @@ import { DayAppointmentsPopover, type DayPopoverAnchor } from "../components/sch
 import { DeptFilterPanel } from "../components/schedule/DeptFilterPanel";
 import { AppointmentActionModal } from "../components/schedule/AppointmentActionModal";
 import { ClinicAvailabilitySettings } from "../components/schedule/ClinicAvailabilitySettings";
-import { Clock3, Search, Stethoscope, Users, X } from "lucide-react";
+import { Clock3, Search, SlidersHorizontal, X } from "lucide-react";
 import { useStaffMembers, uniqueNames } from "../data/staffDirectory";
 import { ScheduleAssistant } from "../components/ai/PageAssistants";
+import { AppointmentStatusFilter } from "../components/schedule/AppointmentStatusFilter";
+import { ScheduleOverviewRail } from "../components/schedule/ScheduleOverviewRail";
+import type { AppointmentStatus } from "../data/calendar-constants";
 
 export function AppointmentSchedule() {
   const navigate = useNavigate();
   const nav = useCalendarNav();
   const actions = useAppointmentActions();
-  const { calendarAppointments, refreshAppointments, isLoading } = useAppointmentStore();
+  const { calendarAppointments, refreshAppointments, isLoading, error, supportsAppointmentStatus } = useAppointmentStore();
   const { members: vetStaff, isLoading: isStaffLoading } = useStaffMembers(["vet"]);
 
   useEffect(() => {
@@ -29,8 +32,10 @@ export function AppointmentSchedule() {
   // ── Search & Filter state ──
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDepts, setActiveDepts] = useState<Set<string>>(new Set());
+  const [activeStatuses, setActiveStatuses] = useState<Set<AppointmentStatus>>(new Set());
   const [activeVet, setActiveVet] = useState<string>("all");
   const [showAvailabilitySettings, setShowAvailabilitySettings] = useState(false);
+  const [showOverviewDrawer, setShowOverviewDrawer] = useState(false);
   const [dayPopoverAnchor, setDayPopoverAnchor] = useState<DayPopoverAnchor | null>(null);
 
   const toggleDept = (dept: string) => {
@@ -43,6 +48,15 @@ export function AppointmentSchedule() {
   };
 
   const clearDepts = () => setActiveDepts(new Set());
+
+  const toggleStatus = (status: AppointmentStatus) => {
+    setActiveStatuses((previous) => {
+      const next = new Set(previous);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  };
 
   const vetCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -77,36 +91,69 @@ export function AppointmentSchedule() {
     return counts;
   }, [activeVet, calendarAppointments, searchQuery]);
 
-  const openDigitalCareForAppointment = useCallback(
-    (appt: CalendarAppointment) => {
-      const params = new URLSearchParams();
-      if (appt.petId) params.set("pet_id", String(appt.petId));
-      if (appt.ownerId) params.set("owner_id", appt.ownerId);
-      navigate(`/digital-care?${params.toString()}`);
-    },
-    [navigate]
-  );
+  const matchesFilters = useCallback((appointment: CalendarAppointment) => {
+    if (activeDepts.size > 0 && !activeDepts.has(appointment.department)) return false;
+    if (activeStatuses.size > 0 && !activeStatuses.has(appointment.status)) return false;
+    if (activeVet !== "all" && appointment.vet !== activeVet) return false;
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      appointment.petName,
+      appointment.ownerName,
+      appointment.type,
+      appointment.vet,
+      appointment.department,
+      appointment.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה",
+    ].join(" ").toLowerCase().includes(query);
+  }, [activeDepts, activeStatuses, activeVet, searchQuery]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<AppointmentStatus, number> = {
+      scheduled: 0,
+      arrived: 0,
+      in_progress: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    calendarAppointments.forEach((appointment) => { counts[appointment.status] += 1; });
+    return counts;
+  }, [calendarAppointments]);
+
+  const todaySummary = useMemo(() => {
+    const today = new Date();
+    const appointments = calendarAppointments.filter((appointment) =>
+      appointment.day === today.getDate()
+      && appointment.month === today.getMonth()
+      && appointment.year === today.getFullYear()
+    );
+    const counts: Record<AppointmentStatus, number> = {
+      scheduled: 0,
+      arrived: 0,
+      in_progress: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    appointments.forEach((appointment) => { counts[appointment.status] += 1; });
+    return {
+      counts,
+      emergencyCount: appointments.filter((appointment) => appointment.color === "red" && appointment.status !== "cancelled").length,
+    };
+  }, [calendarAppointments]);
 
   const handleAppointmentClick = useCallback(
     (appt: CalendarAppointment) => {
-      if (appt.appointmentMode === "video") {
-        openDigitalCareForAppointment(appt);
-        return;
-      }
       actions.openAction(appt, "view");
     },
-    [actions, openDigitalCareForAppointment]
+    [actions]
   );
 
   const handleAppointmentAction = useCallback(
     (appt: CalendarAppointment, mode: any) => {
-      if (mode === "view" && appt.appointmentMode === "video") {
-        openDigitalCareForAppointment(appt);
-        return;
-      }
       actions.openAction(appt, mode);
     },
-    [actions, openDigitalCareForAppointment]
+    [actions]
   );
 
   const handleDayAppointmentAction = useCallback(
@@ -149,99 +196,23 @@ export function AppointmentSchedule() {
   // ── Filtered getAppointments wrapper ──
   const filteredGetAppointments = useCallback(
     (day: number, month?: number, year?: number) => {
-      let appts = nav.getAppointments(day, month, year);
-
-      if (activeDepts.size > 0) {
-        appts = appts.filter((a) => activeDepts.has(a.department));
-      }
-
-      if (activeVet !== "all") {
-        appts = appts.filter((a) => a.vet === activeVet);
-      }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
-        appts = appts.filter(
-          (a) =>
-            a.petName.toLowerCase().includes(q) ||
-            a.ownerName.toLowerCase().includes(q) ||
-            a.type.toLowerCase().includes(q) ||
-            a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q) ||
-            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
-        );
-      }
-
-      return appts;
+      return nav.getAppointments(day, month, year).filter(matchesFilters);
     },
-    [nav.getAppointments, activeDepts, activeVet, searchQuery]
+    [nav.getAppointments, matchesFilters]
   );
 
   // Total vs filtered count for the filter panel badge
   const totalCount = calendarAppointments.length;
-  const filteredCount =
-    activeDepts.size === 0 && activeVet === "all" && !searchQuery.trim()
-      ? totalCount
-      : calendarAppointments.filter((a) => {
-          const deptOk = activeDepts.size === 0 || activeDepts.has(a.department);
-          const vetOk = activeVet === "all" || a.vet === activeVet;
-          const searchOk =
-            !searchQuery.trim() ||
-            (() => {
-              const q = searchQuery.trim().toLowerCase();
-              return (
-                a.petName.toLowerCase().includes(q) ||
-                a.ownerName.toLowerCase().includes(q) ||
-                a.type.toLowerCase().includes(q) ||
-                a.vet.toLowerCase().includes(q) ||
-                a.department.toLowerCase().includes(q) ||
-                (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
-              );
-            })();
-          return deptOk && vetOk && searchOk;
-        }).length;
+  const filteredAppointments = useMemo(
+    () => calendarAppointments.filter(matchesFilters),
+    [calendarAppointments, matchesFilters]
+  );
+  const filteredCount = filteredAppointments.length;
 
-  const filteredAppointments = useMemo(() => {
-    return calendarAppointments.filter((a) => {
-      const deptOk = activeDepts.size === 0 || activeDepts.has(a.department);
-      const vetOk = activeVet === "all" || a.vet === activeVet;
-      const searchOk =
-        !searchQuery.trim() ||
-        (() => {
-          const q = searchQuery.trim().toLowerCase();
-          return (
-            a.petName.toLowerCase().includes(q) ||
-            a.ownerName.toLowerCase().includes(q) ||
-            a.type.toLowerCase().includes(q) ||
-            a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q) ||
-            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
-          );
-        })();
-      return deptOk && vetOk && searchOk;
-    });
-  }, [calendarAppointments, activeDepts, activeVet, searchQuery]);
-
-  const filteredSidebarAppointments = useMemo(() => {
-    return nav.sidebarAppointments.filter((a) => {
-      const deptOk = activeDepts.size === 0 || activeDepts.has(a.department);
-      const vetOk = activeVet === "all" || a.vet === activeVet;
-      const searchOk =
-        !searchQuery.trim() ||
-        (() => {
-          const q = searchQuery.trim().toLowerCase();
-          return (
-            a.petName.toLowerCase().includes(q) ||
-            a.ownerName.toLowerCase().includes(q) ||
-            a.type.toLowerCase().includes(q) ||
-            a.vet.toLowerCase().includes(q) ||
-            a.department.toLowerCase().includes(q) ||
-            (a.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה").includes(q)
-          );
-        })();
-      return deptOk && vetOk && searchOk;
-    });
-  }, [nav.sidebarAppointments, activeDepts, activeVet, searchQuery]);
+  const filteredSidebarAppointments = useMemo(
+    () => nav.sidebarAppointments.filter(matchesFilters),
+    [nav.sidebarAppointments, matchesFilters]
+  );
 
   return (
     <main
@@ -275,8 +246,16 @@ export function AppointmentSchedule() {
       />
 
       {(isLoading || isStaffLoading) && (
-        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 text-[13px] font-medium">
+        <div role="status" className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 text-[13px] font-medium">
           טוען את היומן ואת רשימת אנשי הצוות...
+        </div>
+      )}
+      {error && !isLoading && (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
+          <span>לא הצלחנו לסנכרן את היומן: {error}</span>
+          <button type="button" onClick={() => refreshAppointments()} className="min-h-9 rounded-lg border border-red-200 bg-white px-3 font-bold transition-colors hover:bg-red-100">
+            ניסיון נוסף
+          </button>
         </div>
       )}
 
@@ -284,8 +263,9 @@ export function AppointmentSchedule() {
       <div className="flex gap-5 items-start">
         {/* ── Calendar area ── */}
         <div className="flex-1 min-w-0 relative">
-          <div className="mb-3 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="relative min-w-0">
+          <section className="mb-4 space-y-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm" aria-label="כלי סינון ותצוגה">
+            <div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,1fr)_minmax(260px,0.8fr)_auto]">
+              <div className="relative min-w-0">
               <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
@@ -300,16 +280,32 @@ export function AppointmentSchedule() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
+              </div>
+              <DeptFilterPanel
+                activeDepts={activeDepts}
+                onToggle={toggleDept}
+                onClearAll={clearDepts}
+                totalCount={totalCount}
+                filteredCount={filteredCount}
+                departmentCounts={departmentCounts}
+              />
+              <button
+                type="button"
+                onClick={() => setShowOverviewDrawer(true)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 text-[13px] font-bold text-[#1e40af] transition-colors hover:bg-blue-100 xl:hidden"
+              >
+                <SlidersHorizontal className="h-4 w-4" /> תמונת מצב ורופאים
+              </button>
             </div>
-            <DeptFilterPanel
-              activeDepts={activeDepts}
-              onToggle={toggleDept}
-              onClearAll={clearDepts}
-              totalCount={totalCount}
-              filteredCount={filteredCount}
-              departmentCounts={departmentCounts}
-            />
-          </div>
+            <div className="border-t border-slate-100 pt-3">
+              <AppointmentStatusFilter
+                activeStatuses={activeStatuses}
+                counts={statusCounts}
+                onToggle={toggleStatus}
+                onClear={() => setActiveStatuses(new Set())}
+              />
+            </div>
+          </section>
           {nav.viewMode === "monthly" && (
             <MonthlyView
               calendarCells={nav.calendarCells}
@@ -345,72 +341,42 @@ export function AppointmentSchedule() {
         </div>
 
         {/* ── Right sidebar column ── */}
-        <div className="w-[220px] shrink-0 flex flex-col gap-4 sticky top-[80px]">
-          <div
-            dir="rtl"
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            <div className="px-4 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-[#1e40af]/10 rounded-lg flex items-center justify-center">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#1e40af]" />
-                </div>
-                <span className="text-gray-800 text-[14px]" style={{ fontWeight: 700 }}>
-                  יומן לפי רופא
-                </span>
+        <aside className="sticky top-[80px] hidden w-[260px] shrink-0 xl:block" aria-label="תמונת מצב וסינון רופאים">
+          <ScheduleOverviewRail
+            todayCounts={todaySummary.counts}
+            emergencyCount={todaySummary.emergencyCount}
+            activeVet={activeVet}
+            doctorOptions={doctorOptions}
+            vetCounts={vetCounts}
+            totalAppointments={calendarAppointments.length}
+            onSelectVet={setActiveVet}
+          />
+        </aside>
+      </div>
+
+      {showOverviewDrawer && (
+        <div className="fixed inset-0 z-[230] xl:hidden" role="dialog" aria-modal="true" aria-label="תמונת מצב וסינון רופאים">
+          <button type="button" aria-label="סגירת החלון" onClick={() => setShowOverviewDrawer(false)} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
+          <div className="absolute inset-y-0 right-0 w-[min(88vw,340px)] overflow-y-auto border-l border-slate-200 bg-slate-50 p-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-[17px] font-extrabold text-slate-900">ניהול היומן</h2>
+                <p className="text-[12px] text-slate-500">תמונת מצב וסינון לפי רופא</p>
               </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600" style={{ fontWeight: 700 }}>
-                {activeVet === "all" ? "כולם" : "רופא"}
-              </span>
+              <button type="button" onClick={() => setShowOverviewDrawer(false)} aria-label="סגירה" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><X className="h-4 w-4" /></button>
             </div>
-
-            <div className="p-3 space-y-1.5">
-              {doctorOptions.map((vetName) => {
-                const isAll = vetName === "all";
-                const isActive = activeVet === vetName;
-                const count = isAll ? calendarAppointments.length : vetCounts.get(vetName) || 0;
-                const label = isAll ? "כל היומנים" : vetName;
-
-                return (
-                  <button
-                    key={vetName}
-                    type="button"
-                    onClick={() => setActiveVet(vetName)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all cursor-pointer text-right ${
-                      isActive
-                        ? "bg-blue-50 border-blue-100 shadow-sm"
-                        : "border-transparent hover:bg-gray-50 hover:border-gray-100"
-                    }`}
-                  >
-                    <span
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                        isActive ? "bg-[#1e40af] text-white" : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {isAll ? <Users className="w-4 h-4" /> : <Stethoscope className="w-4 h-4" />}
-                    </span>
-                    <span
-                      className={`flex-1 text-[13px] text-right ${isActive ? "text-[#1e40af]" : "text-gray-700"}`}
-                      style={{ fontWeight: isActive ? 700 : 500 }}
-                    >
-                      {label}
-                    </span>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full ${
-                        isActive ? "bg-white text-[#1e40af] border border-blue-100" : "bg-gray-100 text-gray-500"
-                      }`}
-                      style={{ fontWeight: 700 }}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <ScheduleOverviewRail
+              todayCounts={todaySummary.counts}
+              emergencyCount={todaySummary.emergencyCount}
+              activeVet={activeVet}
+              doctorOptions={doctorOptions}
+              vetCounts={vetCounts}
+              totalAppointments={calendarAppointments.length}
+              onSelectVet={(vet) => { setActiveVet(vet); setShowOverviewDrawer(false); }}
+            />
           </div>
         </div>
-      </div>
+      )}
 
       {nav.sidebarOpen && nav.selectedDay !== null && nav.viewMode === "monthly" && dayPopoverAnchor && (
         <DayAppointmentsPopover
@@ -448,6 +414,9 @@ export function AppointmentSchedule() {
           onEdit={actions.handleEdit}
           deleteSuccess={actions.deleteSuccess}
           onDelete={actions.handleDelete}
+          supportsAppointmentStatus={supportsAppointmentStatus}
+          statusUpdatePending={actions.statusUpdatePending}
+          onStatusChange={actions.handleStatusChange}
           openAction={actions.openAction}
         />
       )}

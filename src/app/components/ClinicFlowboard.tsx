@@ -272,6 +272,7 @@ export function ClinicFlowboard() {
 
     return (calendarAppointments || [])
       .filter((appt) => {
+        if (appt.status === "completed" || appt.status === "cancelled") return false;
         const date = appointmentDate(appt);
         if (date.getTime() < now.getTime() - 15 * 60 * 1000) return false;
         if (date.getTime() > sevenDaysFromNow.getTime()) return false;

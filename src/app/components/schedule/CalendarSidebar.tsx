@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Calendar, CalendarClock, CalendarPlus, Clock, MapPin, Pencil, Trash2, Video, X } from "lucide-react";
-import { HEBREW_MONTHS, getHebrewDayName, getDeptConfig } from "../../data/calendar-constants";
+import { AlertTriangle, ArrowLeft, Calendar, CalendarClock, CalendarPlus, Clock, MapPin, Pencil, Trash2, Video, X } from "lucide-react";
+import { HEBREW_MONTHS, getHebrewDayName, getDeptConfig, getApptStatus, isAppointmentPast } from "../../data/calendar-constants";
 import { PetIcon } from "../shared/PetIcon";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
 import type { ActionMode } from "../../data/calendar-constants";
@@ -136,27 +136,35 @@ export function DayAppointmentsPopover({
             <div className="space-y-2.5">
               {appointments.map((appt) => {
                 const dept = getDeptConfig(appt.department);
+                const status = getApptStatus(appt.status);
+                const isPast = isAppointmentPast(appt.year, appt.month, appt.day, appt.endTime);
+                const isMuted = isPast || appt.status === "completed" || appt.status === "cancelled";
                 return (
-                  <article key={appt.id} className={`group overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200/80 ${dept.bg}`} style={{ borderRight: `4px solid ${dept.borderColor}` }}>
+                  <article key={appt.id} className={`group overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200/80 ${dept.bg} ${isMuted ? "opacity-55" : ""}`} style={{ borderRight: `4px solid ${dept.borderColor}` }}>
                     <button type="button" onClick={() => onApptAction(appt, "view")} className="block w-full p-3 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
                       <div className="flex items-start gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-white/90" style={{ borderColor: `${dept.borderColor}35` }}><PetIcon species={appt.petSpecies} className={`h-4.5 w-4.5 ${dept.text}`} /></span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className={`truncate text-[14px] font-extrabold ${dept.text}`}>{appt.petName}</p>
+                            <p className={`truncate text-[14px] font-extrabold ${dept.text} ${appt.status === "cancelled" ? "line-through" : ""}`}>{appt.petName}</p>
                             <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/80 px-2 py-1 text-[11px] font-bold text-slate-700"><Clock className="h-3 w-3" />{appt.time}–{appt.endTime}</span>
                           </div>
                           <p className="mt-0.5 truncate text-[12px] font-semibold text-slate-700">{appt.ownerName} · {appt.type}</p>
-                          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500"><MapPin className="h-3 w-3" /><span>{appt.department} · {appt.room}</span>{appt.appointmentMode === "video" && <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700"><Video className="h-2.5 w-2.5" />וידאו</span>}</div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-bold ${status.badgeClass}`}><span className={`h-1.5 w-1.5 rounded-full ${status.dotColor}`} />{status.label}</span>
+                            {appt.color === "red" && <span className="inline-flex items-center gap-1 rounded-full border border-red-100 bg-red-50 px-2 py-0.5 font-bold text-red-700"><AlertTriangle className="h-3 w-3" />חירום</span>}
+                            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{appt.department} · {appt.room}</span>
+                            {appt.appointmentMode === "video" && <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700"><Video className="h-2.5 w-2.5" />וידאו</span>}
+                          </div>
                         </div>
                         <ArrowLeft className="mt-2.5 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:-translate-x-1" />
                       </div>
                     </button>
                     <div className="flex items-center gap-1 border-t border-black/5 bg-white/55 px-3 py-1.5">
                       {([
-                        { mode: "reschedule" as ActionMode, icon: CalendarClock, label: "הזז", cls: "text-blue-700 hover:bg-blue-50" },
-                        { mode: "edit" as ActionMode, icon: Pencil, label: "ערוך", cls: "text-amber-700 hover:bg-amber-50" },
-                        { mode: "delete" as ActionMode, icon: Trash2, label: "מחק", cls: "text-red-600 hover:bg-red-50" },
+                        { mode: "reschedule" as ActionMode, icon: CalendarClock, label: "הזזה", cls: "text-blue-700 hover:bg-blue-50" },
+                        { mode: "edit" as ActionMode, icon: Pencil, label: "עריכה", cls: "text-amber-700 hover:bg-amber-50" },
+                        { mode: "delete" as ActionMode, icon: Trash2, label: "ביטול", cls: "text-red-600 hover:bg-red-50" },
                       ]).map(({ mode, icon: Icon, label, cls }) => (
                         <button key={mode} type="button" onClick={() => onApptAction(appt, mode)} className={`inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[10.5px] font-bold transition-colors ${cls}`}><Icon className="h-3 w-3" />{label}</button>
                       ))}

@@ -1,6 +1,6 @@
 import {
   Calendar, Stethoscope, Trash2, CalendarClock,
-  Check, Pencil, ChevronDown, AlertTriangle, User, Video, Building2,
+  Check, Pencil, ChevronDown, AlertTriangle, User, Video, Building2, Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { ModalOverlay, ModalHeader } from "../shared/ModalOverlay";
@@ -10,7 +10,8 @@ import { PetIcon } from "../shared/PetIcon";
 import {
   AVAILABLE_DATES, AVAILABLE_TIMES,
   DEPARTMENTS, ROOMS,
-  addMinutes, type ActionMode, type DateOption,
+  APPOINTMENT_STATUS_OPTIONS, addMinutes, getApptStatus,
+  type ActionMode, type AppointmentStatus, type DateOption,
 } from "../../data/calendar-constants";
 import { useStaffMembers, uniqueNames } from "../../data/staffDirectory";
 import { appointmentModeLabel, type AppointmentMode, type CalendarAppointment } from "../../data/AppointmentStore";
@@ -58,7 +59,7 @@ const MODE_CONFIG: Record<ActionMode, { icon: typeof Calendar; title: string; gr
   view:       { icon: Calendar,      title: "פרטי תור" },
   reschedule: { icon: CalendarClock, title: "הזזת תור" },
   edit:       { icon: Pencil,        title: "עריכת תור" },
-  delete:     { icon: Trash2,        title: "מחיקת תור", gradient: "bg-gradient-to-l from-red-500 to-red-600" },
+  delete:     { icon: Trash2,        title: "ביטול תור", gradient: "bg-gradient-to-l from-red-500 to-red-600" },
 };
 
 // ─── Main Component ─────────────────────────────────────────────────
@@ -82,6 +83,9 @@ interface Props {
   // Delete
   deleteSuccess: boolean;
   onDelete: () => void;
+  supportsAppointmentStatus: boolean;
+  statusUpdatePending: boolean;
+  onStatusChange: (status: AppointmentStatus) => void;
   // Open in a specific mode
   openAction: (appt: CalendarAppointment, mode: ActionMode) => void;
 }
@@ -92,6 +96,7 @@ export function AppointmentActionModal({
   rescheduleSuccess, onReschedule,
   editForm, setEditForm, editSuccess, onEdit,
   deleteSuccess, onDelete,
+  supportsAppointmentStatus, statusUpdatePending, onStatusChange,
   openAction,
 }: Props) {
   const navigate = useNavigate();
@@ -103,6 +108,7 @@ export function AppointmentActionModal({
   const datePills = AVAILABLE_DATES.map((d) => ({ key: d.label, label: d.label }));
   const timePills = AVAILABLE_TIMES.map((t) => ({ key: t, label: t }));
   const isVideo = appt.appointmentMode === "video";
+  const status = getApptStatus(appt.status);
   const openDigitalCare = () => {
     const params = new URLSearchParams();
     params.set("appointment_id", String(appt.appointmentId || appt.id));
@@ -158,6 +164,43 @@ export function AppointmentActionModal({
               </div>
             </div>
 
+            <section className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4" aria-labelledby="appointment-status-heading">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h5 id="appointment-status-heading" className="text-[13px] font-bold text-slate-800">סטטוס תפעולי</h5>
+                  <p className="text-[11px] text-slate-500">עדכון קצר ששומר את כל הצוות מסונכרן</p>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-bold ${status.badgeClass}`}>
+                  <span className={`h-2 w-2 rounded-full ${status.dotColor}`} />
+                  {status.label}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {APPOINTMENT_STATUS_OPTIONS.filter((option) => option.key !== "cancelled").map((option) => {
+                  const isActive = appt.status === option.key;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      aria-pressed={isActive}
+                      disabled={!supportsAppointmentStatus || statusUpdatePending}
+                      onClick={() => onStatusChange(option.key)}
+                      className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${
+                        isActive ? option.badgeClass : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {statusUpdatePending && !isActive ? null : <span className={`h-2 w-2 rounded-full ${option.dotColor}`} />}
+                      {statusUpdatePending && isActive && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {!supportsAppointmentStatus && (
+                <p className="mt-2 text-[11px] font-medium text-amber-700">יש להחיל את עדכון בסיס הנתונים כדי לאפשר שינוי סטטוס.</p>
+              )}
+            </section>
+
             <div className="grid grid-cols-2 gap-4 mb-6">
               {[
                 { label: "שעה", value: `${appt.time} - ${appt.endTime}`, big: true },
@@ -182,23 +225,34 @@ export function AppointmentActionModal({
               <p className="text-gray-700 text-[14px]">{appt.notes}</p>
             </div>
 
-            <div className={`grid ${isVideo ? "grid-cols-5" : "grid-cols-4"} gap-2 mb-4`}>
+            <div className={`mb-3 grid ${isVideo ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
               {([
-                ...(isVideo ? [{ mode: "digital" as const, icon: Video, label: "דיגיטל", cls: "border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-600" }] : []),
-                { mode: "reschedule" as ActionMode, icon: CalendarClock, label: "הזז תור", cls: "border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600" },
-                { mode: "edit" as ActionMode, icon: Pencil, label: "ערוך", cls: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-600" },
-                { mode: "delete" as ActionMode, icon: Trash2, label: "מחק", cls: "border-red-200 bg-red-50 hover:bg-red-100 text-red-500" },
-                { mode: null, icon: User, label: "תיק רפואי", cls: "border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600" },
+                { mode: null, icon: User, label: "פתיחת התיק הרפואי", cls: "border-[#1e40af] bg-[#1e40af] hover:bg-[#1e3a8a] text-white" },
+                ...(isVideo ? [{ mode: "digital" as const, icon: Video, label: "פתיחת השיחה הדיגיטלית", cls: "border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700" }] : []),
               ] as const).map((btn) => {
                 const BtnIcon = btn.icon;
                 return (
                   <button
                     key={btn.label}
                     onClick={() => handleActionButtonClick(btn.mode)}
-                    className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border ${btn.cls} transition-colors cursor-pointer`}
+                    className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-3 ${btn.cls} cursor-pointer transition-colors`}
                   >
                     <BtnIcon className="w-5 h-5" />
                     <span className="text-[13px]" style={{ fontWeight: 600 }}>{btn.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              {([
+                { mode: "reschedule" as ActionMode, icon: CalendarClock, label: "הזזה", cls: "border-blue-200 bg-white hover:bg-blue-50 text-blue-700" },
+                { mode: "edit" as ActionMode, icon: Pencil, label: "עריכה", cls: "border-amber-200 bg-white hover:bg-amber-50 text-amber-700" },
+                { mode: "delete" as ActionMode, icon: Trash2, label: "ביטול", cls: "border-red-200 bg-white hover:bg-red-50 text-red-600" },
+              ] as const).map((btn) => {
+                const BtnIcon = btn.icon;
+                return (
+                  <button key={btn.label} type="button" onClick={() => handleActionButtonClick(btn.mode)} className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-[13px] font-semibold transition-colors ${btn.cls}`}>
+                    <BtnIcon className="h-4 w-4" /> {btn.label}
                   </button>
                 );
               })}
@@ -330,15 +384,15 @@ export function AppointmentActionModal({
         {/* ── DELETE ── */}
         {mode === "delete" && (
           deleteSuccess ? (
-            <SuccessMessage title="התור נמחק בהצלחה" subtitle="הבעלים יקבלו התראה על הביטול" />
+            <SuccessMessage title="התור בוטל בהצלחה" subtitle="הבעלים יקבלו התראה על הביטול" />
           ) : (
             <>
               <div className="flex flex-col items-center text-center mb-6">
                 <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
                   <AlertTriangle className="w-8 h-8 text-red-500" />
                 </div>
-                <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>מחיקת תור</h4>
-                <p className="text-gray-500 text-[13px]">פעולה זו לא ניתנת לביטול — הבעלים יקבלו התראה</p>
+                <h4 className="text-gray-900 text-[18px] mb-1" style={{ fontWeight: 700 }}>ביטול תור</h4>
+                <p className="text-gray-500 text-[13px]">התור יוסר מהיומן והבעלים יקבלו הודעת ביטול</p>
               </div>
 
               <div className="bg-red-50/60 rounded-xl border border-red-100 p-4 mb-6 flex items-center gap-3">
@@ -354,7 +408,7 @@ export function AppointmentActionModal({
 
               <div className="flex gap-3">
                 <button onClick={onDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>
-                  <Trash2 className="w-4 h-4" /> כן, מחקו את התור
+                  <Trash2 className="w-4 h-4" /> כן, בטלו את התור
                 </button>
                 <button onClick={() => setMode("view")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
                   חזרה

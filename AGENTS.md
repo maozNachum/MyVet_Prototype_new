@@ -1,94 +1,95 @@
-# MyVet — הוראות עבודה ל-Codex
+# MyVet Repository Guide
 
-מסמך זה הוא נקודת הכניסה המחייבת לכל סוכן שעובד בריפו. לפני שינוי קוד יש לקרוא גם את:
+This file applies to the entire repository. Before substantial work, read the relevant source files and, when applicable, `docs/PROJECT_CONTEXT_HE.md`, `docs/SUPABASE_ARCHITECTURE_HE.md`, `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, and `docs/VETBOT_PRIVACY_DPIA_HE.md`.
 
-1. `docs/PROJECT_CONTEXT_HE.md`
-2. `docs/SUPABASE_ARCHITECTURE_HE.md`
-3. `docs/COLLABORATION_HE.md`
-4. `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md` — מצב תוכנית ה־AI, מה הושלם ומה עדיין חסום.
-5. לפי הצורך: `docs/DEMO_SCENARIO_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, `docs/VETBOT_PRIVACY_DPIA_HE.md`
+## Project
 
-## מטרת המוצר
+- MyVet is a veterinary clinic and pet medical-record management system.
+- Preserve the existing project architecture and naming conventions.
+- Inspect the current branch, `git status`, relevant files, queries, and migrations before modifying code. Preserve unrelated worktree changes.
+- Reuse existing components, hooks, services, utilities, types, and patterns.
+- Prefer focused, reversible changes over broad rewrites.
+- Do not modify unrelated screens or behavior.
+- The working integration branch is `Full_Demo` unless the user explicitly selects another branch.
+- Do not merge to `master`, push, or deploy to Production without explicit approval.
 
-MyVet הוא פרויקט גמר: מערכת מידע מלאה למרפאה וטרינרית, הכוללת פורטל צוות, פורטל לקוחות, יומן תורים, תיק רפואי, אשפוזים, מעבדה, מלאי, מרפאה דיגיטלית, דוחות ו-VetBot.
+## Verified stack and structure
 
-המערכת מוצגת בעברית וב-RTL. יש להתייחס אליה כמוצר אמיתי ולא כעמוד הדגמה, תוך שמירה על פרטיות, נגישות, עקביות UI/UX וחיבור אמיתי ל-Supabase.
+- The frontend uses React 18, TypeScript, Vite 6, React Router 7, Tailwind CSS 4, Lucide icons, and Sonner toasts.
+- Supabase provides Auth, PostgreSQL data access, Realtime, Storage, RPCs, and Edge Functions through `@supabase/supabase-js`.
+- `src/main.tsx` mounts `src/app/App.tsx`; routes are defined in `src/app/routes.tsx` with `createBrowserRouter` and lazy-loaded page modules.
+- `src/app/pages/Layout.tsx` verifies staff access and composes the shared navbar, command center, footer, VetBot shell, and route outlet.
+- Shared application state uses React Context providers in `src/app/data`, notably `MedicalStore`, `AppointmentStore`, and `LabStore`. Keep page-local state local when no shared store is needed.
+- `src/app/pages` contains route screens; `src/app/components` contains domain and shared UI; `src/app/hooks` contains `use*` hooks; `src/services` contains reusable Supabase-facing services.
+- `src/app/components/ai` contains VetBot UI, context construction, sanitization, policies, persistence, and structured-response handling.
+- Components and TSX files use PascalCase; hooks use a `use` prefix; service and utility files use camelCase; database identifiers use snake_case; migrations use timestamp-prefixed snake_case filenames.
+- The Vite alias `@` resolves to `src`, but existing relative-import style may be preserved in nearby files.
 
-## כללי עבודה מחייבים
+## UI and content
 
-- לפני עריכה: בדוק את הענף, `git status`, הקבצים הרלוונטיים והמיגרציות הקיימות.
-- ענף האינטגרציה הפעיל הוא `Full_Demo`, אלא אם המשתמש אומר אחרת.
-- אל תדרוס שינויים שאינם שלך ואל תנקה קבצים רק משום שאינם מוכרים.
-- העדף שינויים קטנים, ממוקדים והפיכים. אל תשכתב מסכים שלמים ללא צורך.
-- אחרי שינוי במספר רכיבי React: בדוק hooks, נגישות, TypeScript, רינדורים ו-mobile.
-- אחרי שינוי פונקציונלי: הרץ `npm run test:vetbot` ו-`npm run build`.
-- אחרי שינוי אבטחה/Supabase: בדוק RLS, הרשאות פונקציה, תפקידים ו-anon access לפי runbook.
-- אין לבצע merge ל-`master` או פריסת Production ללא בקשה מפורשת.
+- The main application language is Hebrew and the interface uses RTL. Existing app shells, portal surfaces, toasts, and modal content use RTL explicitly.
+- The UI uses Heebo, Tailwind utility classes, a light blue application canvas, white cards, and MyVet blues including `#1e40af` and `#2563eb`.
+- User-facing Hebrew must be concise, natural, and practical.
+- Do not add developer-oriented, technical, explanatory, or meta text to the UI.
+- Do not repeat the same information in headings, subtitles, cards, or helper text.
+- Preserve consistency with existing screens and the existing design language.
+- Reuse shared patterns such as `ModalOverlay`, `ModalHeader`, `PillPicker`, `SuccessMessage`, and Sonner toasts when they fit.
+- Keep the customer portal mobile-first, preserve comfortable touch targets, and verify both desktop and mobile layouts.
+- Every control that looks interactive must perform a real action or be disabled with a clear reason.
+- Do not perform a full redesign when the request is focused.
 
-## כללי UI/UX
+## Forms and validation
 
-- שפה: עברית; כיוון: RTL; פונט: Heebo.
-- צבע מותג עיקרי: כחול MyVet (`#1e40af` / `#2563eb`).
-- רקע האפליקציה תכלת-כחול עדין; כרטיסים לבנים עם ניגודיות ברורה.
-- הממשק צריך להיות מודרני, רגוע, לא עמוס, עם היררכיית מידע ברורה.
-- יש לשמור על mobile-first בפורטל הלקוחות ועל touch targets נוחים.
-- אין לשכפל מדדים או התראות. בדשבורד קיימת שכבת עבודה מרכזית אחת ו-VetBot מציג מונה נושאים לבדיקה.
-- תורים שעברו צריכים להיראות מעומעמים; חירום מובחן אך לא צורם.
-- כל כפתור שנראה אינטראקטיבי חייב לבצע פעולה אמיתית או להיות disabled עם הסבר.
-- VetBot צריך להישאר קצר, קריא, עם טיפוגרפיה זהה לאתר וללא טקסט פתיחה חוזר.
+- Existing forms use both React Hook Form with Zod (for example in patient and appointment flows) and focused inline validation. Follow the established pattern of the screen being changed.
+- Do not silently prevent submission by disabling submit without useful feedback.
+- After invalid submission, show exactly which required or invalid fields need attention.
+- Use clear inline validation and a Sonner toast or form summary when appropriate.
+- Preserve entered data when validation fails.
+- Prevent duplicate submission while a request is processing.
+- Include loading, success, empty, disabled, and error states where relevant.
 
-## כללי מוצר שאסור לשבור
+## Supabase
 
-- דחיפות תור חדשה היא רק `רגיל` או `חירום`.
-- שיחות דיגיטליות משתמשות בסטטוס אוטומטי; הצוות אינו אמור לתחזק סטטוס ידנית כפעולה שגרתית.
-- דחיפות שיחה מוצגת כרגיל/דחוף; ערכי legacy יכולים להיות מנורמלים בתצוגה.
-- העברה לארכיון היא פעולה מפורשת וניתנת לשחזור.
-- יצירת קישור וידאו מבוססת Google Meet; לאחר שמירה ושליחה אפשר לפתוח את השיחה.
-- תשלום בפורטל הוא כרגע הדגמה ואסור לו לשנות רשומת חיוב אמיתית מהדפדפן.
-- מסמכים רפואיים וקבצים רגישים משתמשים ב-storage פרטי ובקישורים חתומים.
+- The browser client is created only in `src/services/supabaseClient.ts` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- Existing Supabase access is split between context stores, route screens, reusable services, and authenticated Edge Functions. Inspect the neighboring implementation before choosing placement for a new query.
+- Never expose `service_role`, provider secrets, API keys, or privileged credentials to frontend code or `VITE_*` variables.
+- Never invent table names, columns, keys, relationships, RPCs, policies, or storage buckets.
+- Inspect existing application queries and all relevant SQL migrations before proposing a database change.
+- Keep SQL changes separate from frontend and Edge Function changes. Add timestamped migrations under `supabase/migrations`; keep rollback instructions under `supabase/rollback` when needed.
+- Review RLS, grants, affected roles, tenant/owner boundaries, and Storage policies for every affected table or bucket.
+- Existing sensitive migrations use RLS, scoped grants, and `SECURITY DEFINER` functions with an explicit safe `search_path`; preserve those security patterns.
+- Use private Storage and short-lived signed URLs for sensitive medical documents. Do not make medical buckets public.
+- Prefer additive, backward-compatible database changes. Do not rename or destructively change existing schema without a compatibility plan.
+- Do not apply migrations, alter Production data, deploy Edge Functions, or perform other destructive/Production operations without explicit approval.
 
-## תורים וזמינות
+## VetBot and AI
 
-- ברירת מחדל: א׳–ה׳ 08:00–17:00; ו׳ 08:00–14:00; שבת סגור.
-- הצוות מנהל שעות, קיבולת וחסימות דרך `ClinicAvailabilitySettings`.
-- לקוח מקבל רק שעות שחושבו כפנויות על ידי `myvet_available_slots`.
-- הזמנה של בעלים חייבת לעבור דרך `myvet_owner_book_appointment`; אין להחזיר insert ישיר מהדפדפן.
-- יש לבצע אימות אטומי בשרת. בדיקת UI לבדה אינה מספיקה.
-- אין לחשוף ללקוח את התור, החיה או הזהות של לקוח אחר; רק שעה פנויה/לא פנויה.
+- User-facing AI is named `VetBot`.
+- Frontend AI code must use the existing clients/services and server Edge Functions; do not call Gemini or another provider directly from a React component.
+- Provider, model, prompt, permissions, feature flags, and kill switches are server-owned. Preserve the shared gateway and provider-adapter structure under `supabase/functions/_shared/ai`.
+- Validate structured AI input and output, minimize/redact sensitive data, and do not log full personal or medical content.
+- AI may prepare drafts or proposed actions, but medical content and business mutations requiring approval must not be committed automatically.
+- Preserve manual fallback paths when an AI capability is disabled, times out, or fails.
 
-## VetBot ופרטיות
+## Available commands
 
-- שם העוזר בכל המערכת הוא `VetBot` בלבד.
-- VetBot הוא מסייע ולא גורם רפואי מוסמך: אין אבחון עצמאי, מינון חדש, שליחה או שינוי רשומה ללא אישור אנושי.
-- כלי השרת הם לקריאה בלבד ומחזירים הקשר מצומצם או נתונים מצרפיים.
-- אין לשלוח לספק AI שם, כתובת, ת״ז, טלפון, אימייל, פרטי תשלום, מזהים פנימיים, קישורים פרטיים או סודות.
-- ההשחרה מתבצעת גם בדפדפן וגם ב-Edge Function.
-- לוג VetBot הוא metadata-only; אין להוסיף עמודות prompt/response/medical text.
-- אין לחשוף `service_role`, secret key או `GEMINI_API_KEY` בצד הלקוח, ב-Git או בצ׳אט.
-- `SECURITY DEFINER` מותר רק עם בדיקת משתמש מפורשת, `search_path` מוגדר, revoke מ-`public` ו-grant מצומצם.
-- לפני טענה של תאימות לדין יש לקרוא את `docs/VETBOT_PRIVACY_DPIA_HE.md`; זה אינו ייעוץ משפטי.
+Use only scripts that exist in `package.json`:
 
-## מבנה מרכזי
+- `npm run dev` — start Vite locally.
+- `npm run build` — production build.
+- `npm run typecheck:ai` — strict type-check for the shared AI infrastructure covered by `tsconfig.ai-infrastructure.json`; it is not a full frontend type-check.
+- `npm run test:vetbot` — broad VetBot, security, database-integration, AI-stage, accessibility, and regression suite.
+- `npm run test:frontend-secrets` — scan frontend sources for server AI secrets.
+- `npm run test:accessibility` — accessibility foundation tests.
+- Additional focused `test:*` scripts exist for privacy, AI infrastructure/data security, visit summaries, DigitalCare AI, RAG, OCR, client summaries, follow-up suggestions, hardening, and anonymous access; select the ones relevant to the change.
+- There is currently no `lint` script. Do not claim lint was run and do not add a linter solely for unrelated work.
 
-- `src/app/routes.tsx` — נתיבי המערכת.
-- `src/app/pages` — מסכים ראשיים.
-- `src/app/components` — רכיבים עסקיים ומשותפים.
-- `src/app/components/ai` — VetBot, צמצום הקשר ותשובות מובנות.
-- `src/app/data` — stores, הרשאות צוות, קטגוריות ומדדי דוחות.
-- `src/services` — Supabase, זמינות מרפאה והתראות פורטל.
-- `supabase/migrations` — מקור האמת לשינויי DB/RLS.
-- `supabase/functions/ai-assistant` — Edge Function של VetBot.
-- `tests` — בדיקות פרטיות, הרשאות ו-regression.
+## Implementation and verification
 
-## Definition of Done
-
-שינוי נחשב מוכן רק כאשר:
-
-1. הזרימה עובדת מול Supabase ולא רק עם mock.
-2. אין חשיפת מידע או הרחבת הרשאות לא מכוונת.
-3. desktop ו-mobile נשארו שמישים.
-4. מצבי loading, empty, error ו-disabled מטופלים.
-5. `npm run test:vetbot` עבר.
-6. `npm run build` עבר.
-7. `git diff --check` עבר.
-8. נכתב handoff קצר עם הקבצים ששונו והבדיקות שבוצעו.
+- Preserve existing behavior unless the requested feature requires changing it.
+- Do not install a new production dependency unless necessary and approved by the task scope.
+- For React changes, review hook dependencies and cleanup, accessibility, loading/error states, responsive behavior, and stable list keys.
+- For functional changes, run `npm run test:vetbot`, `npm run build`, and `git diff --check` at minimum; add the relevant focused scripts above.
+- For Supabase/security changes, also run the relevant database/RLS/security tests. Do not claim live Supabase verification unless it actually occurred.
+- Fix errors introduced by the work. Do not broaden the task to fix unrelated failures without approval.
+- Report files changed, verification performed, database or Edge Function changes, manual steps, and remaining limitations.

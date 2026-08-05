@@ -307,6 +307,7 @@ export function NewAppointment() {
         room: data.appointmentMode === "video" ? "דיגיטל" : data.room || "—",
         type: data.reason,
         appointmentMode: data.appointmentMode,
+        status: "scheduled",
         color: urgencyToColor(data.urgency),
         notes: data.notes || "",
       });

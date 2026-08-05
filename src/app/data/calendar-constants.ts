@@ -2,6 +2,20 @@
 
 export type ViewMode = "monthly" | "weekly" | "daily";
 export type ActionMode = "view" | "reschedule" | "edit" | "delete";
+export type AppointmentStatus = "scheduled" | "arrived" | "in_progress" | "completed" | "cancelled";
+
+export const APPOINTMENT_STATUS_OPTIONS: Array<{
+  key: AppointmentStatus;
+  label: string;
+  dotColor: string;
+  badgeClass: string;
+}> = [
+  { key: "scheduled", label: "מתוכנן", dotColor: "bg-slate-400", badgeClass: "border-slate-200 bg-slate-50 text-slate-700" },
+  { key: "arrived", label: "הגיע", dotColor: "bg-sky-500", badgeClass: "border-sky-200 bg-sky-50 text-sky-700" },
+  { key: "in_progress", label: "בטיפול", dotColor: "bg-amber-500", badgeClass: "border-amber-200 bg-amber-50 text-amber-800" },
+  { key: "completed", label: "הושלם", dotColor: "bg-emerald-500", badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  { key: "cancelled", label: "בוטל", dotColor: "bg-rose-400", badgeClass: "border-rose-200 bg-rose-50 text-rose-700" },
+];
 
 export const HEBREW_DAYS = ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"];
 export const HEBREW_MONTHS = [
@@ -61,9 +75,20 @@ export function getDeptConfig(dept: string): DeptConfig {
   };
 }
 
-// אין כרגע שדה סטטוס תור בטבלת appointments, לכן לא מייצרים סטטוס מזויף לפי id.
-export function getApptStatus(_id: number): { dotColor: string; label: string } {
-  return { dotColor: "bg-gray-400", label: "מתוכנן" };
+export function getApptStatus(status?: AppointmentStatus | string | null) {
+  return APPOINTMENT_STATUS_OPTIONS.find((option) => option.key === status)
+    || APPOINTMENT_STATUS_OPTIONS[0];
+}
+
+export function isAppointmentPast(
+  year: number,
+  month: number,
+  day: number,
+  endTime: string,
+) {
+  const [hours, minutes] = endTime.split(":").map(Number);
+  const end = new Date(year, month, day, hours || 0, minutes || 0, 0, 0);
+  return end.getTime() < Date.now();
 }
 
 export interface DateOption { label: string; day: number; month: number; year: number }

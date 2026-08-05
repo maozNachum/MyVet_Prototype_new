@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useAppointmentStore, type CalendarAppointment, type AppointmentMode } from "../data/AppointmentStore";
-import { addMinutes, type ActionMode, type DateOption } from "../data/calendar-constants";
+import { addMinutes, type ActionMode, type AppointmentStatus, type DateOption } from "../data/calendar-constants";
 
 interface EditFormState {
   type: string;
@@ -42,6 +42,7 @@ export function useAppointmentActions() {
 
   // Delete
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [statusUpdatePending, setStatusUpdatePending] = useState(false);
 
   const closeModal = useCallback(() => {
     setSelectedAppt(null);
@@ -106,6 +107,19 @@ export function useAppointmentActions() {
     }
   }, [selectedAppt, store, closeModal]);
 
+  const handleStatusChange = useCallback(async (status: AppointmentStatus) => {
+    if (!selectedAppt || selectedAppt.status === status) return;
+    setStatusUpdatePending(true);
+    try {
+      await store.updateAppointmentStatus(selectedAppt.id, status);
+      setSelectedAppt((current) => current ? { ...current, status } : current);
+    } catch (error) {
+      console.error("Failed to update appointment status", error);
+    } finally {
+      setStatusUpdatePending(false);
+    }
+  }, [selectedAppt, store]);
+
   return {
     selectedAppt, actionMode, setActionMode, openAction, closeModal,
     // Reschedule
@@ -115,5 +129,6 @@ export function useAppointmentActions() {
     editForm, setEditForm, editSuccess, handleEdit,
     // Delete
     deleteSuccess, handleDelete,
+    statusUpdatePending, handleStatusChange,
   };
 }

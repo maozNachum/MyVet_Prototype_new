@@ -873,9 +873,10 @@ test("Stage 8 creates an existing reminder only after veterinarian approval and 
       ) values ($1,$2,'OWNER-A',$3,$4,'visit_summary','approved',$5::jsonb,$6,$7,now(),20) returning artifact_id`,
       [seed.clinicA, seed.operationA, seed.petA, seed.visitA, JSON.stringify(approvedSummary), ids.vetA, seed.vetStaffA],
     );
+    const scheduledAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const content = {
       reminder_type: "return_visit", title: "Return review", description: "Review in two weeks",
-      scheduled_at: "2026-08-01T09:00:00.000Z", target_type: "owner", requires_manual_date: false,
+      scheduled_at: scheduledAt, target_type: "owner", requires_manual_date: false,
       release_to_client: true, confidence: "high",
     };
 

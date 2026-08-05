@@ -1,0 +1,4 @@
+interface:
+  display_name: "MyVet Supabase Change"
+  short_description: "Implement safe MyVet Supabase changes"
+  default_prompt: "Use $myvet-supabase-change to implement and verify this MyVet database change safely."

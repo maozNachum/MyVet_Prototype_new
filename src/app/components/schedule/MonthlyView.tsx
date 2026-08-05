@@ -1,5 +1,5 @@
-import { Plus, Video } from "lucide-react";
-import { HEBREW_DAYS, getDeptConfig, getApptStatus } from "../../data/calendar-constants";
+import { AlertTriangle, Plus, Video } from "lucide-react";
+import { HEBREW_DAYS, getDeptConfig, getApptStatus, isAppointmentPast } from "../../data/calendar-constants";
 import type { CalendarAppointment } from "../../data/AppointmentStore";
 import type { DayPopoverAnchor } from "./CalendarSidebar";
 
@@ -16,11 +16,14 @@ interface MonthlyViewProps {
 
 function MonthlyApptCard({ appt }: { appt: CalendarAppointment }) {
   const dept = getDeptConfig(appt.department);
-  const status = getApptStatus(appt.id);
+  const status = getApptStatus(appt.status);
+  const isPast = isAppointmentPast(appt.year, appt.month, appt.day, appt.endTime);
+  const isEmergency = appt.color === "red";
+  const isMuted = isPast || appt.status === "completed" || appt.status === "cancelled";
 
   return (
     <div
-      className={`relative rounded-md text-right overflow-hidden mb-1 ${dept.bg}`}
+      className={`relative mb-1 overflow-hidden rounded-lg text-right transition-opacity ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
       style={{
         borderWidth: 1,
         borderStyle: "solid",
@@ -29,26 +32,25 @@ function MonthlyApptCard({ appt }: { appt: CalendarAppointment }) {
         borderRightColor: dept.borderColor,
       }}
     >
-      <span
-        className={`absolute top-1 left-1 w-[7px] h-[7px] rounded-full ${status.dotColor}`}
-        title={status.label}
-      />
-
-      <div className="px-1.5 py-1 pr-2">
-        <p className={`text-[10px] leading-tight truncate ${dept.text}`} style={{ fontWeight: 700 }}>
-          {appt.time} | {appt.petName}
-        </p>
-        <p className="text-[9.5px] text-gray-500 leading-tight truncate mt-0.5" style={{ fontWeight: 500 }}>
-          {appt.ownerName}
-        </p>
-        <div className="flex items-center gap-1 truncate">
-          <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
+      <div className="px-2 py-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className={`min-w-0 flex-1 truncate text-[11px] font-bold leading-tight ${dept.text} ${appt.status === "cancelled" ? "line-through" : ""}`}>
+            <span dir="ltr">{appt.time}</span> · {appt.petName}
+          </p>
+          {isEmergency && <AlertTriangle className="h-3 w-3 shrink-0 text-red-600" aria-label="חירום" />}
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-1">
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${status.badgeClass}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${status.dotColor}`} />
+            {status.label}
+          </span>
+          <p className="min-w-0 flex-1 truncate text-[10px] font-medium leading-tight text-gray-600">
             {appt.type}
           </p>
           {appt.appointmentMode === "video" && <Video className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
         </div>
-        <p className="text-[9px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
-          {appt.vet}
+        <p className="mt-1 truncate text-[10px] font-medium leading-tight text-gray-500">
+          {appt.ownerName} · {appt.vet}
         </p>
       </div>
     </div>

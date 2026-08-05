@@ -1,0 +1,4 @@
+interface:
+  display_name: "MyVet UI/UX Expert"
+  short_description: "Design and refine accessible MyVet interfaces"
+  default_prompt: "Use $myvet-ui-ux-expert to implement and verify this visible MyVet interface change."
