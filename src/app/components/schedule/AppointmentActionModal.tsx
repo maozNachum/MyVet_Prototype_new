@@ -83,6 +83,7 @@ interface Props {
   // Delete
   deleteSuccess: boolean;
   onDelete: () => void;
+  actionPending: boolean;
   supportsAppointmentStatus: boolean;
   statusUpdatePending: boolean;
   onStatusChange: (status: AppointmentStatus) => void;
@@ -95,7 +96,7 @@ export function AppointmentActionModal({
   rescheduleDate, setRescheduleDate, rescheduleTime, setRescheduleTime,
   rescheduleSuccess, onReschedule,
   editForm, setEditForm, editSuccess, onEdit,
-  deleteSuccess, onDelete,
+  deleteSuccess, onDelete, actionPending,
   supportsAppointmentStatus, statusUpdatePending, onStatusChange,
   openAction,
 }: Props) {
@@ -288,15 +289,15 @@ export function AppointmentActionModal({
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={onReschedule}
-                  disabled={!rescheduleDate || !rescheduleTime}
+                  disabled={!rescheduleDate || !rescheduleTime || actionPending}
                   className={`flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 ${
-                    rescheduleDate && rescheduleTime ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"
+                    rescheduleDate && rescheduleTime && !actionPending ? "bg-[#1e40af] hover:bg-[#1e3a8a] text-white" : "bg-gray-200 text-gray-500 font-medium cursor-not-allowed"
                   }`}
                   style={{ fontWeight: 600 }}
                 >
-                  <CalendarClock className="w-4 h-4" /> אישור הזזת תור
+                  {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />} {actionPending ? "מעדכן את התור..." : "אישור הזזת תור"}
                 </button>
-                <button onClick={() => setMode("view")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
+                <button onClick={() => setMode("view")} disabled={actionPending} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 500 }}>
                   חזרה
                 </button>
               </div>
@@ -370,10 +371,10 @@ export function AppointmentActionModal({
               </div>
 
               <div className="flex gap-3">
-                <button onClick={onEdit} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>
-                  <Check className="w-4 h-4" /> שמור שינויים
+                <button onClick={onEdit} disabled={actionPending} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60" style={{ fontWeight: 600 }}>
+                  {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="w-4 h-4" />} {actionPending ? "שומר שינויים..." : "שמור שינויים"}
                 </button>
-                <button onClick={() => setMode("view")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
+                <button onClick={() => setMode("view")} disabled={actionPending} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 500 }}>
                   חזרה
                 </button>
               </div>
@@ -407,10 +408,10 @@ export function AppointmentActionModal({
               </div>
 
               <div className="flex gap-3">
-                <button onClick={onDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>
-                  <Trash2 className="w-4 h-4" /> כן, בטלו את התור
+                <button onClick={onDelete} disabled={actionPending} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60" style={{ fontWeight: 600 }}>
+                  {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {actionPending ? "מבטל את התור..." : "כן, בטלו את התור"}
                 </button>
-                <button onClick={() => setMode("view")} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>
+                <button onClick={() => setMode("view")} disabled={actionPending} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 500 }}>
                   חזרה
                 </button>
               </div>

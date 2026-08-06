@@ -13,6 +13,7 @@ const STATUS_METRICS: Array<{ key: AppointmentStatus; label: string; valueClass:
   { key: "arrived", label: "הגיעו", valueClass: "text-sky-700" },
   { key: "in_progress", label: "בטיפול", valueClass: "text-amber-700" },
   { key: "completed", label: "הושלמו", valueClass: "text-emerald-700" },
+  { key: "cancelled", label: "בוטלו", valueClass: "text-rose-700" },
 ];
 
 export function ScheduleOverviewRail({
@@ -40,7 +41,7 @@ export function ScheduleOverviewRail({
         </div>
         <div className="grid grid-cols-2 gap-2 p-3">
           {STATUS_METRICS.map((metric) => (
-            <div key={metric.key} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+            <div key={metric.key} className={`rounded-xl border border-slate-100 bg-slate-50/70 p-3 ${metric.key === "cancelled" ? "col-span-2 flex items-center justify-between" : ""}`}>
               <div className={`text-[20px] font-extrabold tabular-nums ${metric.valueClass}`}>
                 {counts[metric.key]}
               </div>

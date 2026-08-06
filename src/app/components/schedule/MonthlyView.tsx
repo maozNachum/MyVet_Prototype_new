@@ -49,9 +49,6 @@ function MonthlyApptCard({ appt }: { appt: CalendarAppointment }) {
           </p>
           {appt.appointmentMode === "video" && <Video className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
         </div>
-        <p className="mt-1 truncate text-[10px] font-medium leading-tight text-gray-500">
-          {appt.ownerName} · {appt.vet}
-        </p>
       </div>
     </div>
   );
@@ -106,38 +103,35 @@ export function MonthlyView({
           return (
             <div
               key={day}
-              role="button"
-              tabIndex={0}
-              onClick={(event) => onDayClick(day, event.currentTarget.getBoundingClientRect())}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") onDayClick(day, event.currentTarget.getBoundingClientRect());
-              }}
-              className={`min-h-[130px] border-b border-l border-gray-50 p-1.5 text-right transition-all cursor-pointer group relative align-top ${
+              className={`group relative min-h-[130px] border-b border-l border-gray-50 p-1.5 text-right transition-all align-top ${
                 selected
                   ? "bg-blue-50/50 ring-2 ring-inset ring-blue-300"
                   : "hover:bg-gray-50/60"
               }`}
             >
               <div className="flex items-center justify-between mb-1 px-0.5">
-                <span
-                  className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[12px] ${
+                <button
+                  type="button"
+                  onClick={(event) => onDayClick(day, event.currentTarget.getBoundingClientRect())}
+                  className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg px-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                     todayHl
                       ? "bg-[#1e40af] text-white"
                       : selected
                       ? "bg-blue-100 text-blue-700"
-                      : "text-gray-700 group-hover:bg-gray-100"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
                   style={{ fontWeight: todayHl ? 700 : 500 }}
+                  aria-label={`הצג תורים ביום ${day}/${currentMonth + 1}/${currentYear}`}
                 >
                   {day}
-                </span>
+                </button>
                 <button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCreateAppointment(date);
                   }}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/80 text-blue-700 transition-colors hover:border-blue-200 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/80 text-blue-700 transition-colors hover:border-blue-200 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
                   title="קבע תור ביום זה"
                   aria-label={`קבע תור ביום ${day}/${currentMonth + 1}/${currentYear}`}
                 >
@@ -145,7 +139,12 @@ export function MonthlyView({
                 </button>
               </div>
 
-              <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={(event) => onDayClick(day, event.currentTarget.getBoundingClientRect())}
+                className="block min-h-[78px] w-full space-y-0.5 rounded-lg text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                aria-label={`הצג ${appts.length} תורים ביום ${day}/${currentMonth + 1}/${currentYear}`}
+              >
                 {visible.map((appt) => (
                   <MonthlyApptCard key={appt.id} appt={appt} />
                 ))}
@@ -157,7 +156,7 @@ export function MonthlyView({
                     +{overflow} נוספים
                   </div>
                 )}
-              </div>
+              </button>
             </div>
           );
         })}

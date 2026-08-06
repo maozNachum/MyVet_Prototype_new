@@ -101,6 +101,7 @@ interface FutureAppointment {
   id: number; petName: string; petType: "dog" | "cat" | "other"; petImage: string;
   date: string; time: string; type: string; vet: string; room: string; notes: string;
   start_time: string; end_time: string | null;
+  appointmentMode: "physical" | "video";
 }
 
 interface DigitalConversation {
@@ -425,6 +426,7 @@ export function ClientPortal() {
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [appointmentMutationPending, setAppointmentMutationPending] = useState<"reschedule" | "cancel" | null>(null);
 
   // Digital clinic / owner communication state
   const [digitalConversations, setDigitalConversations] = useState<DigitalConversation[]>([]);
@@ -748,7 +750,7 @@ export function ClientPortal() {
       if (petIds.length > 0) {
         const { data: appointmentRows, error: appointmentsError } = await supabase
           .from("appointments")
-          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
+          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes")
           .in("pet_id", petIds)
           .gte("start_time", new Date().toISOString())
           .order("start_time", { ascending: true });
@@ -772,6 +774,7 @@ export function ClientPortal() {
             notes: row.notes || "",
             start_time: row.start_time,
             end_time: row.end_time || null,
+            appointmentMode: row.appointment_mode === "video" ? "video" : "physical",
           };
         });
       }
@@ -1339,7 +1342,7 @@ export function ClientPortal() {
   // 2. עדכון להזזת תור מול Supabase
   const handleReschedule = async () => {
     if (blockStaffPreviewMutation()) return;
-    if (!rescheduleAppt) return;
+    if (!rescheduleAppt || appointmentMutationPending) return;
     if (!rescheduleDate || !rescheduleTime) {
       toast.error("בחרו תאריך ושעה חדשים לפני אישור הזזת התור.");
       return;
@@ -1351,6 +1354,7 @@ export function ClientPortal() {
     const month = parseInt(monthStr, 10);
     const year = parseInt(yearStr, 10);
 
+    setAppointmentMutationPending("reschedule");
     try {
       const startTime = new Date(year, month - 1, day, Number(rescheduleTime.split(":")[0]), Number(rescheduleTime.split(":")[1] || 0));
       if (Number.isNaN(startTime.getTime()) || startTime.getTime() <= Date.now()) {
@@ -1364,7 +1368,7 @@ export function ClientPortal() {
         endDate: endTime,
         vet: rescheduleAppt.vet,
         room: rescheduleAppt.room,
-        mode: rescheduleAppt.room === "דיגיטל" ? "video" : "physical",
+        mode: rescheduleAppt.appointmentMode,
         excludeId: rescheduleAppt.id,
       });
 
@@ -1389,13 +1393,16 @@ export function ClientPortal() {
     } catch (e) {
       console.error("Failed to reschedule", e);
       toast.error("לא הצלחנו להזיז את התור. נסו שוב או פנו למרפאה.");
+    } finally {
+      setAppointmentMutationPending(null);
     }
   };
 
   // 3. עדכון לביטול תור מול ה-Store
   const handleCancel = async () => {
     if (blockStaffPreviewMutation()) return;
-    if (!cancelAppt) return;
+    if (!cancelAppt || appointmentMutationPending) return;
+    setAppointmentMutationPending("cancel");
     try {
       const { error } = await supabase
         .from("appointments")
@@ -1413,6 +1420,8 @@ export function ClientPortal() {
     } catch (e) {
       console.error("Failed to cancel", e);
       toast.error("לא הצלחנו לבטל את התור. נסו שוב או פנו למרפאה.");
+    } finally {
+      setAppointmentMutationPending(null);
     }
   };
 
@@ -2813,8 +2822,8 @@ export function ClientPortal() {
 
       {/* ── Reschedule Modal ── */}
       {rescheduleAppt && (
-        <ModalOverlay onClose={() => { setRescheduleAppt(null); setRescheduleSuccess(false); }} maxWidth="max-w-md" zIndex="z-[300]">
-          <ModalHeader title="הזזת תור" icon={<CalendarClock className="w-5 h-5 text-white/80" />} onClose={() => { setRescheduleAppt(null); setRescheduleSuccess(false); }} />
+        <ModalOverlay onClose={() => { if (!appointmentMutationPending) { setRescheduleAppt(null); setRescheduleSuccess(false); } }} maxWidth="max-w-md" zIndex="z-[300]">
+          <ModalHeader title="הזזת תור" icon={<CalendarClock className="w-5 h-5 text-white/80" />} onClose={() => { if (!appointmentMutationPending) { setRescheduleAppt(null); setRescheduleSuccess(false); } }} />
           <div className="p-6">
             {rescheduleSuccess ? (
               <SuccessMessage title="התור הוזז בהצלחה!" subtitle={`התור של ${rescheduleAppt.petName} עודכן`} />
@@ -2834,12 +2843,13 @@ export function ClientPortal() {
                 )}
                 <div className="flex gap-3 mt-2">
                   <button onClick={handleReschedule}
-                    className="flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white"
+                    disabled={Boolean(appointmentMutationPending) || !rescheduleDate || !rescheduleTime}
+                    className="flex-1 py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 bg-[#1e40af] hover:bg-[#1e3a8a] text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                     style={{ fontWeight: 600 }}
                   >
-                    <CalendarClock className="w-4 h-4" /> אישור הזזת תור
+                    {appointmentMutationPending === "reschedule" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />} {appointmentMutationPending === "reschedule" ? "מעדכן את התור..." : "אישור הזזת תור"}
                   </button>
-                  <button onClick={() => setRescheduleAppt(null)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>ביטול</button>
+                  <button onClick={() => setRescheduleAppt(null)} disabled={Boolean(appointmentMutationPending)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 500 }}>ביטול</button>
                 </div>
               </>
             )}
@@ -2849,7 +2859,7 @@ export function ClientPortal() {
 
       {/* ── Cancel Modal ── */}
       {cancelAppt && (
-        <ModalOverlay onClose={() => { setCancelAppt(null); setCancelSuccess(false); }} maxWidth="max-w-sm" zIndex="z-[300]">
+        <ModalOverlay onClose={() => { if (!appointmentMutationPending) { setCancelAppt(null); setCancelSuccess(false); } }} maxWidth="max-w-sm" zIndex="z-[300]">
           {cancelSuccess ? (
             <div className="p-8">
               <SuccessMessage title="התור בוטל בהצלחה" subtitle={`התור של ${cancelAppt.petName} הוסר`} />
@@ -2872,10 +2882,10 @@ export function ClientPortal() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleCancel} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>
-                    <Trash2 className="w-4 h-4" /> כן, בטלו את התור
+                  <button onClick={handleCancel} disabled={Boolean(appointmentMutationPending)} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition-colors cursor-pointer text-[14px] shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60" style={{ fontWeight: 600 }}>
+                    {appointmentMutationPending === "cancel" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {appointmentMutationPending === "cancel" ? "מבטל את התור..." : "כן, בטלו את התור"}
                   </button>
-                  <button onClick={() => setCancelAppt(null)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 500 }}>חזרה</button>
+                  <button onClick={() => setCancelAppt(null)} disabled={Boolean(appointmentMutationPending)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 500 }}>חזרה</button>
                 </div>
               </div>
             </>

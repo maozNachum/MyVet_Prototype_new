@@ -32,11 +32,13 @@ function WeeklyApptCard({
 
   return (
     <button
+      type="button"
       onClick={(event) => {
         event.stopPropagation();
         onClick();
       }}
-      className={`relative mb-1.5 w-full cursor-pointer overflow-hidden rounded-xl text-right transition-all hover:shadow-md ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
+      aria-label={`${appt.time}, ${appt.petName}, ${appt.ownerName}, ${status.label}`}
+      className={`relative mb-1.5 w-full cursor-pointer overflow-hidden rounded-xl text-right transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
       style={{
         borderWidth: 1,
         borderStyle: "solid",
@@ -50,7 +52,7 @@ function WeeklyApptCard({
           {appt.time}–{appt.endTime} | {appt.petName}
         </p>
         <p className="text-[10.5px] text-gray-600 leading-tight truncate" style={{ fontWeight: 500 }}>
-          {appt.ownerName}
+          {appt.ownerName} · {appt.vet}
         </p>
         <div className="flex items-center gap-1.5 truncate">
           <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${status.badgeClass}`}>
@@ -68,9 +70,6 @@ function WeeklyApptCard({
             </span>
           )}
         </div>
-        <p className="text-[10px] text-gray-500 font-medium leading-tight truncate" style={{ fontWeight: 400 }}>
-          {appt.vet}
-        </p>
       </div>
     </button>
   );
@@ -102,9 +101,12 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick, onSlotClick
   return (
     <div
       dir="rtl"
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+      className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
+      <div
+        className="min-w-[900px]"
+      >
       <div
         className="grid border-b border-gray-100"
         style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
@@ -166,16 +168,9 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick, onSlotClick
                 return (
                   <div
                     key={i}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onSlotClick(slotDate, hour)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") onSlotClick(slotDate, hour);
-                    }}
-                    className={`group min-w-0 border-r border-gray-50 p-1.5 transition-colors hover:bg-blue-50/40 cursor-pointer ${
+                    className={`min-w-0 border-r border-gray-50 p-1.5 transition-colors hover:bg-blue-50/40 ${
                       isT ? "bg-blue-50/20" : ""
                     }`}
-                    title={`קבע תור ב-${String(hour).padStart(2, "0")}:00`}
                   >
                     {appts.map((appt) => (
                       <WeeklyApptCard
@@ -186,10 +181,26 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick, onSlotClick
                     ))}
 
                     {appts.length === 0 && (
-                      <div className="hidden h-full min-h-[34px] items-center justify-center rounded-xl border border-dashed border-blue-200 bg-white/70 text-[11px] font-semibold text-blue-700 group-hover:flex">
+                      <button
+                        type="button"
+                        onClick={() => onSlotClick(slotDate, hour)}
+                        className="flex h-full min-h-[34px] w-full items-center justify-center rounded-xl border border-dashed border-blue-200 bg-white/70 text-[11px] font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        aria-label={`קבע תור ביום ${dayDate.toLocaleDateString("he-IL")} בשעה ${String(hour).padStart(2, "0")}:00`}
+                      >
                         <Plus className="ml-1 h-3.5 w-3.5" />
                         קבע תור
-                      </div>
+                      </button>
+                    )}
+                    {appts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onSlotClick(slotDate, hour)}
+                        className="mt-1 flex min-h-9 w-full items-center justify-center rounded-lg border border-blue-100 bg-blue-50/70 px-1.5 text-[10px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        aria-label={`קבע תור נוסף ביום ${dayDate.toLocaleDateString("he-IL")} בשעה ${String(hour).padStart(2, "0")}:00`}
+                      >
+                        <Plus className="ml-1 h-3.5 w-3.5" />
+                        תור נוסף
+                      </button>
                     )}
                   </div>
                 );
@@ -197,6 +208,7 @@ export function WeeklyView({ weekDays, getAppointments, onApptClick, onSlotClick
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

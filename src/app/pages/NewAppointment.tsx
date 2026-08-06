@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
@@ -27,9 +27,18 @@ import {
   Video,
 } from "lucide-react";
 
+function isValidIsraeliPhone(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("972")) digits = `0${digits.slice(3)}`;
+  return /^0(?:5\d{8}|7\d{8}|[23489]\d{7})$/.test(digits);
+}
+
 const appointmentSchema = z.object({
   patient: z.string().min(1, "חובה לבחור לקוח/חיה"),
-  ownerPhone: z.string().min(1, "חובה להזין טלפון בעלים"),
+  ownerPhone: z.string().trim().min(1, "חובה להזין טלפון בעלים").refine(
+    isValidIsraeliPhone,
+    "יש להזין מספר טלפון ישראלי תקין",
+  ),
   date: z.string().min(1, "חובה לבחור תאריך"),
   time: z.string().min(1, "חובה לבחור שעה"),
   reason: z.string().min(1, "חובה לבחור סיבת ביקור"),
@@ -39,6 +48,26 @@ const appointmentSchema = z.object({
   room: z.string().min(1, "חובה לבחור חדר"),
   appointmentMode: z.enum(["physical", "video"]),
   notes: z.string().optional(),
+}).superRefine((values, context) => {
+  if (!values.date || !values.time) return;
+  const start = new Date(`${values.date}T${values.time}:00`);
+  if (Number.isNaN(start.getTime())) return;
+  const selectedDate = new Date(`${values.date}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (selectedDate.getTime() < today.getTime()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["date"],
+      message: "יש לבחור תאריך עתידי או את היום",
+    });
+  } else if (start.getTime() <= Date.now()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["time"],
+      message: "יש לבחור מועד עתידי",
+    });
+  }
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -136,6 +165,7 @@ export function NewAppointment() {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const errorSummaryRef = useRef<HTMLDivElement | null>(null);
 
   const {
     register,
@@ -323,6 +353,7 @@ export function NewAppointment() {
     const messages = collectFormErrors(formErrors);
     const firstMessage = messages[0]?.message || "חסרים פרטים לקביעת התור";
     toast.error(firstMessage);
+    window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
   };
 
   const validationMessages = collectFormErrors(errors);
@@ -333,7 +364,7 @@ export function NewAppointment() {
 
   return (
     <main
-      className="max-w-4xl mx-auto px-6 py-10"
+      className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10"
       dir="rtl"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
@@ -347,7 +378,7 @@ export function NewAppointment() {
       </button>
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-10 py-6">
+        <div className="bg-gradient-to-l from-[#1e40af] to-[#2563eb] px-4 py-5 sm:px-10 sm:py-6">
           <div className="flex items-center gap-3">
             <div className="bg-white/15 rounded-xl p-2.5">
               <Calendar className="w-6 h-6 text-white" />
@@ -366,7 +397,7 @@ export function NewAppointment() {
           </div>
         </div>
 
-        <div className="p-10">
+        <div className="p-4 sm:p-10">
           {(prefilledDate || prefilledTime || prefilledVet) && (
             <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-[14px] text-blue-900">
               <div className="flex items-center gap-2 font-semibold">
@@ -391,7 +422,7 @@ export function NewAppointment() {
             noValidate
           >
             {submitAttempted && validationMessages.length > 0 && (
-              <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-[14px] text-red-700">
+              <div ref={errorSummaryRef} role="alert" aria-live="assertive" tabIndex={-1} className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-[14px] text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400">
                 <p className="font-semibold text-red-800 mb-2">
                   אי אפשר לקבוע את התור עדיין. צריך להשלים:
                 </p>
@@ -416,16 +447,20 @@ export function NewAppointment() {
 
               <div className="mb-5">
                 <label
+                  htmlFor="appointment-patient"
                   className="block text-gray-700 text-[14px] mb-2"
                   style={{ fontWeight: 500 }}
                 >
-                  חיפוש לקוח / חיה
+                  בחירת לקוח / חיה
                 </label>
                 <div className="relative">
                   <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   <select
+                    id="appointment-patient"
                     {...register("patient")}
                     disabled={isLoadingPatients}
+                    aria-invalid={Boolean(errors.patient)}
+                    aria-describedby={errors.patient ? "appointment-patient-error" : undefined}
                     className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                       errors.patient
                         ? "border-red-500 focus:ring-red-500/20"
@@ -439,14 +474,13 @@ export function NewAppointment() {
                     </option>
                     {patients.map((p) => (
                       <option key={p.petId} value={p.petId}>
-                        {p.petName} ({speciesLabel(p.species)}) - {p.ownerName}{" "}
-                        - {p.ownerId}
+                        {p.petName} ({speciesLabel(p.species)}) - {p.ownerName}
                       </option>
                     ))}
                   </select>
                 </div>
                 {errors.patient && (
-                  <p className="text-red-500 text-sm mt-1">
+                  <p id="appointment-patient-error" className="text-red-500 text-sm mt-1">
                     {errors.patient.message}
                   </p>
                 )}
@@ -458,12 +492,12 @@ export function NewAppointment() {
                     {selectedPatient.petName} — {selectedPatient.breed}
                   </p>
                   <p>בעלים: {selectedPatient.ownerName}</p>
-                  <p>תעודת זהות: {selectedPatient.ownerId}</p>
                 </div>
               )}
 
               <div>
                 <label
+                  htmlFor="appointment-owner-phone"
                   className="block text-gray-700 text-[14px] mb-2"
                   style={{ fontWeight: 500 }}
                 >
@@ -472,9 +506,14 @@ export function NewAppointment() {
                 <div className="relative">
                   <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   <input
+                    id="appointment-owner-phone"
                     type="tel"
                     {...register("ownerPhone")}
                     placeholder="050-0000000"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    aria-invalid={Boolean(errors.ownerPhone)}
+                    aria-describedby={errors.ownerPhone ? "appointment-owner-phone-error" : undefined}
                     className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white ${
                       errors.ownerPhone
                         ? "border-red-500 focus:ring-red-500/20"
@@ -483,7 +522,7 @@ export function NewAppointment() {
                   />
                 </div>
                 {errors.ownerPhone && (
-                  <p className="text-red-500 text-sm mt-1">
+                  <p id="appointment-owner-phone-error" className="text-red-500 text-sm mt-1">
                     {errors.ownerPhone.message}
                   </p>
                 )}
@@ -501,12 +540,13 @@ export function NewAppointment() {
 
               <div className="mb-5">
                 <label
+                  id="appointment-mode-label"
                   className="block text-gray-700 text-[14px] mb-3"
                   style={{ fontWeight: 600 }}
                 >
                   סוג תור
                 </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2" role="group" aria-labelledby="appointment-mode-label">
                   {MODE_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const selected = selectedAppointmentMode === option.value;
@@ -514,6 +554,7 @@ export function NewAppointment() {
                       <button
                         key={option.value}
                         type="button"
+                        aria-pressed={selected}
                         onClick={() =>
                           setValue("appointmentMode", option.value, {
                             shouldValidate: true,
@@ -553,14 +594,18 @@ export function NewAppointment() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 <div>
                   <label
+                    htmlFor="appointment-date"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
                     תאריך
                   </label>
                   <input
+                    id="appointment-date"
                     type="date"
                     {...register("date")}
+                    aria-invalid={Boolean(errors.date)}
+                    aria-describedby={errors.date ? "appointment-date-error" : undefined}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white ${
                       errors.date
                         ? "border-red-500 focus:ring-red-500/20"
@@ -568,7 +613,7 @@ export function NewAppointment() {
                     }`}
                   />
                   {errors.date && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-date-error" className="text-red-500 text-sm mt-1">
                       {errors.date.message}
                     </p>
                   )}
@@ -576,14 +621,18 @@ export function NewAppointment() {
 
                 <div>
                   <label
+                    htmlFor="appointment-time"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
                     שעה
                   </label>
                   <input
+                    id="appointment-time"
                     type="time"
                     {...register("time")}
+                    aria-invalid={Boolean(errors.time)}
+                    aria-describedby={errors.time ? "appointment-time-error" : undefined}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white ${
                       errors.time
                         ? "border-red-500 focus:ring-red-500/20"
@@ -591,7 +640,7 @@ export function NewAppointment() {
                     }`}
                   />
                   {errors.time && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-time-error" className="text-red-500 text-sm mt-1">
                       {errors.time.message}
                     </p>
                   )}
@@ -601,13 +650,17 @@ export function NewAppointment() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 <div>
                   <label
+                    htmlFor="appointment-reason"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
                     סיבת ביקור
                   </label>
                   <select
+                    id="appointment-reason"
                     {...register("reason")}
+                    aria-invalid={Boolean(errors.reason)}
+                    aria-describedby={errors.reason ? "appointment-reason-error" : undefined}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
                       errors.reason
                         ? "border-red-500 focus:ring-red-500/20"
@@ -624,7 +677,7 @@ export function NewAppointment() {
                     <option value="אחר">אחר</option>
                   </select>
                   {errors.reason && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-reason-error" className="text-red-500 text-sm mt-1">
                       {errors.reason.message}
                     </p>
                   )}
@@ -632,13 +685,17 @@ export function NewAppointment() {
 
                 <div>
                   <label
+                    htmlFor="appointment-urgency"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
                     רמת דחיפות
                   </label>
                   <select
+                    id="appointment-urgency"
                     {...register("urgency")}
+                    aria-invalid={Boolean(errors.urgency)}
+                    aria-describedby={errors.urgency ? "appointment-urgency-error" : undefined}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
                       errors.urgency
                         ? "border-red-500 focus:ring-red-500/20"
@@ -649,7 +706,7 @@ export function NewAppointment() {
                     <option value="urgent">חירום</option>
                   </select>
                   {errors.urgency && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-urgency-error" className="text-red-500 text-sm mt-1">
                       {errors.urgency.message}
                     </p>
                   )}
@@ -659,6 +716,7 @@ export function NewAppointment() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
                 <div>
                   <label
+                    htmlFor="appointment-vet"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
@@ -667,7 +725,10 @@ export function NewAppointment() {
                   <div className="relative">
                     <Stethoscope className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                     <select
+                      id="appointment-vet"
                       {...register("vet")}
+                      aria-invalid={Boolean(errors.vet)}
+                      aria-describedby={errors.vet ? "appointment-vet-error" : undefined}
                       className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
                         errors.vet
                           ? "border-red-500 focus:ring-red-500/20"
@@ -683,7 +744,7 @@ export function NewAppointment() {
                     </select>
                   </div>
                   {errors.vet && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-vet-error" className="text-red-500 text-sm mt-1">
                       {errors.vet.message}
                     </p>
                   )}
@@ -697,13 +758,17 @@ export function NewAppointment() {
 
                 <div>
                   <label
+                    htmlFor="appointment-department"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
                     מחלקה
                   </label>
                   <select
+                    id="appointment-department"
                     {...register("department")}
+                    aria-invalid={Boolean(errors.department)}
+                    aria-describedby={errors.department ? "appointment-department-error" : undefined}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
                       errors.department
                         ? "border-red-500 focus:ring-red-500/20"
@@ -717,7 +782,7 @@ export function NewAppointment() {
                     ))}
                   </select>
                   {errors.department && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-department-error" className="text-red-500 text-sm mt-1">
                       {errors.department.message}
                     </p>
                   )}
@@ -725,6 +790,7 @@ export function NewAppointment() {
 
                 <div>
                   <label
+                    htmlFor="appointment-room"
                     className="block text-gray-700 text-[14px] mb-2"
                     style={{ fontWeight: 500 }}
                   >
@@ -734,13 +800,17 @@ export function NewAppointment() {
                     <MapPin className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                     {selectedAppointmentMode === "video" ? (
                       <input
+                        id="appointment-room"
                         value="דיגיטל"
                         readOnly
                         className="w-full pr-12 pl-4 py-3 border border-gray-200 rounded-xl text-[15px] bg-gray-100 text-gray-600"
                       />
                     ) : (
                       <select
+                        id="appointment-room"
                         {...register("room")}
+                        aria-invalid={Boolean(errors.room)}
+                        aria-describedby={errors.room ? "appointment-room-error" : undefined}
                         className={`w-full pr-12 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all text-[15px] bg-gray-50/50 focus:bg-white appearance-none cursor-pointer ${
                           errors.room
                             ? "border-red-500 focus:ring-red-500/20"
@@ -756,7 +826,7 @@ export function NewAppointment() {
                     )}
                   </div>
                   {errors.room && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p id="appointment-room-error" className="text-red-500 text-sm mt-1">
                       {errors.room.message}
                     </p>
                   )}
@@ -765,6 +835,7 @@ export function NewAppointment() {
 
               <div>
                 <label
+                  htmlFor="appointment-notes"
                   className="block text-gray-700 text-[14px] mb-2"
                   style={{ fontWeight: 500 }}
                 >
@@ -773,6 +844,7 @@ export function NewAppointment() {
                 <div className="relative">
                   <FileText className="absolute right-3.5 top-3.5 w-5 h-5 text-gray-500 font-medium pointer-events-none" />
                   <textarea
+                    id="appointment-notes"
                     {...register("notes")}
                     rows={4}
                     placeholder="פרטים נוספים, תסמינים, בקשות מיוחדות..."
@@ -790,7 +862,7 @@ export function NewAppointment() {
               </div>
             )}
 
-            <div className="flex gap-3 pt-6 border-t border-gray-200">
+            <div className="-mx-4 flex flex-col gap-3 border-t border-gray-200 bg-white px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4 sm:mx-0 sm:flex-row sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-6">
               <button
                 type="submit"
                 disabled={
@@ -818,7 +890,7 @@ export function NewAppointment() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[15px]"
+                className="rounded-xl border border-gray-200 px-8 py-3.5 text-[15px] text-gray-600 transition-colors hover:bg-gray-50 cursor-pointer"
                 style={{ fontWeight: 500 }}
               >
                 ביטול

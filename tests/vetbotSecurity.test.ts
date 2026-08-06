@@ -11,6 +11,7 @@ const paymentSettlementMigration = readFileSync("supabase/migrations/20260716181
 const paymentMethodFixMigration = readFileSync("supabase/migrations/20260716200815_fix_portal_demo_payment_method.sql", "utf8");
 const actionMigration = readFileSync("supabase/migrations/20260716194751_vetbot_action_orchestration.sql", "utf8");
 const appointmentStatusMigration = readFileSync("supabase/migrations/20260805185316_appointment_status_workflow.sql", "utf8");
+const atomicStaffBookingMigration = readFileSync("supabase/migrations/20260805213000_atomic_staff_appointment_booking.sql", "utf8");
 const actionEngine = readFileSync("supabase/functions/_shared/vetbotActions.ts", "utf8");
 const aiGateway = readFileSync("supabase/functions/_shared/ai/gateway.ts", "utf8");
 const aiSchemas = readFileSync("supabase/functions/_shared/ai/schemas.ts", "utf8");
@@ -23,6 +24,10 @@ const labOrderModalSource = readFileSync("src/app/components/LabOrderModal.tsx",
 const appointmentStoreSource = readFileSync("src/app/data/AppointmentStore.tsx", "utf8");
 const dashboardSource = readFileSync("src/app/pages/Dashboard.tsx", "utf8");
 const appointmentScheduleSource = readFileSync("src/app/pages/AppointmentSchedule.tsx", "utf8");
+const weeklyScheduleSource = readFileSync("src/app/components/schedule/WeeklyView.tsx", "utf8");
+const dailyScheduleSource = readFileSync("src/app/components/schedule/DailyView.tsx", "utf8");
+const appointmentActionsSource = readFileSync("src/app/hooks/useAppointmentActions.ts", "utf8");
+const appointmentActionModalSource = readFileSync("src/app/components/schedule/AppointmentActionModal.tsx", "utf8");
 const dayAppointmentsModalSource = readFileSync("src/app/components/schedule/CalendarSidebar.tsx", "utf8");
 const departmentFilterSource = readFileSync("src/app/components/schedule/DeptFilterPanel.tsx", "utf8");
 const treatmentModalSource = readFileSync("src/app/components/TreatmentModal.tsx", "utf8");
@@ -314,4 +319,61 @@ test("Medical images use expiring signed URLs and private storage", () => {
   assert.match(vaccinationSource, /createSignedUrl/);
   assert.match(rlsMigration, /set public = false/);
   assert.match(rlsMigration, /myvet_owner_documents_select/);
+});
+
+test("Staff appointment creation uses an atomic tenant-scoped RPC", () => {
+  assert.match(appointmentStoreSource, /rpc\("myvet_staff_book_appointment"/);
+  assert.match(atomicStaffBookingMigration, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(atomicStaffBookingMigration, /private\.myvet_current_clinic_id\(\)/);
+  assert.match(atomicStaffBookingMigration, /private\.myvet_is_clinic_staff\(target_clinic_id, null\)/);
+  assert.match(atomicStaffBookingMigration, /pet\.clinic_id = target_clinic_id/);
+  assert.match(atomicStaffBookingMigration, /pg_advisory_xact_lock/);
+  assert.match(atomicStaffBookingMigration, /VET_UNAVAILABLE/);
+  assert.match(atomicStaffBookingMigration, /ROOM_UNAVAILABLE/);
+  assert.doesNotMatch(atomicStaffBookingMigration, /clinic_booking_hours|clinic_booking_blocks|max_bookings/);
+  assert.match(atomicStaffBookingMigration, /revoke all on function public\.myvet_staff_book_appointment[\s\S]*from public, anon/);
+  assert.doesNotMatch(atomicStaffBookingMigration, /requested_clinic_id/);
+});
+
+test("Appointment booking keeps a safe compatibility path and accurate portal errors", () => {
+  assert.match(appointmentStoreSource, /isMissingStaffBookingRpc/);
+  assert.match(appointmentStoreSource, /Backward compatibility until the additive migration is applied/);
+  assert.match(portalSource, /appointment_type, appointment_mode, color/);
+  assert.match(portalSource, /appointmentMode: row\.appointment_mode === "video"/);
+  assert.match(bookingSource, /describeBookingError/);
+  assert.match(bookingSource, /BOOKING_NOT_AUTHORIZED/);
+  assert.match(bookingSource, /refreshAvailability: false/);
+  assert.match(bookingSource, /הפרטים נשמרו ואפשר לנסות שוב/);
+});
+
+test("Staff appointment form validates phone, future time and exposes accessible errors", () => {
+  assert.match(newAppointmentSource, /isValidIsraeliPhone/);
+  assert.match(newAppointmentSource, /יש להזין מספר טלפון ישראלי תקין/);
+  assert.match(newAppointmentSource, /יש לבחור מועד עתידי/);
+  assert.match(newAppointmentSource, /role="alert" aria-live="assertive" tabIndex=\{-1\}/);
+  assert.match(newAppointmentSource, /aria-pressed=\{selected\}/);
+  assert.doesNotMatch(newAppointmentSource, /תעודת זהות: \{selectedPatient\.ownerId\}/);
+});
+
+test("Schedule filters and free slots are clear without hover", () => {
+  assert.match(appointmentScheduleSource, /visibleRange/);
+  assert.match(appointmentScheduleSource, /מסננים פעילים:/);
+  assert.match(appointmentScheduleSource, /איפוס הכול/);
+  assert.match(appointmentScheduleSource, /mediaQuery\.matches[\s\S]*setViewMode\("daily"\)/);
+  assert.doesNotMatch(weeklyScheduleSource, /group-hover:flex/);
+  assert.doesNotMatch(dailyScheduleSource, /group-hover:flex/);
+  assert.match(weeklyScheduleSource, /aria-label=\{`קבע תור ביום/);
+  assert.match(dailyScheduleSource, /aria-label=\{`קבע תור בשעה/);
+  assert.match(dailyScheduleSource, /hourAppts\.length > 0[\s\S]*תור נוסף/);
+  assert.match(weeklyScheduleSource, /appts\.length > 0[\s\S]*תור נוסף/);
+});
+
+test("Appointment mutations prevent duplicate submission and keep portal state intact", () => {
+  assert.match(appointmentActionsSource, /actionPending/);
+  assert.match(appointmentActionsSource, /closeTimerRef/);
+  assert.match(appointmentActionModalSource, /disabled=\{actionPending\}/);
+  assert.match(portalSource, /appointmentMutationPending/);
+  assert.match(bookingSource, /if \(isSaving\) return/);
+  assert.match(bookingSource, /disabled=\{isSaving\}/);
+  assert.match(appointmentStoreSource, /לא הצלחנו לבדוק את זמינות היומן/);
 });

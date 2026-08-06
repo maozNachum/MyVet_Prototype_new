@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useCalendarNav } from "../hooks/useCalendarNav";
 import { useAppointmentActions } from "../hooks/useAppointmentActions";
@@ -11,12 +11,16 @@ import { DayAppointmentsPopover, type DayPopoverAnchor } from "../components/sch
 import { DeptFilterPanel } from "../components/schedule/DeptFilterPanel";
 import { AppointmentActionModal } from "../components/schedule/AppointmentActionModal";
 import { ClinicAvailabilitySettings } from "../components/schedule/ClinicAvailabilitySettings";
-import { Clock3, Search, SlidersHorizontal, X } from "lucide-react";
+import { Clock3, Search, SlidersHorizontal, Stethoscope, X } from "lucide-react";
 import { useStaffMembers, uniqueNames } from "../data/staffDirectory";
 import { ScheduleAssistant } from "../components/ai/PageAssistants";
 import { AppointmentStatusFilter } from "../components/schedule/AppointmentStatusFilter";
 import { ScheduleOverviewRail } from "../components/schedule/ScheduleOverviewRail";
-import type { AppointmentStatus } from "../data/calendar-constants";
+import {
+  APPOINTMENT_STATUS_OPTIONS,
+  HEBREW_MONTHS,
+  type AppointmentStatus,
+} from "../data/calendar-constants";
 
 export function AppointmentSchedule() {
   const navigate = useNavigate();
@@ -37,6 +41,86 @@ export function AppointmentSchedule() {
   const [showAvailabilitySettings, setShowAvailabilitySettings] = useState(false);
   const [showOverviewDrawer, setShowOverviewDrawer] = useState(false);
   const [dayPopoverAnchor, setDayPopoverAnchor] = useState<DayPopoverAnchor | null>(null);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const overviewTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const overviewDrawerRef = useRef<HTMLDivElement | null>(null);
+  const overviewCloseRef = useRef<HTMLButtonElement | null>(null);
+  const previousCompactViewportRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const applyViewportMode = () => {
+      setIsCompactViewport(mediaQuery.matches);
+      if (mediaQuery.matches && previousCompactViewportRef.current !== true) {
+        let contextualDate = new Date(nav.dailyDate);
+        if (nav.viewMode === "monthly") {
+          const today = new Date();
+          const day = nav.currentYear === today.getFullYear() && nav.currentMonth === today.getMonth()
+            ? today.getDate()
+            : nav.selectedDay || 1;
+          contextualDate = new Date(nav.currentYear, nav.currentMonth, day);
+        } else if (nav.viewMode === "weekly") {
+          const today = new Date();
+          contextualDate = nav.weekDays.some((date) => date.toDateString() === today.toDateString())
+            ? today
+            : new Date(nav.weekDays[0]);
+        }
+        nav.setDailyDate(contextualDate);
+        nav.setViewMode("daily");
+        nav.setSidebarOpen(false);
+      }
+      previousCompactViewportRef.current = mediaQuery.matches;
+    };
+
+    applyViewportMode();
+    mediaQuery.addEventListener("change", applyViewportMode);
+    return () => mediaQuery.removeEventListener("change", applyViewportMode);
+  }, [
+    nav.currentMonth,
+    nav.currentYear,
+    nav.dailyDate,
+    nav.selectedDay,
+    nav.setDailyDate,
+    nav.setSidebarOpen,
+    nav.setViewMode,
+    nav.viewMode,
+    nav.weekDays,
+  ]);
+
+  useEffect(() => {
+    if (!showOverviewDrawer) return;
+    window.requestAnimationFrame(() => overviewCloseRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowOverviewDrawer(false);
+        window.requestAnimationFrame(() => overviewTriggerRef.current?.focus());
+        return;
+      }
+      if (event.key === "Tab") {
+        const focusable = Array.from(
+          overviewDrawerRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ) || [],
+        );
+        if (focusable.length === 0) {
+          event.preventDefault();
+          overviewDrawerRef.current?.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showOverviewDrawer]);
 
   const toggleDept = (dept: string) => {
     setActiveDepts((prev) => {
@@ -58,47 +142,61 @@ export function AppointmentSchedule() {
     });
   };
 
-  const vetCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const appt of calendarAppointments) {
-      const vetName = appt.vet || "טרם שובץ";
-      counts.set(vetName, (counts.get(vetName) || 0) + 1);
-    }
-    return counts;
-  }, [calendarAppointments]);
-
   const doctorOptions = useMemo(() => {
     const staffNames = vetStaff.map((member) => member.name);
-    const fromAppointments = Array.from(vetCounts.keys()).filter((name) => name && name !== "טרם שובץ");
+    const fromAppointments = calendarAppointments
+      .map((appointment) => appointment.vet)
+      .filter((name) => name && name !== "טרם שובץ");
     return ["all", ...uniqueNames([...staffNames, ...fromAppointments])];
-  }, [vetCounts, vetStaff]);
+  }, [calendarAppointments, vetStaff]);
 
-  const departmentCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    const query = searchQuery.trim().toLowerCase();
-    for (const appointment of calendarAppointments) {
-      if (activeVet !== "all" && appointment.vet !== activeVet) continue;
-      if (query && ![
-        appointment.petName,
-        appointment.ownerName,
-        appointment.type,
-        appointment.vet,
-        appointment.department,
-        appointment.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה",
-      ].join(" ").toLowerCase().includes(query)) continue;
-      counts.set(appointment.department, (counts.get(appointment.department) || 0) + 1);
+  const visibleRange = useMemo(() => {
+    if (nav.viewMode === "monthly") {
+      const start = new Date(nav.currentYear, nav.currentMonth, 1);
+      const end = new Date(nav.currentYear, nav.currentMonth + 1, 0, 23, 59, 59, 999);
+      return {
+        start,
+        end,
+        label: `${HEBREW_MONTHS[nav.currentMonth]} ${nav.currentYear}`,
+      };
     }
-    return counts;
-  }, [activeVet, calendarAppointments, searchQuery]);
 
-  const matchesFilters = useCallback((appointment: CalendarAppointment) => {
-    if (activeDepts.size > 0 && !activeDepts.has(appointment.department)) return false;
-    if (activeStatuses.size > 0 && !activeStatuses.has(appointment.status)) return false;
-    if (activeVet !== "all" && appointment.vet !== activeVet) return false;
+    if (nav.viewMode === "weekly") {
+      const start = new Date(nav.weekDays[0]);
+      const end = new Date(nav.weekDays[6]);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      const formatter = new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "short" });
+      return { start, end, label: `${formatter.format(start)}–${formatter.format(end)}` };
+    }
 
+    const start = new Date(nav.dailyDate);
+    const end = new Date(nav.dailyDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return {
+      start,
+      end,
+      label: new Intl.DateTimeFormat("he-IL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(start),
+    };
+  }, [nav.currentMonth, nav.currentYear, nav.dailyDate, nav.viewMode, nav.weekDays]);
+
+  const appointmentsInRange = useMemo(
+    () => calendarAppointments.filter((appointment) => {
+      const date = new Date(appointment.year, appointment.month, appointment.day);
+      return date >= visibleRange.start && date <= visibleRange.end;
+    }),
+    [calendarAppointments, visibleRange],
+  );
+
+  const matchesSearch = useCallback((appointment: CalendarAppointment) => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
-
     return [
       appointment.petName,
       appointment.ownerName,
@@ -107,7 +205,26 @@ export function AppointmentSchedule() {
       appointment.department,
       appointment.appointmentMode === "video" ? "וידאו תור מרחוק דיגיטל" : "פיזי מרפאה",
     ].join(" ").toLowerCase().includes(query);
-  }, [activeDepts, activeStatuses, activeVet, searchQuery]);
+  }, [searchQuery]);
+
+  const departmentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const appointment of appointmentsInRange) {
+      if (activeVet !== "all" && appointment.vet !== activeVet) continue;
+      if (activeStatuses.size > 0 && !activeStatuses.has(appointment.status)) continue;
+      if (!matchesSearch(appointment)) continue;
+      counts.set(appointment.department, (counts.get(appointment.department) || 0) + 1);
+    }
+    return counts;
+  }, [activeStatuses, activeVet, appointmentsInRange, matchesSearch]);
+
+  const matchesFilters = useCallback((appointment: CalendarAppointment) => {
+    if (activeDepts.size > 0 && !activeDepts.has(appointment.department)) return false;
+    if (activeStatuses.size > 0 && !activeStatuses.has(appointment.status)) return false;
+    if (activeVet !== "all" && appointment.vet !== activeVet) return false;
+
+    return matchesSearch(appointment);
+  }, [activeDepts, activeStatuses, activeVet, matchesSearch]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<AppointmentStatus, number> = {
@@ -117,17 +234,17 @@ export function AppointmentSchedule() {
       completed: 0,
       cancelled: 0,
     };
-    calendarAppointments.forEach((appointment) => { counts[appointment.status] += 1; });
+    appointmentsInRange.forEach((appointment) => {
+      if (activeDepts.size > 0 && !activeDepts.has(appointment.department)) return;
+      if (activeVet !== "all" && appointment.vet !== activeVet) return;
+      if (!matchesSearch(appointment)) return;
+      counts[appointment.status] += 1;
+    });
     return counts;
-  }, [calendarAppointments]);
+  }, [activeDepts, activeVet, appointmentsInRange, matchesSearch]);
 
-  const todaySummary = useMemo(() => {
-    const today = new Date();
-    const appointments = calendarAppointments.filter((appointment) =>
-      appointment.day === today.getDate()
-      && appointment.month === today.getMonth()
-      && appointment.year === today.getFullYear()
-    );
+  const rangeSummary = useMemo(() => {
+    const appointments = appointmentsInRange.filter(matchesFilters);
     const counts: Record<AppointmentStatus, number> = {
       scheduled: 0,
       arrived: 0,
@@ -139,8 +256,9 @@ export function AppointmentSchedule() {
     return {
       counts,
       emergencyCount: appointments.filter((appointment) => appointment.color === "red" && appointment.status !== "cancelled").length,
+      totalAppointments: appointments.length,
     };
-  }, [calendarAppointments]);
+  }, [appointmentsInRange, matchesFilters]);
 
   const handleAppointmentClick = useCallback(
     (appt: CalendarAppointment) => {
@@ -202,12 +320,31 @@ export function AppointmentSchedule() {
   );
 
   // Total vs filtered count for the filter panel badge
-  const totalCount = calendarAppointments.length;
+  const totalCount = appointmentsInRange.length;
   const filteredAppointments = useMemo(
-    () => calendarAppointments.filter(matchesFilters),
-    [calendarAppointments, matchesFilters]
+    () => appointmentsInRange.filter(matchesFilters),
+    [appointmentsInRange, matchesFilters]
   );
-  const filteredCount = filteredAppointments.length;
+  const filteredCount = useMemo(
+    () => appointmentsInRange.filter(matchesFilters).length,
+    [appointmentsInRange, matchesFilters],
+  );
+  const activeFilterCount = (searchQuery.trim() ? 1 : 0)
+    + activeDepts.size
+    + activeStatuses.size
+    + (activeVet === "all" ? 0 : 1);
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setActiveDepts(new Set());
+    setActiveStatuses(new Set());
+    setActiveVet("all");
+  };
+
+  const closeOverviewDrawer = () => {
+    setShowOverviewDrawer(false);
+    window.requestAnimationFrame(() => overviewTriggerRef.current?.focus());
+  };
 
   const filteredSidebarAppointments = useMemo(
     () => nav.sidebarAppointments.filter(matchesFilters),
@@ -231,6 +368,7 @@ export function AppointmentSchedule() {
         onNav={nav.goNav}
         onToday={nav.goToToday}
         onCloseSidebar={() => nav.setSidebarOpen(false)}
+        compactMode={isCompactViewport}
         assistantAction={
           <>
             <button type="button" onClick={() => setShowAvailabilitySettings(true)} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-[13px] font-bold text-[#1e40af] shadow-sm transition-colors hover:bg-blue-50">
@@ -264,7 +402,7 @@ export function AppointmentSchedule() {
         {/* ── Calendar area ── */}
         <div className="flex-1 min-w-0 relative">
           <section className="mb-4 space-y-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm" aria-label="כלי סינון ותצוגה">
-            <div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,1fr)_minmax(260px,0.8fr)_auto]">
+            <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(280px,1.2fr)_minmax(230px,0.8fr)_minmax(200px,0.7fr)_auto]">
               <div className="relative min-w-0">
               <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <input
@@ -289,12 +427,31 @@ export function AppointmentSchedule() {
                 filteredCount={filteredCount}
                 departmentCounts={departmentCounts}
               />
+              <label className="relative flex h-11 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/20">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#1e40af]">
+                  <Stethoscope className="h-3.5 w-3.5" />
+                </span>
+                <span className="sr-only">סינון לפי רופא</span>
+                <select
+                  value={activeVet}
+                  onChange={(event) => setActiveVet(event.target.value)}
+                  className="h-full min-w-0 flex-1 appearance-none bg-transparent text-[13px] font-bold text-slate-700 outline-none"
+                  aria-label="סינון לפי רופא"
+                >
+                  {doctorOptions.map((vetName) => (
+                    <option key={vetName} value={vetName}>
+                      {vetName === "all" ? "כל הרופאים" : vetName}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
+                ref={overviewTriggerRef}
                 type="button"
                 onClick={() => setShowOverviewDrawer(true)}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 text-[13px] font-bold text-[#1e40af] transition-colors hover:bg-blue-100 xl:hidden"
               >
-                <SlidersHorizontal className="h-4 w-4" /> תמונת מצב ורופאים
+                <SlidersHorizontal className="h-4 w-4" /> תמונת מצב
               </button>
             </div>
             <div className="border-t border-slate-100 pt-3">
@@ -305,6 +462,34 @@ export function AppointmentSchedule() {
                 onClear={() => setActiveStatuses(new Set())}
               />
             </div>
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3" aria-label="מסננים פעילים">
+                <span className="text-[12px] font-bold text-slate-600">מסננים פעילים:</span>
+                {searchQuery.trim() && (
+                  <button type="button" onClick={() => setSearchQuery("")} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2.5 text-[12px] font-semibold text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                    חיפוש: {searchQuery.trim()} <X className="h-3 w-3" />
+                  </button>
+                )}
+                {Array.from(activeDepts).map((department) => (
+                  <button key={department} type="button" onClick={() => toggleDept(department)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                    {department} <X className="h-3 w-3" />
+                  </button>
+                ))}
+                {Array.from(activeStatuses).map((status) => (
+                  <button key={status} type="button" onClick={() => toggleStatus(status)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                    {APPOINTMENT_STATUS_OPTIONS.find((option) => option.key === status)?.label || status} <X className="h-3 w-3" />
+                  </button>
+                ))}
+                {activeVet !== "all" && (
+                  <button type="button" onClick={() => setActiveVet("all")} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                    {activeVet} <X className="h-3 w-3" />
+                  </button>
+                )}
+                <button type="button" onClick={clearAllFilters} className="min-h-10 rounded-lg px-2.5 text-[12px] font-bold text-[#1e40af] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                  איפוס הכול
+                </button>
+              </div>
+            )}
           </section>
           {nav.viewMode === "monthly" && (
             <MonthlyView
@@ -341,38 +526,32 @@ export function AppointmentSchedule() {
         </div>
 
         {/* ── Right sidebar column ── */}
-        <aside className="sticky top-[80px] hidden w-[260px] shrink-0 xl:block" aria-label="תמונת מצב וסינון רופאים">
+        <aside className="sticky top-[80px] hidden w-[260px] shrink-0 xl:block" aria-label="תמונת מצב לטווח המוצג">
           <ScheduleOverviewRail
-            todayCounts={todaySummary.counts}
-            emergencyCount={todaySummary.emergencyCount}
-            activeVet={activeVet}
-            doctorOptions={doctorOptions}
-            vetCounts={vetCounts}
-            totalAppointments={calendarAppointments.length}
-            onSelectVet={setActiveVet}
+            counts={rangeSummary.counts}
+            emergencyCount={rangeSummary.emergencyCount}
+            rangeLabel={visibleRange.label}
+            totalAppointments={rangeSummary.totalAppointments}
           />
         </aside>
       </div>
 
       {showOverviewDrawer && (
-        <div className="fixed inset-0 z-[230] xl:hidden" role="dialog" aria-modal="true" aria-label="תמונת מצב וסינון רופאים">
-          <button type="button" aria-label="סגירת החלון" onClick={() => setShowOverviewDrawer(false)} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
-          <div className="absolute inset-y-0 right-0 w-[min(88vw,340px)] overflow-y-auto border-l border-slate-200 bg-slate-50 p-4 shadow-2xl">
+        <div className="fixed inset-0 z-[230] xl:hidden" role="dialog" aria-modal="true" aria-label="תמונת מצב לטווח המוצג">
+          <button type="button" aria-label="סגירת החלון" onClick={closeOverviewDrawer} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
+          <div ref={overviewDrawerRef} tabIndex={-1} className="absolute inset-y-0 right-0 w-[min(88vw,340px)] overflow-y-auto border-l border-slate-200 bg-slate-50 p-4 shadow-2xl outline-none">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-[17px] font-extrabold text-slate-900">ניהול היומן</h2>
-                <p className="text-[12px] text-slate-500">תמונת מצב וסינון לפי רופא</p>
+                <p className="text-[12px] text-slate-500">הנתונים מתייחסים לטווח המוצג ביומן</p>
               </div>
-              <button type="button" onClick={() => setShowOverviewDrawer(false)} aria-label="סגירה" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><X className="h-4 w-4" /></button>
+              <button ref={overviewCloseRef} type="button" onClick={closeOverviewDrawer} aria-label="סגירה" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><X className="h-4 w-4" /></button>
             </div>
             <ScheduleOverviewRail
-              todayCounts={todaySummary.counts}
-              emergencyCount={todaySummary.emergencyCount}
-              activeVet={activeVet}
-              doctorOptions={doctorOptions}
-              vetCounts={vetCounts}
-              totalAppointments={calendarAppointments.length}
-              onSelectVet={(vet) => { setActiveVet(vet); setShowOverviewDrawer(false); }}
+              counts={rangeSummary.counts}
+              emergencyCount={rangeSummary.emergencyCount}
+              rangeLabel={visibleRange.label}
+              totalAppointments={rangeSummary.totalAppointments}
             />
           </div>
         </div>
@@ -401,7 +580,7 @@ export function AppointmentSchedule() {
           appt={actions.selectedAppt}
           mode={actions.actionMode}
           setMode={actions.setActionMode}
-          onClose={actions.closeModal}
+          onClose={actions.actionPending ? () => undefined : actions.closeModal}
           rescheduleDate={actions.rescheduleDate}
           setRescheduleDate={actions.setRescheduleDate}
           rescheduleTime={actions.rescheduleTime}
@@ -414,6 +593,7 @@ export function AppointmentSchedule() {
           onEdit={actions.handleEdit}
           deleteSuccess={actions.deleteSuccess}
           onDelete={actions.handleDelete}
+          actionPending={actions.actionPending}
           supportsAppointmentStatus={supportsAppointmentStatus}
           statusUpdatePending={actions.statusUpdatePending}
           onStatusChange={actions.handleStatusChange}

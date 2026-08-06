@@ -111,6 +111,41 @@ function overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
   return startA < endB && startB < endA;
 }
 
+function describeBookingError(error: unknown) {
+  const candidate = error as { code?: string; message?: string; details?: string } | null;
+  const code = String(candidate?.code || "").toUpperCase();
+  const detail = `${candidate?.message || ""} ${candidate?.details || ""}`.toUpperCase();
+
+  if (detail.includes("SLOT_NOT_AVAILABLE") || (detail.includes("SLOT") && detail.includes("AVAILABLE"))) {
+    return {
+      message: "השעה כבר אינה פנויה. הזמינות עודכנה—בחרו שעה אחרת.",
+      refreshAvailability: true,
+    };
+  }
+  if (detail.includes("BOOKING_NOT_AUTHORIZED") || detail.includes("AUTH_REQUIRED") || code === "42501") {
+    return {
+      message: "אין הרשאה לקבוע תור עבור החיה שנבחרה. התחברו מחדש או פנו למרפאה.",
+      refreshAvailability: false,
+    };
+  }
+  if (detail.includes("INVALID_APPOINTMENT") || detail.includes("NOTES_TOO_LONG") || code === "22023") {
+    return {
+      message: "פרטי התור אינם תקינים. בדקו את סוג התור וההערות ונסו שוב.",
+      refreshAvailability: false,
+    };
+  }
+  if (detail.includes("FETCH") || detail.includes("NETWORK") || code === "PGRST301") {
+    return {
+      message: "לא הצלחנו להתחבר ליומן כרגע. הפרטים נשמרו ואפשר לנסות שוב.",
+      refreshAvailability: false,
+    };
+  }
+  return {
+    message: "לא הצלחנו לקבוע את התור. הפרטים נשמרו ואפשר לנסות שוב.",
+    refreshAvailability: false,
+  };
+}
+
 async function loadRealAvailability(ownerAppointments: OwnerAppointmentSlot[] = []): Promise<DaySlots[]> {
   const week = createBaseWeek();
   const lastDay = week[week.length - 1];
@@ -209,6 +244,7 @@ export function OwnerBookAppointment({
   }, [isOpen, appointments]);
 
   const handleClose = () => {
+    if (isSaving) return;
     setStep(1);
     setSelectedPet(null);
     setSelectedTreatment(null);
@@ -293,11 +329,14 @@ export function OwnerBookAppointment({
       }, 2200);
     } catch (error) {
       console.error("Supabase appointment insert error:", error);
-      const refreshedWeek = await loadRealAvailability(appointments).catch(() => null);
-      if (refreshedWeek) setWeek(refreshedWeek);
-      setSelectedTime(null);
-      setStep(2);
-      setValidationError("השעה כבר אינה פנויה. הזמינות עודכנה—בחרו שעה אחרת.");
+      const bookingError = describeBookingError(error);
+      if (bookingError.refreshAvailability) {
+        const refreshedWeek = await loadRealAvailability(appointments).catch(() => null);
+        if (refreshedWeek) setWeek(refreshedWeek);
+        setSelectedTime(null);
+        setStep(2);
+      }
+      setValidationError(bookingError.message);
     } finally {
       setIsSaving(false);
     }
@@ -314,7 +353,7 @@ export function OwnerBookAppointment({
               <p className="text-white/60 text-[12px]">{!isSubmitted && `שלב ${step} מתוך 3`}</p>
             </div>
           </div>
-          <button type="button" onClick={handleClose} aria-label="סגור חלון" className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors"><X className="w-5 h-5" /></button>
+          <button type="button" onClick={handleClose} disabled={isSaving} aria-label={isSaving ? "שמירת התור מתבצעת" : "סגור חלון"} className="text-white/60 hover:text-white cursor-pointer p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"><X className="w-5 h-5" /></button>
         </div>
 
         {!isSubmitted && (
@@ -468,7 +507,7 @@ export function OwnerBookAppointment({
 
         {!isSubmitted && (
           <div className="border-t border-gray-100 p-4 flex gap-3 shrink-0">
-            {step > 1 && <button onClick={() => setStep((prev) => prev - 1)} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>חזרה</button>}
+            {step > 1 && <button onClick={() => setStep((prev) => prev - 1)} disabled={isSaving} className="px-5 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer text-[14px] disabled:cursor-not-allowed disabled:opacity-50" style={{ fontWeight: 600 }}>חזרה</button>}
             {step === 1 && <button onClick={goToStep2} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] text-white transition-colors cursor-pointer text-[14px]" style={{ fontWeight: 600 }}>המשך לבחירת מועד</button>}
             {step === 2 && <button onClick={goToStep3} disabled={isLoadingSlots} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:cursor-wait disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>{isLoadingSlots && <Loader2 className="h-4 w-4 animate-spin" />} המשך לסיכום</button>}
             {step === 3 && <button onClick={handleSubmit} disabled={isSaving} className="flex-1 py-3 rounded-xl bg-[#1e40af] hover:bg-[#1e3a8a] disabled:bg-blue-300 text-white transition-colors cursor-pointer text-[14px] flex items-center justify-center gap-2" style={{ fontWeight: 600 }}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} קבע תור</button>}

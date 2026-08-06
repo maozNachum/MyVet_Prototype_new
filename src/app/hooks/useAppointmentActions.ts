@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useAppointmentStore, type CalendarAppointment, type AppointmentMode } from "../data/AppointmentStore";
 import { addMinutes, type ActionMode, type AppointmentStatus, type DateOption } from "../data/calendar-constants";
 
@@ -42,14 +42,36 @@ export function useAppointmentActions() {
 
   // Delete
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
   const [statusUpdatePending, setStatusUpdatePending] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
 
-  const closeModal = useCallback(() => {
-    setSelectedAppt(null);
-    setActionMode("view");
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
   }, []);
 
+  const closeModal = useCallback(() => {
+    clearCloseTimer();
+    setSelectedAppt(null);
+    setActionMode("view");
+  }, [clearCloseTimer]);
+
+  const scheduleClose = useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      setSelectedAppt(null);
+      setActionMode("view");
+    }, 1800);
+  }, [clearCloseTimer]);
+
+  useEffect(() => clearCloseTimer, [clearCloseTimer]);
+
   const openAction = useCallback((appt: CalendarAppointment, mode: ActionMode) => {
+    clearCloseTimer();
     setSelectedAppt(appt);
     setActionMode(mode);
     setRescheduleDate(null);
@@ -57,6 +79,7 @@ export function useAppointmentActions() {
     setRescheduleSuccess(false);
     setEditSuccess(false);
     setDeleteSuccess(false);
+    setActionPending(false);
     if (mode === "edit") {
       setEditForm({
         type: appt.type,
@@ -69,43 +92,52 @@ export function useAppointmentActions() {
         appointmentMode: appt.appointmentMode || "physical",
       });
     }
-  }, []);
+  }, [clearCloseTimer]);
 
   const handleReschedule = useCallback(async () => {
-    if (!selectedAppt || !rescheduleDate || !rescheduleTime) return;
+    if (!selectedAppt || !rescheduleDate || !rescheduleTime || actionPending) return;
+    setActionPending(true);
     try {
       await store.rescheduleAppointment(
         selectedAppt.id, rescheduleDate.day, rescheduleDate.month,
         rescheduleDate.year, rescheduleTime, addMinutes(rescheduleTime, 30), "staff"
       );
       setRescheduleSuccess(true);
-      setTimeout(closeModal, 1800);
+      scheduleClose();
     } catch (error) {
       console.error("Failed to reschedule appointment", error);
+    } finally {
+      setActionPending(false);
     }
-  }, [selectedAppt, rescheduleDate, rescheduleTime, store, closeModal]);
+  }, [selectedAppt, rescheduleDate, rescheduleTime, actionPending, store, scheduleClose]);
 
   const handleEdit = useCallback(async () => {
-    if (!selectedAppt) return;
+    if (!selectedAppt || actionPending) return;
+    setActionPending(true);
     try {
       await store.editAppointment(selectedAppt.id, { ...editForm }, "staff");
       setEditSuccess(true);
-      setTimeout(closeModal, 1800);
+      scheduleClose();
     } catch (error) {
       console.error("Failed to edit appointment", error);
+    } finally {
+      setActionPending(false);
     }
-  }, [selectedAppt, editForm, store, closeModal]);
+  }, [selectedAppt, editForm, actionPending, store, scheduleClose]);
 
   const handleDelete = useCallback(async () => {
-    if (!selectedAppt) return;
+    if (!selectedAppt || actionPending) return;
+    setActionPending(true);
     try {
       await store.deleteAppointment(selectedAppt.id, "staff");
       setDeleteSuccess(true);
-      setTimeout(closeModal, 1800);
+      scheduleClose();
     } catch (error) {
       console.error("Failed to delete appointment", error);
+    } finally {
+      setActionPending(false);
     }
-  }, [selectedAppt, store, closeModal]);
+  }, [selectedAppt, actionPending, store, scheduleClose]);
 
   const handleStatusChange = useCallback(async (status: AppointmentStatus) => {
     if (!selectedAppt || selectedAppt.status === status) return;
@@ -128,7 +160,7 @@ export function useAppointmentActions() {
     // Edit
     editForm, setEditForm, editSuccess, handleEdit,
     // Delete
-    deleteSuccess, handleDelete,
+    deleteSuccess, handleDelete, actionPending,
     statusUpdatePending, handleStatusChange,
   };
 }

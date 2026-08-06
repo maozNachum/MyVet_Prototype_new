@@ -25,6 +25,7 @@ interface CalendarHeaderProps {
   onNav: (dir: "prev" | "next") => void;
   onToday: () => void;
   onCloseSidebar: () => void;
+  compactMode?: boolean;
   assistantAction?: ReactNode;
 }
 
@@ -33,6 +34,7 @@ export function CalendarHeader({
   currentMonth, currentYear,
   weekDays, dailyDate,
   onNav, onToday, onCloseSidebar,
+  compactMode = false,
   assistantAction,
 }: CalendarHeaderProps) {
   const navigate = useNavigate();
@@ -62,7 +64,7 @@ export function CalendarHeader({
         <button
           type="button"
           onClick={() => navigate("/appointments/new")}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1e40af] px-5 text-[14px] font-bold text-white shadow-md shadow-blue-500/15 transition-colors hover:bg-[#1e3a8a]"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1e40af] px-5 text-[14px] font-bold text-white shadow-md shadow-blue-500/15 transition-colors hover:bg-[#1e3a8a] max-sm:w-full"
         >
           <Plus className="h-4 w-4" />
           תור חדש
@@ -82,6 +84,7 @@ export function CalendarHeader({
           <button type="button" onClick={onToday} className="min-h-10 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[13px] font-bold text-[#1e40af] transition-colors hover:bg-blue-100">
             היום
           </button>
+          {!compactMode && (
           <div className="flex items-center gap-0.5 rounded-xl bg-gray-200/70 p-1" aria-label="בחירת תצוגת יומן">
             {VIEW_OPTIONS.map((v) => (
               <button
@@ -99,9 +102,10 @@ export function CalendarHeader({
               </button>
             ))}
           </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-between">
           <NotificationPanel
             notifications={staffNotifs}
             unreadCount={staffUnread}

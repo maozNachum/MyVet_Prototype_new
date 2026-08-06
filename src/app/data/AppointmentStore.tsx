@@ -144,7 +144,10 @@ export async function ensureNoAppointmentConflict({
 
   if (excludeId) query = query.neq("appointment_id", excludeId);
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) {
+    console.error("Appointment availability check failed", { code: error.code });
+    throw new Error("לא הצלחנו לבדוק את זמינות היומן. נסו שוב בעוד רגע.");
+  }
 
   const normalizedVet = (vet || "").trim();
   const normalizedRoom = (room || "").trim();
@@ -161,6 +164,30 @@ export async function ensureNoAppointmentConflict({
       : `החדר ${normalizedRoom} כבר תפוס בזמן הזה`;
     throw new Error(reason);
   }
+}
+
+function isMissingStaffBookingRpc(error: { code?: string; message?: string } | null) {
+  const message = String(error?.message || "").toLowerCase();
+  return error?.code === "PGRST202"
+    || message.includes("myvet_staff_book_appointment") && message.includes("could not find");
+}
+
+function staffBookingErrorMessage(error: { code?: string; message?: string } | null) {
+  const detail = String(error?.message || "").toUpperCase();
+  if (detail.includes("STAFF_BOOKING_NOT_AUTHORIZED") || error?.code === "42501") {
+    return "אין הרשאה לקבוע תורים במרפאה זו";
+  }
+  if (detail.includes("PATIENT_NOT_IN_CLINIC")) return "החיה שנבחרה אינה משויכת למרפאה";
+  if (detail.includes("APPOINTMENT_NOT_IN_FUTURE")) return "אפשר לקבוע תור רק למועד עתידי";
+  if (detail.includes("CLINIC_CLOSED") || detail.includes("SLOT_OUTSIDE_OPENING_HOURS")) {
+    return "המועד שנבחר נמצא מחוץ לשעות הפעילות";
+  }
+  if (detail.includes("BOOKING_BLOCKED")) return "המועד שנבחר חסום לקביעת תורים";
+  if (detail.includes("DAILY_CAPACITY_REACHED")) return "מכסת התורים היומית כבר מלאה";
+  if (detail.includes("VET_UNAVAILABLE")) return "הרופא/ה כבר משובצ/ת בזמן הזה";
+  if (detail.includes("ROOM_UNAVAILABLE")) return "החדר כבר תפוס בזמן הזה";
+  if (detail.includes("INVALID_")) return "פרטי התור אינם תקינים";
+  return "לא הצלחנו לקבוע את התור. נסו שוב בעוד רגע";
 }
 
 function fullName(first?: string | null, last?: string | null) {
@@ -412,22 +439,40 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           mode: appointmentMode,
         });
 
-        const { error: insertError } = await supabase.from("appointments").insert([
-          {
-            pet_id: appt.petId,
-            start_time: startDate.toISOString(),
-            end_time: endDate.toISOString(),
-            department: appt.department || "כללי",
-            vet_name: appt.vet || "טרם שובץ",
-            room: appt.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
-            appointment_type: appt.type || "ביקור",
-            appointment_mode: appointmentMode,
-            color: appt.color || "blue",
-            notes: appt.notes || null,
-          },
-        ]);
+        const insertPayload = {
+          pet_id: appt.petId,
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
+          department: appt.department || "כללי",
+          vet_name: appt.vet || "טרם שובץ",
+          room: appt.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
+          appointment_type: appt.type || "ביקור",
+          appointment_mode: appointmentMode,
+          color: appt.color || "blue",
+          notes: appt.notes || null,
+        };
 
-        if (insertError) throw insertError;
+        const { error: rpcError } = await supabase.rpc("myvet_staff_book_appointment", {
+          requested_pet_id: insertPayload.pet_id,
+          requested_start: insertPayload.start_time,
+          requested_end: insertPayload.end_time,
+          requested_department: insertPayload.department,
+          requested_vet_name: insertPayload.vet_name,
+          requested_room: insertPayload.room,
+          requested_type: insertPayload.appointment_type,
+          requested_mode: insertPayload.appointment_mode,
+          requested_color: insertPayload.color,
+          requested_notes: insertPayload.notes,
+        });
+
+        if (rpcError && isMissingStaffBookingRpc(rpcError)) {
+          // Backward compatibility until the additive migration is applied.
+          // The client-side conflict check above remains only a temporary fallback.
+          const { error: insertError } = await supabase.from("appointments").insert([insertPayload]);
+          if (insertError) throw insertError;
+        } else if (rpcError) {
+          throw new Error(staffBookingErrorMessage(rpcError));
+        }
 
         await refreshAppointments();
         pushNotification("staff", "created", "תור חדש נוסף ליומן", `התור של ${appt.petName} נוסף`, appt.petName, "staff");

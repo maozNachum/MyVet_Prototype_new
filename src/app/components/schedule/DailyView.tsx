@@ -41,7 +41,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
-      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 bg-gray-50/50 px-4 py-4 sm:px-6">
         <Calendar className="w-5 h-5 text-[#1e40af]" />
         <h2 className="text-gray-900 text-[16px]" style={{ fontWeight: 600 }}>
           לוח זמנים — יום {getHebrewDayName(dailyDate.getDay())}, {dailyDate.getDate()} ב{HEBREW_MONTHS[dailyDate.getMonth()]}
@@ -70,16 +70,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                 </span>
               </div>
 
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onSlotClick(slotDate, hour)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") onSlotClick(slotDate, hour);
-                }}
-                className="group flex-1 p-2 min-h-[64px] cursor-pointer transition-colors hover:bg-blue-50/40"
-                title={`קבע תור ב-${String(hour).padStart(2, "0")}:00`}
-              >
+              <div className="min-h-[64px] min-w-0 flex-1 p-2 transition-colors hover:bg-blue-50/40">
                 {hourAppts.map((appt) => {
                   const dept = getDeptConfig(appt.department);
                   const status = getApptStatus(appt.status);
@@ -87,12 +78,11 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                   const isMuted = isPast || appt.status === "completed" || appt.status === "cancelled";
                   return (
                     <button
+                      type="button"
                       key={appt.id}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onApptClick(appt);
-                      }}
-                      className={`group/card relative mb-2 flex w-full cursor-pointer items-center gap-4 rounded-xl px-4 py-3 text-right transition-all hover:shadow-md ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
+                      onClick={() => onApptClick(appt)}
+                      aria-label={`${appt.time}, ${appt.petName}, ${appt.ownerName}, ${status.label}`}
+                      className={`group/card relative mb-2 flex w-full cursor-pointer flex-col items-stretch gap-3 rounded-xl px-3 py-3 text-right transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex-row sm:items-center sm:gap-4 sm:px-4 ${dept.bg} ${isMuted ? "opacity-55" : ""}`}
                       style={{
                         borderWidth: 1,
                         borderStyle: "solid",
@@ -102,14 +92,14 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                       }}
                     >
                       <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/80 border shrink-0 group-hover/card:scale-105 transition-transform"
+                        className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white/80 transition-transform group-hover/card:scale-105 sm:flex"
                         style={{ borderColor: `${dept.borderColor}40` }}
                       >
                         <PetIcon species={appt.petSpecies} className={`w-5 h-5 ${dept.text}`} />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`text-[14px] font-bold ${dept.text} ${appt.status === "cancelled" ? "line-through" : ""}`}>
                             {appt.time}–{appt.endTime} | {appt.petName}
                           </span>
@@ -122,7 +112,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         <p className="text-gray-600 text-[12.5px] mt-0.5" style={{ fontWeight: 500 }}>
                           {appt.ownerName}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                           <p className="text-gray-500 text-[12px]">{appt.type}</p>
                           {appt.appointmentMode === "video" && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-100">
@@ -134,7 +124,7 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                         <p className="text-gray-500 font-medium text-[11.5px]">{appt.vet}</p>
                       </div>
 
-                      <div className="shrink-0 flex flex-col items-end gap-1.5">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
                         <span
                           className={`text-[13px] px-2.5 py-0.5 rounded-full border ${dept.text} bg-white/70`}
                           style={{ borderColor: `${dept.borderColor}50`, fontWeight: 600 }}
@@ -152,10 +142,26 @@ export function DailyView({ dailyDate, getAppointments, onApptClick, onSlotClick
                 })}
 
                 {hourAppts.length === 0 && (
-                  <div className="hidden min-h-[44px] items-center justify-center rounded-xl border border-dashed border-blue-200 bg-white/80 text-[12px] font-semibold text-blue-700 group-hover:flex">
+                  <button
+                    type="button"
+                    onClick={() => onSlotClick(slotDate, hour)}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-dashed border-blue-200 bg-white/80 px-3 text-[12px] font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    aria-label={`קבע תור בשעה ${String(hour).padStart(2, "0")}:00`}
+                  >
                     <Plus className="ml-1 h-4 w-4" />
-                    לחץ לקביעת תור ב-{String(hour).padStart(2, "0")}:00
-                  </div>
+                    קבע תור ב-{String(hour).padStart(2, "0")}:00
+                  </button>
+                )}
+                {hourAppts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onSlotClick(slotDate, hour)}
+                    className="mt-1 inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/70 px-3 text-[12px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    aria-label={`קבע תור נוסף בשעה ${String(hour).padStart(2, "0")}:00`}
+                  >
+                    <Plus className="ml-1 h-4 w-4" />
+                    תור נוסף
+                  </button>
                 )}
               </div>
             </div>

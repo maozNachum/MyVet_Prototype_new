@@ -112,7 +112,7 @@ export function useCalendarNav() {
     viewMode, setViewMode,
     currentMonth, currentYear,
     selectedDay, sidebarOpen, setSidebarOpen,
-    weekStart, dailyDate,
+    weekStart, dailyDate, setDailyDate,
     calendarCells, weekDays, sidebarAppointments,
     getAppointments,
     goNav, goToToday, handleDayClick, isToday,
