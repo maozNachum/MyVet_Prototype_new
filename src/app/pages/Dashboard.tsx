@@ -638,6 +638,7 @@ export function Dashboard() {
     const channel = supabase
       .channel("myvet-dashboard-live-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, syncDashboard)
+      .on("postgres_changes", { event: "*", schema: "public", table: "medical_visits" }, syncDashboard)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, syncDashboard)
       .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders" }, syncDashboard)
       .on("postgres_changes", { event: "*", schema: "public", table: "hospitalizations" }, syncDashboard)
@@ -794,7 +795,11 @@ export function Dashboard() {
 
   const openAppointment = (appointment: AppointmentItem) => {
     if (appointment.petId) {
-      navigate(`/patients?selected=${appointment.petId}`);
+      const params = new URLSearchParams({
+        selected: String(appointment.petId),
+        appointment_id: String(appointment.id),
+      });
+      navigate(`/patients?${params.toString()}`);
       return;
     }
     navigate("/appointments");

@@ -765,6 +765,30 @@ export function TreatmentModal({
       }
 
       persistenceComplete = true;
+
+      let appointmentStatusWarning = false;
+      if (appointmentId) {
+        const { data: completedAppointment, error: appointmentStatusError } = await supabase
+          .from("appointments")
+          .update({ status: "completed" })
+          .eq("appointment_id", appointmentId)
+          .eq("pet_id", patientId)
+          .select("appointment_id")
+          .maybeSingle();
+
+        const statusColumnUnavailable = appointmentStatusError?.code === "42703"
+          || /column .*status.* does not exist/i.test(appointmentStatusError?.message || "");
+
+        if (appointmentStatusError && !statusColumnUnavailable) {
+          console.error("Failed marking linked appointment as completed", {
+            code: appointmentStatusError.code,
+          });
+          appointmentStatusWarning = true;
+        } else if (!appointmentStatusError && !completedAppointment) {
+          appointmentStatusWarning = true;
+        }
+      }
+
       await loadMedicalData();
       setSavedVisitContext({
         visitId: savedVisit.id,
@@ -786,6 +810,9 @@ export function TreatmentModal({
         labs: cleanLabs,
       });
       toast.success(entryType === "vaccination" ? "הרשומה נשמרה והחיסון נוסף לפנקס" : "הרשומה הרפואית נשמרה");
+      if (appointmentStatusWarning) {
+        toast.warning("הרשומה נשמרה, אך סטטוס התור לא עודכן. אפשר לעדכן אותו מיומן התורים.");
+      }
     } catch (error) {
       console.error("Failed saving medical entry", error);
       let rollbackFailed = false;

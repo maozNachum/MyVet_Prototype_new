@@ -266,16 +266,21 @@ test("Patient list selects the tenant-safe owner relationship explicitly", () =>
 
 test("Dashboard keeps untreated overdue appointments visible and opens the pet record", () => {
   assert.match(dashboardSource, /\.from\("medical_visits"\)[\s\S]*\.select\("appointment_id"\)/);
+  assert.match(dashboardSource, /table: "medical_visits"/);
   assert.match(dashboardSource, /const isOverdue = isPast && !appointment\.hasTreatment/);
   assert.match(dashboardSource, /טרם התחיל טיפול/);
   assert.doesNotMatch(dashboardSource, /isOverdueWithoutTreatment[\s\S]*setTreatmentPatient/);
-  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
+  assert.match(dashboardSource, /appointment_id: String\(appointment\.id\)/);
+  assert.match(patientsSource, /\.eq\("appointment_id", requestedAppointmentId\)[\s\S]*\.eq\("pet_id", found\.id\)/);
+  assert.match(patientsSource, /appointmentId=\{linkedAppointmentId\}/);
   assert.match(treatmentModalSource, /showSuccessToast: false, appointmentId/);
+  assert.match(treatmentModalSource, /\.update\(\{ status: "completed" \}\)[\s\S]*\.eq\("appointment_id", appointmentId\)[\s\S]*\.eq\("pet_id", patientId\)/);
   assert.match(medicalStoreSource, /appointment_id: options\.appointmentId \?\? null/);
 });
 
 test("Dashboard appointments still allow opening the selected animal medical record", () => {
-  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
+  assert.match(dashboardSource, /selected: String\(appointment\.petId\)/);
+  assert.match(dashboardSource, /navigate\(`\/patients\?\$\{params\.toString\(\)\}`\)/);
 });
 
 test("Monthly calendar opens day appointments in an anchored popover instead of the sidebar", () => {
