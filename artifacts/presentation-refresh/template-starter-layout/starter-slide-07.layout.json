@@ -1,0 +1,985 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/25rus8",
+    "id": "25rus8",
+    "slide": 7,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lwvuxwv2",
+      "id": "3",
+      "name": "TextBox 2",
+      "bbox": [
+        220,
+        203.39,
+        930,
+        140.02
+      ],
+      "geometry": "rect",
+      "text": "Myvet: בוט חכם המשולב בסוכן העובר על המערכת ויודע להפיק תובנות ניהוליות ועסקיות יחדיו. בנוסף , הבוט יודע להפעיל תכונות מהמערכת באופן אקטיבי כגגון הוספת תורים, ניהול מלאי ועוד. הבוט מאפשר תמיכה בשימוש המערכת גם ללקוחות וגם לצוות הרפואי. בעתיד הבוט יידע לסכם ביקור רפואי ולתת תובנות חכמות.",
+      "textPreview": "Myvet: בוט חכם המשולב בסוכן העובר על המערכת ויודע להפיק תובנות ניהוליות ועסקיות יחדיו. בנוסף , הבוט יודע להפעיל תכונות מהמערכת באופן אקטי...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 21
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Myvet: בוט חכם המשולב בסוכן העובר על המערכת ויודע להפיק תובנות ניהוליות ועסקיות יחדיו. בנוסף ,"
+          },
+          {
+            "index": 2,
+            "text": "הבוט יודע להפעיל תכונות מהמערכת באופן אקטיבי כגגון הוספת תורים, ניהול מלאי ועוד. הבוט מאפשר"
+          },
+          {
+            "index": 3,
+            "text": "תמיכה בשימוש המערכת גם ללקוחות וגם לצוות הרפואי. בעתיד הבוט יידע לסכם ביקור רפואי ולתת תובנות"
+          },
+          {
+            "index": 4,
+            "text": "חכמות."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Myvet: בוט חכם המשולב בסוכן העובר על המערכת ויודע להפיק תובנות ניהוליות ועסקיות יחדיו. בנוסף , הבוט יודע להפעיל תכונות מהמערכת באופן אקטיבי כגגון הוספת תורים, ניהול מלאי ועוד. הבוט מאפשר תמיכה בשימוש המערכת גם ללקוחות וגם לצוות הרפואי. בעתיד הבוט יידע לסכם ביקור רפואי ולתת תובנות חכמות.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Myvet",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": ":",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "בוט",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": " חכם המשולב בסוכן העובר על המערכת ויודע להפיק תובנות ניהוליות ועסקיות יחדיו. בנוסף , ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "הבוט",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": " יודע להפעיל תכונות מהמערכת באופן אקטיבי כגגון הוספת תורים, ניהול מלאי ועוד. ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "הבוט",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": " מאפשר תמיכה בשימוש המערכת גם ללקוחות וגם לצוות הרפואי. בעתיד ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 10,
+              "text": "הבוט",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 11,
+              "text": " יידע לסכם ביקור רפואי ולתת תובנות חכמות.",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6x4v6hcn",
+      "id": "4",
+      "name": "TextBox 3",
+      "bbox": [
+        220,
+        344.43,
+        930,
+        66.31
+      ],
+      "geometry": "rect",
+      "text": "ניידות מידע קליני חכמה: מנגנון ייצוא וייבוא מלא של תיק רפואי (היסטוריה, חיסונים, מעבדה) מקובצי Excel   עם מערכת Rollback למניעת קליטת נתונים חלקית במקרה של שגיאה.",
+      "textPreview": "ניידות מידע קליני חכמה: מנגנון ייצוא וייבוא מלא של תיק רפואי (היסטוריה, חיסונים, מעבדה) מקובצי Excel   עם מערכת Rollback למניעת קליטת נתו...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 24
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ניידות מידע קליני חכמה: מנגנון ייצוא וייבוא מלא של תיק רפואי (היסטוריה, חיסונים, מעבדה) מקובצי"
+          },
+          {
+            "index": 2,
+            "text": "Excel   עם מערכת Rollback למניעת קליטת נתונים חלקית במקרה של שגיאה."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ניידות מידע קליני חכמה: מנגנון ייצוא וייבוא מלא של תיק רפואי (היסטוריה, חיסונים, מעבדה) מקובצי Excel   עם מערכת Rollback למניעת קליטת נתונים חלקית במקרה של שגיאה.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ניידות מידע קליני חכמה",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": ":",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " מנגנון ייצוא וייבוא מלא של תיק רפואי (היסטוריה, חיסונים, מעבדה) מקובצי ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "Excel  ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": " עם מערכת",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "Rollback ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "למניעת קליטת נתונים חלקית במקרה של שגיאה.",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7ydczmd8",
+      "id": "5",
+      "name": "TextBox 4",
+      "bbox": [
+        220,
+        426.81,
+        930,
+        66.31
+      ],
+      "geometry": "rect",
+      "text": "המרפאה הדיגיטלית (DigitalCare): ממשק פניות מתקדם הכולל אינטגרציה ישירה לשיחות וידאו דרך Google Meet, ניהול סטטוסים אוטומטי וארכיון חכם.",
+      "textPreview": "המרפאה הדיגיטלית (DigitalCare): ממשק פניות מתקדם הכולל אינטגרציה ישירה לשיחות וידאו דרך Google Meet, ניהול סטטוסים אוטומטי וארכיון חכם.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 27
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "המרפאה הדיגיטלית (DigitalCare): ממשק פניות מתקדם הכולל אינטגרציה ישירה לשיחות וידאו דרך"
+          },
+          {
+            "index": 2,
+            "text": "Google Meet, ניהול סטטוסים אוטומטי וארכיון חכם."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "המרפאה הדיגיטלית (DigitalCare): ממשק פניות מתקדם הכולל אינטגרציה ישירה לשיחות וידאו דרך Google Meet, ניהול סטטוסים אוטומטי וארכיון חכם.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "המרפאה הדיגיטלית (",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "DigitalCare",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "): ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "ממשק פניות מתקדם הכולל אינטגרציה ישירה לשיחות וידאו דרך",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": " Google Meet",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": ", ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "ניהול סטטוסים אוטומטי וארכיון חכם.",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8zmd8rut",
+      "id": "6",
+      "name": "TextBox 5",
+      "bbox": [
+        220,
+        509.18,
+        930,
+        140.02
+      ],
+      "geometry": "rect",
+      "text": "פורטל לקוחות: המערכת מאפשרת לכל לקוח של המרפאה\\ בית החולים אפליקציה ייחודית. באפליקציה ניתן לקבוע תור, לצפות בתיק רפואי ולהורידו למכשיר, לקבוע תור דיגיטלי ולהתכתב עם המרפאה, לצפות בסיכום ביקורים ועוד.\n",
+      "textPreview": "פורטל לקוחות: המערכת מאפשרת לכל לקוח של המרפאה\\ בית החולים אפליקציה ייחודית. באפליקציה ניתן לקבוע תור, לצפות בתיק רפואי ולהורידו למכשיר, ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 24
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "פורטל לקוחות: המערכת מאפשרת לכל לקוח של המרפאה\\ בית החולים אפליקציה ייחודית. באפליקציה ניתן"
+          },
+          {
+            "index": 2,
+            "text": "לקבוע תור, לצפות בתיק רפואי ולהורידו למכשיר, לקבוע תור דיגיטלי ולהתכתב עם המרפאה, לצפות בסיכום"
+          },
+          {
+            "index": 3,
+            "text": "ביקורים ועוד."
+          },
+          {
+            "index": 4,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "פורטל לקוחות: המערכת מאפשרת לכל לקוח של המרפאה\\ בית החולים אפליקציה ייחודית. באפליקציה ניתן לקבוע תור, לצפות בתיק רפואי ולהורידו למכשיר, לקבוע תור דיגיטלי ולהתכתב עם המרפאה, לצפות בסיכום ביקורים ועוד.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "פורטל לקוחות: ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "המערכת מאפשרת לכל לקוח של המרפאה\\ בית החולים אפליקציה ייחודית. באפליקציה ניתן לקבוע תור, לצפות בתיק רפואי ולהורידו למכשיר, לקבוע תור דיגיטלי ולהתכתב עם המרפאה, לצפות בסיכום ביקורים ועוד.",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/atsvux0j",
+      "id": "12",
+      "name": "Picture 6",
+      "bbox": [
+        1174,
+        206.39,
+        21,
+        26
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image11.png",
+        "contentType": "image/png",
+        "byteLength": 457
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image11.png",
+        "contentType": "image/png",
+        "byteLength": 457
+      }
+    },
+    {
+      "order": 6,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/vu1wn214",
+      "id": "13",
+      "name": "Picture 7",
+      "bbox": [
+        1171,
+        347.43,
+        24,
+        26
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image12.png",
+        "contentType": "image/png",
+        "byteLength": 492
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image12.png",
+        "contentType": "image/png",
+        "byteLength": 492
+      }
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/kjax0ril",
+      "id": "14",
+      "name": "Picture 8",
+      "bbox": [
+        1168,
+        429.81,
+        27,
+        26
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 383
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 383
+      }
+    },
+    {
+      "order": 8,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/5k3etcj6",
+      "id": "15",
+      "name": "Picture 9",
+      "bbox": [
+        1171,
+        512.18,
+        24,
+        26
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image14.png",
+        "contentType": "image/png",
+        "byteLength": 743
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image14.png",
+        "contentType": "image/png",
+        "byteLength": 743
+      }
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6t876xwn",
+      "id": "11",
+      "name": "TextBox 10",
+      "bbox": [
+        226.08,
+        53.74,
+        827.84,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "פיצ'רים טכנולוגיים מעל ומעבר לשוק",
+      "textPreview": "פיצ'רים טכנולוגיים מעל ומעבר לשוק",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "פיצ'רים טכנולוגיים מעל ומעבר לשוק"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "פיצ'רים טכנולוגיים מעל ומעבר לשוק",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "פיצ'רים טכנולוגיים מעל ומעבר לשוק",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

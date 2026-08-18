@@ -1,0 +1,1167 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/1tjrkr",
+    "id": "1tjrkr",
+    "slide": 4,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u5oryt8z",
+      "id": "5",
+      "name": "TextBox 4",
+      "bbox": [
+        682.35,
+        213.5,
+        496.65,
+        38.78
+      ],
+      "geometry": "rect",
+      "text": "מערכות השוק היום",
+      "textPreview": "מערכות השוק היום",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 42
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מערכות השוק היום"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מערכות השוק היום",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מערכות השוק היום",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h8zat87a",
+      "id": "6",
+      "name": "TextBox 5",
+      "bbox": [
+        706,
+        284.5,
+        473,
+        93.45
+      ],
+      "geometry": "rect",
+      "text": "פיצול מערכות: מרפאות בישראל ובעולם משתמשות לרוב בתוכנות שולחניות מיושנות. יומן התורים נפרד מהתיק הרפואי וממערכת החיובים.",
+      "textPreview": "פיצול מערכות: מרפאות בישראל ובעולם משתמשות לרוב בתוכנות שולחניות מיושנות. יומן התורים נפרד מהתיק הרפואי וממערכת החיובים.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "פיצול מערכות: מרפאות בישראל ובעולם משתמשות לרוב"
+          },
+          {
+            "index": 2,
+            "text": "בתוכנות שולחניות מיושנות. יומן התורים נפרד מהתיק הרפואי"
+          },
+          {
+            "index": 3,
+            "text": "וממערכת החיובים."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "פיצול מערכות: מרפאות בישראל ובעולם משתמשות לרוב בתוכנות שולחניות מיושנות. יומן התורים נפרד מהתיק הרפואי וממערכת החיובים.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "פיצול מערכות:",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": " מרפאות בישראל ובעולם משתמשות לרוב בתוכנות שולחניות מיושנות. יומן התורים נפרד מהתיק הרפואי וממערכת החיובים.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w7q903qp",
+      "id": "7",
+      "name": "TextBox 6",
+      "bbox": [
+        706,
+        395.5,
+        473,
+        93.45
+      ],
+      "geometry": "rect",
+      "text": "חווית לקוח חסרה: אין שקיפות ללקוח. כל קביעת תור, צפייה בבדיקת דם או קבלת מסמך דורשת שיחת טלפון או התכתבות ארוכה מול המזכירות.",
+      "textPreview": "חווית לקוח חסרה: אין שקיפות ללקוח. כל קביעת תור, צפייה בבדיקת דם או קבלת מסמך דורשת שיחת טלפון או התכתבות ארוכה מול המזכירות.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "חווית לקוח חסרה: אין שקיפות ללקוח. כל קביעת תור, צפייה"
+          },
+          {
+            "index": 2,
+            "text": "בבדיקת דם או קבלת מסמך דורשת שיחת טלפון או התכתבות"
+          },
+          {
+            "index": 3,
+            "text": "ארוכה מול המזכירות."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "חווית לקוח חסרה: אין שקיפות ללקוח. כל קביעת תור, צפייה בבדיקת דם או קבלת מסמך דורשת שיחת טלפון או התכתבות ארוכה מול המזכירות.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "חווית לקוח חסרה:",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": " אין שקיפות ללקוח. כל קביעת תור, צפייה בבדיקת דם או קבלת מסמך דורשת שיחת טלפון או התכתבות ארוכה מול המזכירות.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jahsvipg",
+      "id": "8",
+      "name": "TextBox 7",
+      "bbox": [
+        706,
+        506.5,
+        473,
+        61.14
+      ],
+      "geometry": "rect",
+      "text": "אין אינטגרציית AI: העומס נופל כולו על הווטרינר. אין מערכות חכמות המסייעות בתעדוף או בניתוח נתונים אוטומטי.",
+      "textPreview": "אין אינטגרציית AI: העומס נופל כולו על הווטרינר. אין מערכות חכמות המסייעות בתעדוף או בניתוח נתונים אוטומטי.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "אין אינטגרציית AI: העומס נופל כולו על הווטרינר. אין"
+          },
+          {
+            "index": 2,
+            "text": "מערכות חכמות המסייעות בתעדוף או בניתוח נתונים אוטומטי."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "אין אינטגרציית AI: העומס נופל כולו על הווטרינר. אין מערכות חכמות המסייעות בתעדוף או בניתוח נתונים אוטומטי.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "אין אינטגרציית ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "AI",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": ": ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "העומס נופל כולו על הווטרינר. אין מערכות חכמות המסייעות ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "בתעדוף",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": " או בניתוח נתונים אוטומטי.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i98r2d8v",
+      "id": "9",
+      "name": "TextBox 8",
+      "bbox": [
+        77.35,
+        213.96,
+        496.65,
+        38.78
+      ],
+      "geometry": "rect",
+      "text": "היתרון התחרותי של Myvet",
+      "textPreview": "היתרון התחרותי של Myvet",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 38
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "היתרון התחרותי של Myvet"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "היתרון התחרותי של Myvet",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "היתרון התחרותי של ",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Myvet",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4ji18zad",
+      "id": "10",
+      "name": "TextBox 9",
+      "bbox": [
+        101,
+        284.5,
+        473,
+        96.94
+      ],
+      "geometry": "rect",
+      "text": "ממשק משתמש מודרני: ממשק משתמש העונה על צרכי הצוות הרפואי ומאפשר תפעול אינטואיטיבי וחווית משתמש קלה ונוחה לשימוש.",
+      "textPreview": "ממשק משתמש מודרני: ממשק משתמש העונה על צרכי הצוות הרפואי ומאפשר תפעול אינטואיטיבי וחווית משתמש קלה ונוחה לשימוש.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ממשק משתמש מודרני: ממשק משתמש העונה על צרכי"
+          },
+          {
+            "index": 2,
+            "text": "הצוות הרפואי ומאפשר תפעול אינטואיטיבי וחווית משתמש"
+          },
+          {
+            "index": 3,
+            "text": "קלה ונוחה לשימוש."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ממשק משתמש מודרני: ממשק משתמש העונה על צרכי הצוות הרפואי ומאפשר תפעול אינטואיטיבי וחווית משתמש קלה ונוחה לשימוש.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ממשק משתמש מודרני",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": ":",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ממשק משתמש העונה על צרכי הצוות הרפואי ומאפשר תפעול אינטואיטיבי וחווית משתמש קלה ונוחה לשימוש.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/54r2h4bi",
+      "id": "11",
+      "name": "TextBox 10",
+      "bbox": [
+        101,
+        395.5,
+        473,
+        93.45
+      ],
+      "geometry": "rect",
+      "text": "חוויית Mobile-First: פורטל לקוחות מתקדם המאפשר שירות עצמי (Self-Service) וקביעת תורים באלגוריתם אטומי המונע כפילויות.",
+      "textPreview": "חוויית Mobile-First: פורטל לקוחות מתקדם המאפשר שירות עצמי (Self-Service) וקביעת תורים באלגוריתם אטומי המונע כפילויות.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "חוויית Mobile-First: פורטל לקוחות מתקדם המאפשר"
+          },
+          {
+            "index": 2,
+            "text": "שירות עצמי (Self-Service) וקביעת תורים באלגוריתם אטומי"
+          },
+          {
+            "index": 3,
+            "text": "המונע כפילויות."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "חוויית Mobile-First: פורטל לקוחות מתקדם המאפשר שירות עצמי (Self-Service) וקביעת תורים באלגוריתם אטומי המונע כפילויות.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "חוויית ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Mobile-First",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": ":",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "פ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "ורטל לקוחות מתקדם המאפשר שירות עצמי (",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "Self-Service",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": ") וקביעת תורים באלגוריתם אטומי המונע כפילויות.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ih0j69s7",
+      "id": "12",
+      "name": "TextBox 11",
+      "bbox": [
+        101,
+        506.5,
+        473,
+        125.76
+      ],
+      "geometry": "rect",
+      "text": "מובנה ואחראי AI:VetBot חוסך זמן לצוות על ידי ניווט טקסטואלי במערכת והכנת טיוטות, אך תמיד דורש\n Human-in-the-Loop.\n",
+      "textPreview": "מובנה ואחראי AI:VetBot חוסך זמן לצוות על ידי ניווט טקסטואלי במערכת והכנת טיוטות, אך תמיד דורש |  Human-in-the-Loop. |",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מובנה ואחראי AI:VetBot חוסך זמן לצוות על ידי ניווט"
+          },
+          {
+            "index": 2,
+            "text": "טקסטואלי במערכת והכנת טיוטות, אך תמיד דורש"
+          },
+          {
+            "index": 3,
+            "text": " Human-in-the-Loop."
+          },
+          {
+            "index": 4,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מובנה ואחראי AI:VetBot חוסך זמן לצוות על ידי ניווט טקסטואלי במערכת והכנת טיוטות, אך תמיד דורש",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מובנה ואחראי ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "AI",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": ":",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "VetBot ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "חוסך זמן לצוות על ידי ניווט טקסטואלי במערכת והכנת טיוטות, אך תמיד דורש",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": " Human-in-the-Loop.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "Human-in-the-Loop",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": ".",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8b2lobu",
+      "id": "15",
+      "name": "TextBox 14",
+      "bbox": [
+        2,
+        50,
+        1218,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "מצב השוק והפער הטכנולוגי",
+      "textPreview": "מצב השוק והפער הטכנולוגי",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מצב השוק והפער הטכנולוגי"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מצב השוק והפער הטכנולוגי",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מצב השוק והפער הטכנולוגי",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,0 +1,20 @@
+{
+  "outputSlides": [
+    {"outputSlide":1,"sourceSlide":1,"narrativeRole":"opening title and presenters","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite-and-reposition","sourceElementId":"sh/65g3298r"}]},
+    {"outputSlide":2,"sourceSlide":2,"narrativeRole":"research journey","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/q5wjelsz","sh/9wnqhczy","sh/nu58f2hs","sh/xk7qlczu"]}]},
+    {"outputSlide":3,"sourceSlide":3,"narrativeRole":"reference systems reviewed","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/obq90bml","sh/m5cra54z","sh/v6l4jq94"]}]},
+    {"outputSlide":4,"sourceSlide":4,"narrativeRole":"validated need and project response","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/ql8jytsj","sh/doj29oba","sh/sna103ap","sh/3ihk3et8","sh/ih8ju9sn","sh/kbm987y5","sh/5cva1cfq","sh/i94r6xgz","sh/x8vaxsfe"]}]},
+    {"outputSlide":5,"sourceSlide":5,"narrativeRole":"system objective","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/032tgr6d","sh/n6dcr65o","sh/w32dkbuh","sh/x4vedgvm","sh/v2twb6dw","sh/k7mxovud","sh/sb6xsvu9"]}]},
+    {"outputSlide":6,"sourceSlide":6,"narrativeRole":"target users","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/87ipkzal","sh/ml07i9sv","sh/oryp8fah","sh/h4bupgn6","sh/v2tcn650","sh/5svutgni"]}]},
+    {"outputSlide":7,"sourceSlide":7,"narrativeRole":"key product capabilities","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/dcbud0ra","sh/ydkbm5sv","sh/zedcfa9g","sh/kzmdova1","sh/a9ojq5kz"]}]},
+    {"outputSlide":8,"sourceSlide":8,"narrativeRole":"technology section divider","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":9,"sourceSlide":9,"narrativeRole":"frontend and delivery stack","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite-and-reposition","sourceElementIds":["sh/nex4jq5k","sh/mdonql4z","sh/9gzml0nq","sh/ofq5svm5","sh/ah8nu54b","sh/p0ji9kf2"]}]},
+    {"outputSlide":10,"sourceSlide":10,"narrativeRole":"backend architecture","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/kzu5c32t","sh/725onyl4","sh/s7yt4b21","sh/d87uxg3m","sh/r6pcv6lw","sh/0bit8b2d","sh/ozitcv29"]}]},
+    {"outputSlide":11,"sourceSlide":10,"narrativeRole":"security and privacy","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/kzu5c32t","sh/725onyl4","sh/s7yt4b21","sh/d87uxg3m","sh/r6pcv6lw","sh/0bit8b2d","sh/ozitcv29"]}]},
+    {"outputSlide":12,"sourceSlide":11,"narrativeRole":"VetBot architecture and safety","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/n69grmpw","sh/250zy18b","sh/98rytw72","sh/o7ih0r6h","sh/61kzalof"]}]},
+    {"outputSlide":13,"sourceSlide":12,"narrativeRole":"quality and current status","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/ra943il8","sh/dcbm583y","sh/b6d4f2lc","sh/a543mx4r"]}]},
+    {"outputSlide":14,"sourceSlide":13,"narrativeRole":"future business direction","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/o3i5w3ad","sh/t8fy5k3i","sh/876xwfmx","sh/7mdg3als","sh/6l4fu547","sh/lkvy103m","sh/kjmxsfm1"]}]},
+    {"outputSlide":15,"sourceSlide":14,"narrativeRole":"closing and questions","reuseMode":"duplicate-slide","editTargets":[{"action":"rewrite","sourceElementIds":["sh/wbydknq1","sh/jepwf2pc"]}]}
+  ],
+  "omittedSourceSlides": []
+}

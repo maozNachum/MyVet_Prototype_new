@@ -1,0 +1,970 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/qj2zhx",
+    "id": "qj2zhx",
+    "slide": 12,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/g7idgnqh",
+      "id": "10",
+      "name": "Picture 2",
+      "bbox": [
+        60,
+        169.45,
+        350,
+        350
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image24.png",
+        "contentType": "image/png",
+        "byteLength": 15450
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image24.png",
+        "contentType": "image/png",
+        "byteLength": 15450
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qp4jy1kr",
+      "id": "4",
+      "name": "TextBox 3",
+      "bbox": [
+        637.25,
+        232.53,
+        582.75,
+        33.93
+      ],
+      "geometry": "rect",
+      "text": "מנוע AI מבוסס Gemini 3.5 ",
+      "textPreview": "מנוע AI מבוסס Gemini 3.5",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מנוע AI מבוסס Gemini 3.5"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מנוע AI מבוסס Gemini 3.5 ",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מנוע ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 2,
+              "text": "AI",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 4,
+              "text": "מבוסס ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 5,
+              "text": "Gemini",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 6,
+              "text": " 3.5 ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqdk761c",
+      "id": "5",
+      "name": "TextBox 4",
+      "bbox": [
+        665,
+        275,
+        555,
+        129.25
+      ],
+      "geometry": "rect",
+      "text": "VetBot  אינו צ'אט כללי, אלא עוזר חכם תלוי-הקשר המכיר את המסך בו הצוות נמצא. מודל ה- AI מנתח בקשות בשפה טבעית בעברית ומתרגם אותן לפעולות  API מובנות מול ה- Backend.  במידה והבוט נופל או שיש בעיית תקשורת המערכת עוברת למודל ה2.5 של גוגל.",
+      "textPreview": "VetBot  אינו צ'אט כללי, אלא עוזר חכם תלוי-הקשר המכיר את המסך בו הצוות נמצא. מודל ה- AI מנתח בקשות בשפה טבעית בעברית ומתרגם אותן לפעולות  ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "VetBot  אינו צ'אט כללי, אלא עוזר חכם תלוי-הקשר המכיר את המסך בו"
+          },
+          {
+            "index": 2,
+            "text": "הצוות נמצא. מודל ה- AI מנתח בקשות בשפה טבעית בעברית ומתרגם"
+          },
+          {
+            "index": 3,
+            "text": "אותן לפעולות  API מובנות מול ה- Backend.  במידה והבוט נופל או"
+          },
+          {
+            "index": 4,
+            "text": "שיש בעיית תקשורת המערכת עוברת למודל ה2.5 של גוגל."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "VetBot  אינו צ'אט כללי, אלא עוזר חכם תלוי-הקשר המכיר את המסך בו הצוות נמצא. מודל ה- AI מנתח בקשות בשפה טבעית בעברית ומתרגם אותן לפעולות  API מובנות מול ה- Backend.  במידה והבוט נופל או שיש בעיית תקשורת המערכת עוברת למודל ה2.5 של גוגל.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "VetBot",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "אינו צ'אט כללי, אלא עוזר חכם ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "תלוי-הקשר המכיר ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "את המסך בו הצוות נמצא. מודל ה-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "AI ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": "מנתח בקשות בשפה טבעית בעברית ומתרגם אותן לפעולות ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 10,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 11,
+              "text": "API ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 12,
+              "text": "מובנות מול ה- ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 13,
+              "text": "Backend",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 14,
+              "text": ".  במידה ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 15,
+              "text": "והבוט",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 16,
+              "text": " נופל או שיש בעיית תקשורת המערכת עוברת למודל ה2.5 של גוגל.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/srm10b2x",
+      "id": "6",
+      "name": "TextBox 5",
+      "bbox": [
+        637.25,
+        456.7,
+        582.75,
+        33.93
+      ],
+      "geometry": "rect",
+      "text": "בטיחות: Human-in-the-Loop",
+      "textPreview": "בטיחות: Human-in-the-Loop",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "בטיחות: Human-in-the-Loop"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "בטיחות: Human-in-the-Loop",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "בטיחות: ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 2,
+              "text": "Human-in-the-Loop",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsv29gj2",
+      "id": "7",
+      "name": "TextBox 6",
+      "bbox": [
+        665,
+        495.73,
+        555,
+        161.56
+      ],
+      "geometry": "rect",
+      "text": "לפני כל שינוי בבסיס הנתונים (כמו קביעת תור, ניפוק תרופה מהמלאי, או סיכום ביקור רפואי), ה-AI  מחויב לייצר טיוטה. הפעולה תצא לפועל רק לאחר אישור אנושי מפורש של הווטרינר. המודל לעולם לא פועל באוטונומיות מלאה. \n",
+      "textPreview": "לפני כל שינוי בבסיס הנתונים (כמו קביעת תור, ניפוק תרופה מהמלאי, או סיכום ביקור רפואי), ה-AI  מחויב לייצר טיוטה. הפעולה תצא לפועל רק לאחר ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "לפני כל שינוי בבסיס הנתונים (כמו קביעת תור, ניפוק תרופה מהמלאי, או"
+          },
+          {
+            "index": 2,
+            "text": "סיכום ביקור רפואי), ה-AI  מחויב לייצר טיוטה. הפעולה תצא לפועל רק"
+          },
+          {
+            "index": 3,
+            "text": "לאחר אישור אנושי מפורש של הווטרינר. המודל לעולם לא פועל"
+          },
+          {
+            "index": 4,
+            "text": "באוטונומיות מלאה."
+          },
+          {
+            "index": 5,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "לפני כל שינוי בבסיס הנתונים (כמו קביעת תור, ניפוק תרופה מהמלאי, או סיכום ביקור רפואי), ה-AI  מחויב לייצר טיוטה. הפעולה תצא לפועל רק לאחר אישור אנושי מפורש של הווטרינר. המודל לעולם לא פועל באוטונומיות מלאה. ",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "לפני כל שינוי בבסיס הנתונים (כמו קביעת תור, ניפוק תרופה מהמלאי, או סיכום ביקור רפואי), ה-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "AI ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": " מחויב לייצר ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "טיוטה",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": ". הפעולה ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "תצא לפועל רק לאחר אישור אנושי מפורש של הווטרינר. המודל לעולם לא פועל באוטונומיות מלאה. ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bmhk3q1g",
+      "id": "9",
+      "name": "TextBox 8",
+      "bbox": [
+        2,
+        50,
+        1218,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "מודל ה-AI : VetBot",
+      "textPreview": "מודל ה-AI : VetBot",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מודל ה-AI : VetBot"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מודל ה-AI : VetBot",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מודל ה-",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "AI ",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": ":",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": "VetBot",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/18re9s72",
+      "id": "11",
+      "name": "תמונה 1",
+      "bbox": [
+        137.99,
+        245.44,
+        194.03,
+        198.03
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image25.png",
+        "contentType": "image/png",
+        "byteLength": 26997
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image25.png",
+        "contentType": "image/png",
+        "byteLength": 26997
+      }
+    }
+  ],
+  "composeRuns": []
+}

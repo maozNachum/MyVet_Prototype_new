@@ -1,0 +1,1090 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/s2j59y",
+    "id": "s2j59y",
+    "slide": 9,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/183u10bi",
+      "id": "4",
+      "name": "TextBox 3",
+      "bbox": [
+        637.25,
+        165.51,
+        582.75,
+        33.93
+      ],
+      "geometry": "rect",
+      "text": "צד לקוח Frontend - React & TypeScript",
+      "textPreview": "צד לקוח Frontend - React & TypeScript",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "צד לקוח Frontend - React & TypeScript"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "צד לקוח Frontend - React & TypeScript",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "צד לקוח ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 2,
+              "text": "Frontend",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 3,
+              "text": " -",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            },
+            {
+              "index": 5,
+              "text": "React & TypeScript",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gnutsvax",
+      "id": "5",
+      "name": "TextBox 4",
+      "bbox": [
+        665,
+        209.5,
+        555,
+        96.94
+      ],
+      "geometry": "rect",
+      "text": "בחרנו ב-React  יחד עם TypeScript בגלל הצורך לבנות ממשק משתמש דינמי, יציב ובטוח.  TypeScript מבטיחה שכל מידע רפואי (כמו מודל של \"חיסון\" או \"ביקור\") יהיה מוגדר היטב וימנע שגיאות ריצה.",
+      "textPreview": "בחרנו ב-React  יחד עם TypeScript בגלל הצורך לבנות ממשק משתמש דינמי, יציב ובטוח.  TypeScript מבטיחה שכל מידע רפואי (כמו מודל של \"חיסון\" או...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "בחרנו ב-React  יחד עם TypeScript בגלל הצורך לבנות ממשק"
+          },
+          {
+            "index": 2,
+            "text": "משתמש דינמי, יציב ובטוח.  TypeScript מבטיחה שכל מידע רפואי (כמו"
+          },
+          {
+            "index": 3,
+            "text": "מודל של \"חיסון\" או \"ביקור\") יהיה מוגדר היטב וימנע שגיאות ריצה."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "בחרנו ב-React  יחד עם TypeScript בגלל הצורך לבנות ממשק משתמש דינמי, יציב ובטוח.  TypeScript מבטיחה שכל מידע רפואי (כמו מודל של \"חיסון\" או \"ביקור\") יהיה מוגדר היטב וימנע שגיאות ריצה.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "בחרנו ב-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "React ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "יחד עם",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "TypeScript",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 7,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "בגלל הצורך לבנות ממשק משתמש דינמי, יציב ובטוח. ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 10,
+              "text": "TypeScript",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 11,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 12,
+              "text": "מבטיחה שכל מידע רפואי (כמו מודל של \"חיסון\" או \"ביקור\") יהיה מוגדר היטב וימנע שגיאות ריצה.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fmlszqtc",
+      "id": "6",
+      "name": "TextBox 5",
+      "bbox": [
+        665,
+        352.5,
+        555,
+        93.45
+      ],
+      "geometry": "rect",
+      "text": "העיצוב (UI) פותח בעזרת Tailwind CSS 4, מה שאפשר לנו לבנות עיצוב רספונסיבי מותאם לנייד (עבור הפורטל) ולמסכים רחבים (לצוות המרפאה) עם תמיכה מושלמת בעברית.",
+      "textPreview": "העיצוב (UI) פותח בעזרת Tailwind CSS 4, מה שאפשר לנו לבנות עיצוב רספונסיבי מותאם לנייד (עבור הפורטל) ולמסכים רחבים (לצוות המרפאה) עם תמיכה...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "העיצוב (UI) פותח בעזרת Tailwind CSS 4, מה שאפשר לנו לבנות"
+          },
+          {
+            "index": 2,
+            "text": "עיצוב רספונסיבי מותאם לנייד (עבור הפורטל) ולמסכים רחבים (לצוות"
+          },
+          {
+            "index": 3,
+            "text": "המרפאה) עם תמיכה מושלמת בעברית."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "העיצוב (UI) פותח בעזרת Tailwind CSS 4, מה שאפשר לנו לבנות עיצוב רספונסיבי מותאם לנייד (עבור הפורטל) ולמסכים רחבים (לצוות המרפאה) עם תמיכה מושלמת בעברית.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "העיצוב (",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "UI",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": ") פותח בעזרת ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "Tailwind CSS 4",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": ", ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": "מה שאפשר לנו לבנות עיצוב ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "רספונסיבי",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": " מותאם לנייד (עבור הפורטל) ולמסכים רחבים (לצוות המרפאה) עם תמיכה מושלמת בעברית.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/elcbqlsr",
+      "id": "7",
+      "name": "TextBox 6",
+      "bbox": [
+        -17.3,
+        412.02,
+        582.75,
+        33.93
+      ],
+      "geometry": "rect",
+      "text": "סביבה וניהול גרסאות",
+      "textPreview": "סביבה וניהול גרסאות",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "סביבה וניהול גרסאות"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "סביבה וניהול גרסאות",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "סביבה וניהול גרסאות",
+              "fontSize": 28,
+              "typeface": "Arial",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kjyt4fa1",
+      "id": "9",
+      "name": "TextBox 8",
+      "bbox": [
+        10.45,
+        458.58,
+        555,
+        193.87
+      ],
+      "geometry": "rect",
+      "text": "ניהול הקוד והגרסאות מתבצע באמצעות Git ו- GitHub המאפשר עבודת צוות מתואמת, עבודה עם ענפים,  שמירת היסטוריית שינויים, ופריסה רציפה\n (CI/CD) לשרתי Vercel המשמשים כ-Hosting  לצד הלקוח. כמו כן בדיקות, בנית קוד ואפיון המערכת בוצעו בעזרת Codex.\n",
+      "textPreview": "ניהול הקוד והגרסאות מתבצע באמצעות Git ו- GitHub המאפשר עבודת צוות מתואמת, עבודה עם ענפים,  שמירת היסטוריית שינויים, ופריסה רציפה |  (CI/C...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ניהול הקוד והגרסאות מתבצע באמצעות Git ו- GitHub המאפשר"
+          },
+          {
+            "index": 2,
+            "text": "עבודת צוות מתואמת, עבודה עם ענפים,  שמירת היסטוריית שינויים,"
+          },
+          {
+            "index": 3,
+            "text": "ופריסה רציפה"
+          },
+          {
+            "index": 4,
+            "text": " (CI/CD) לשרתי Vercel המשמשים כ-Hosting  לצד הלקוח. כמו כן"
+          },
+          {
+            "index": 5,
+            "text": "בדיקות, בנית קוד ואפיון המערכת בוצעו בעזרת Codex."
+          },
+          {
+            "index": 6,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ניהול הקוד והגרסאות מתבצע באמצעות Git ו- GitHub המאפשר עבודת צוות מתואמת, עבודה עם ענפים,  שמירת היסטוריית שינויים, ופריסה רציפה",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ניהול הקוד והגרסאות מתבצע באמצעות ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "Git",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "ו-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": " GitHub",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "ה",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "מאפשר עבודת צוות מתואמת, עבודה עם ענפים,  שמירת היסטוריית שינויים, ופריסה רציפה",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": " (CI/CD) לשרתי Vercel המשמשים כ-Hosting  לצד הלקוח. כמו כן בדיקות, בנית קוד ואפיון המערכת בוצעו בעזרת Codex.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": " (",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "CI/CD",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": ") לשרתי ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "Vercel",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": " המשמשים כ-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "Hosting",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": "לצד הלקוח. כמו כן בדיקות, בנית קוד ואפיון המערכת בוצעו בעזרת ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 10,
+              "text": "Codex",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 11,
+              "text": ".",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nil4re1o",
+      "id": "11",
+      "name": "TextBox 10",
+      "bbox": [
+        2,
+        27.5,
+        1218,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "סביבת הפיתוח:Frontend  וניהול גרסאות",
+      "textPreview": "סביבת הפיתוח:Frontend  וניהול גרסאות",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "סביבת הפיתוח:Frontend  וניהול גרסאות"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "סביבת הפיתוח:Frontend  וניהול גרסאות",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "סביבת הפיתוח:",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Frontend ",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " וניהול גרסאות",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

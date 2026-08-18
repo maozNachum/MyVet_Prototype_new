@@ -1,0 +1,985 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/4ib94i",
+    "id": "4ib94i",
+    "slide": 13,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfi5s3a1",
+      "id": "4",
+      "name": "TextBox 3",
+      "bbox": [
+        319.06,
+        56.38,
+        708.24,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "איכות פיתוח וסטטוס המערכת",
+      "textPreview": "איכות פיתוח וסטטוס המערכת",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "איכות פיתוח וסטטוס המערכת"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "איכות פיתוח וסטטוס המערכת",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "איכות פיתוח וסטטוס המערכת",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qd0nqtsv",
+      "id": "6",
+      "name": "TextBox 5",
+      "bbox": [
+        698.8,
+        173.75,
+        509.91,
+        226.19
+      ],
+      "geometry": "rect",
+      "text": "בדיקות תוכנה מקיפות- פיתוח המערכת לווה בכתיבת קוד איכותי הניתן לבדיקה. המערכת מגובה במערך של מעל 165 בדיקות יחידה ורגרסיה העוברות בהצלחה מלאה. הבדיקות מכסות זרימות עבודה, חסימות ביומן, השחרת נתונים\n (Data Redaction) לפני שליחה ל-AI  ואכיפת הרשאות.",
+      "textPreview": "בדיקות תוכנה מקיפות- פיתוח המערכת לווה בכתיבת קוד איכותי הניתן לבדיקה. המערכת מגובה במערך של מעל 165 בדיקות יחידה ורגרסיה העוברות בהצלחה ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "בדיקות תוכנה מקיפות- פיתוח המערכת לווה בכתיבת"
+          },
+          {
+            "index": 2,
+            "text": "קוד איכותי הניתן לבדיקה. המערכת מגובה במערך של"
+          },
+          {
+            "index": 3,
+            "text": "מעל 165 בדיקות יחידה ורגרסיה העוברות בהצלחה"
+          },
+          {
+            "index": 4,
+            "text": "מלאה. הבדיקות מכסות זרימות עבודה, חסימות ביומן,"
+          },
+          {
+            "index": 5,
+            "text": "השחרת נתונים"
+          },
+          {
+            "index": 6,
+            "text": " (Data Redaction) לפני שליחה ל-AI  ואכיפת"
+          },
+          {
+            "index": 7,
+            "text": "הרשאות."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "בדיקות תוכנה מקיפות- פיתוח המערכת לווה בכתיבת קוד איכותי הניתן לבדיקה. המערכת מגובה במערך של מעל 165 בדיקות יחידה ורגרסיה העוברות בהצלחה מלאה. הבדיקות מכסות זרימות עבודה, חסימות ביומן, השחרת נתונים",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "בדיקות תוכנה מקיפות- ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "פיתוח ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 3,
+              "text": "המערכת לווה בכתיבת קוד איכותי הניתן לבדיקה. המערכת מגובה במערך של ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 4,
+              "text": "מעל 165 בדיקות יחידה ורגרסיה",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": " העוברות בהצלחה מלאה. הבדיקות מכסות זרימות עבודה, חסימות ביומן, השחרת נתונים",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": " (Data Redaction) לפני שליחה ל-AI  ואכיפת הרשאות.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": " (",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 2,
+              "text": "Data Redaction",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 3,
+              "text": ") ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 4,
+              "text": "לפני שליחה ל-",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 5,
+              "text": "AI",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 7,
+              "text": " ואכיפת הרשאות.",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4bi5o3a5",
+      "id": "8",
+      "name": "TextBox 7",
+      "bbox": [
+        0,
+        339.92,
+        500,
+        94.37
+      ],
+      "geometry": "rect",
+      "text": "ליבת המוצר- (הפורטל, התיק הרפואי וניהול המרפאה) עובדים בצורה מלאה, יציבה ומוכנים להדגמה (Demo).",
+      "textPreview": "ליבת המוצר- (הפורטל, התיק הרפואי וניהול המרפאה) עובדים בצורה מלאה, יציבה ומוכנים להדגמה (Demo).",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ליבת המוצר- (הפורטל, התיק הרפואי וניהול המרפאה)"
+          },
+          {
+            "index": 2,
+            "text": "עובדים בצורה מלאה, יציבה ומוכנים להדגמה (Demo"
+          },
+          {
+            "index": 3,
+            "text": ")."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ליבת המוצר- (הפורטל, התיק הרפואי וניהול המרפאה) עובדים בצורה מלאה, יציבה ומוכנים להדגמה (Demo).",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ליבת ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "המוצר-",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 4,
+              "text": "(הפורטל, התיק הרפואי וניהול המרפאה) עובדים בצורה מלאה, יציבה ומוכנים להדגמה (",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 5,
+              "text": "Demo",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 6,
+              "text": ").",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5cr6xorq",
+      "id": "9",
+      "name": "TextBox 8",
+      "bbox": [
+        500,
+        513.84,
+        500,
+        161.56
+      ],
+      "geometry": "rect",
+      "text": "יכולות AI רפואיות מתקדמות- מומשו ברמת הקוד ונבדקו מקומית להוכחת היתכנות טכנולוגית, אך אינן מוצגות עדיין כמערכתProduction  רפואית המאומתת לייב.\n",
+      "textPreview": "יכולות AI רפואיות מתקדמות- מומשו ברמת הקוד ונבדקו מקומית להוכחת היתכנות טכנולוגית, אך אינן מוצגות עדיין כמערכתProduction  רפואית המאומתת ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "יכולות AI רפואיות מתקדמות- מומשו ברמת הקוד"
+          },
+          {
+            "index": 2,
+            "text": "ונבדקו מקומית להוכחת היתכנות טכנולוגית, אך אינן"
+          },
+          {
+            "index": 3,
+            "text": "מוצגות עדיין כמערכתProduction  רפואית המאומתת"
+          },
+          {
+            "index": 4,
+            "text": "לייב."
+          },
+          {
+            "index": 5,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "יכולות AI רפואיות מתקדמות- מומשו ברמת הקוד ונבדקו מקומית להוכחת היתכנות טכנולוגית, אך אינן מוצגות עדיין כמערכתProduction  רפואית המאומתת לייב.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "יכולות ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "AI",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "רפואיות ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": "מתקדמות-",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              },
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 7,
+              "text": "מומשו ברמת הקוד ונבדקו מקומית להוכחת היתכנות טכנולוגית, אך אינן מוצגות עדיין כמערכת",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 8,
+              "text": "Production ",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            },
+            {
+              "index": 9,
+              "text": " רפואית המאומתת לייב.",
+              "typeface": "Arial",
+              "color": {
+                "type": "theme",
+                "value": "tx1",
+                "transform": {
+                  "lighten": 0.05
+                }
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,0 +1,1398 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/mztk1v",
+    "id": "mztk1v",
+    "slide": 10,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/vq5876ts",
+      "id": "19",
+      "name": "Picture 2",
+      "bbox": [
+        853.33,
+        202.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      }
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/zal4f2pk",
+      "id": "20",
+      "name": "Picture 3",
+      "bbox": [
+        456.66,
+        202.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image16.png",
+        "contentType": "image/png",
+        "byteLength": 2530
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image16.png",
+        "contentType": "image/png",
+        "byteLength": 2530
+      }
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/y9cn6x8z",
+      "id": "21",
+      "name": "Picture 4",
+      "bbox": [
+        59.98,
+        202.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image17.png",
+        "contentType": "image/png",
+        "byteLength": 2513
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image17.png",
+        "contentType": "image/png",
+        "byteLength": 2513
+      }
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/lw3mhc7q",
+      "id": "22",
+      "name": "Picture 5",
+      "bbox": [
+        991.67,
+        238.5,
+        90,
+        90
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image18.png",
+        "contentType": "image/png",
+        "byteLength": 1918
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image18.png",
+        "contentType": "image/png",
+        "byteLength": 1918
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ryhkby5g",
+      "id": "7",
+      "name": "TextBox 6",
+      "bbox": [
+        905.95,
+        353.5,
+        261.45,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "מסד נתונים (PostgreSQL)",
+      "textPreview": "מסד נתונים (PostgreSQL)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מסד נתונים (PostgreSQL)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מסד נתונים (PostgreSQL)",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מסד נתונים",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            },
+            {
+              "index": 2,
+              "text": " (",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            },
+            {
+              "index": 3,
+              "text": "PostgreSQL",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            },
+            {
+              "index": 4,
+              "text": ")",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvalwnm5",
+      "id": "8",
+      "name": "TextBox 7",
+      "bbox": [
+        879.33,
+        400.5,
+        314.67,
+        161.56
+      ],
+      "geometry": "rect",
+      "text": "במקום לבנות שרת מסורתי, השתמשנו ב-Supabase  שמספק לנו בסיס נתונים רלוציוני עוצמתי. הוא מאפשר סנכרון Realtime  כך שהצוות רואה תורים מתעדכנים מיידית.",
+      "textPreview": "במקום לבנות שרת מסורתי, השתמשנו ב-Supabase  שמספק לנו בסיס נתונים רלוציוני עוצמתי. הוא מאפשר סנכרון Realtime  כך שהצוות רואה תורים מתעדכנ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "במקום לבנות שרת מסורתי, השתמשנו"
+          },
+          {
+            "index": 2,
+            "text": "ב-Supabase  שמספק לנו בסיס נתונים"
+          },
+          {
+            "index": 3,
+            "text": "רלוציוני עוצמתי. הוא מאפשר סנכרון"
+          },
+          {
+            "index": 4,
+            "text": "Realtime  כך שהצוות רואה תורים"
+          },
+          {
+            "index": 5,
+            "text": "מתעדכנים מיידית."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "במקום לבנות שרת מסורתי, השתמשנו ב-Supabase  שמספק לנו בסיס נתונים רלוציוני עוצמתי. הוא מאפשר סנכרון Realtime  כך שהצוות רואה תורים מתעדכנים מיידית.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "במקום לבנות שרת מסורתי, השתמשנו ב-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "Supabase",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": " שמספק לנו בסיס נתונים ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "רלוציוני",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": " עוצמתי. הוא ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": "מאפשר ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "סנכרון ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": "Realtime",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 10,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 11,
+              "text": " כך שהצוות רואה תורים מתעדכנים ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 12,
+              "text": "מיידית",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 13,
+              "text": ".",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/0bu587q5",
+      "id": "23",
+      "name": "Picture 8",
+      "bbox": [
+        595,
+        238.5,
+        90,
+        90
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image19.png",
+        "contentType": "image/png",
+        "byteLength": 1948
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image19.png",
+        "contentType": "image/png",
+        "byteLength": 1948
+      }
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pwv6psrq",
+      "id": "10",
+      "name": "TextBox 9",
+      "bbox": [
+        541.82,
+        353.5,
+        196.35,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "אבטחה ו-API (RLS) ",
+      "textPreview": "אבטחה ו-API (RLS)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "אבטחה ו-API (RLS)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "אבטחה ו-API (RLS) ",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "אבטחה ו-",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            },
+            {
+              "index": 2,
+              "text": "API (RLS)",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovm5w7al",
+      "id": "11",
+      "name": "TextBox 10",
+      "bbox": [
+        482.66,
+        400.5,
+        314.67,
+        226.19
+      ],
+      "geometry": "rect",
+      "text": "האבטחה לא מסתמכת רק על ה- UI. Supabase  מספקRow Level  Security (RLS): פוליסות ברמת מסד הנתונים שמוודאות שלקוח שניגש ל-API יוכל למשוך אך ורק את נתוני חיות המחמד שלו, לעולם לא של אחרים.\n",
+      "textPreview": "האבטחה לא מסתמכת רק על ה- UI. Supabase  מספקRow Level  Security (RLS): פוליסות ברמת מסד הנתונים שמוודאות שלקוח שניגש ל-API יוכל למשוך אך ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "האבטחה לא מסתמכת רק על ה- UI."
+          },
+          {
+            "index": 2,
+            "text": "Supabase  מספקRow Level"
+          },
+          {
+            "index": 3,
+            "text": "Security (RLS): פוליסות ברמת מסד"
+          },
+          {
+            "index": 4,
+            "text": "הנתונים שמוודאות שלקוח שניגש ל-API"
+          },
+          {
+            "index": 5,
+            "text": "יוכל למשוך אך ורק את נתוני חיות"
+          },
+          {
+            "index": 6,
+            "text": "המחמד שלו, לעולם לא של אחרים."
+          },
+          {
+            "index": 7,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "האבטחה לא מסתמכת רק על ה- UI. Supabase  מספקRow Level  Security (RLS): פוליסות ברמת מסד הנתונים שמוודאות שלקוח שניגש ל-API יוכל למשוך אך ורק את נתוני חיות המחמד שלו, לעולם לא של אחרים.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "האבטחה לא מסתמכת רק על ה- ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "UI",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": ".",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": "Supabase",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": " מספק",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "Row Level ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 10,
+              "text": "Security",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 11,
+              "text": " (",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 12,
+              "text": "RLS",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 13,
+              "text": "): ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155",
+              "bold": true
+            },
+            {
+              "index": 14,
+              "text": "פוליסות ברמת מסד הנתונים שמוודאות שלקוח שניגש ל-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 15,
+              "text": "API ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 16,
+              "text": "יוכל למשוך אך ורק את נתוני חיות המחמד שלו, לעולם לא של אחרים",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 17,
+              "text": ".",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/nyl4jmpg",
+      "id": "24",
+      "name": "Picture 11",
+      "bbox": [
+        198.33,
+        238,
+        90,
+        90
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image20.png",
+        "contentType": "image/png",
+        "byteLength": 1928
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image20.png",
+        "contentType": "image/png",
+        "byteLength": 1928
+      }
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/294nuxsf",
+      "id": "13",
+      "name": "TextBox 12",
+      "bbox": [
+        153.28,
+        348.09,
+        168.7,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "Edge Functions",
+      "textPreview": "Edge Functions",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Edge Functions"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Edge Functions",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Edge Functions",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "#2563EB"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18b6lsru",
+      "id": "14",
+      "name": "TextBox 13",
+      "bbox": [
+        85.98,
+        400.5,
+        314.67,
+        222.7
+      ],
+      "geometry": "rect",
+      "text": "לפעולות מורכבות ומאובטחות השתמשנו בפונקציות קצה. הן מריצות לוגיקה מאובטחת, מתקשרות עם מודלי ה-AI ושומרות את מפתחות הסוד בשרת\n(API Gateway) הרחק מעיני המשתמש בדפדפן.\n",
+      "textPreview": "לפעולות מורכבות ומאובטחות השתמשנו בפונקציות קצה. הן מריצות לוגיקה מאובטחת, מתקשרות עם מודלי ה-AI ושומרות את מפתחות הסוד בשרת | (API Gatew...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "לפעולות מורכבות ומאובטחות השתמשנו"
+          },
+          {
+            "index": 2,
+            "text": "בפונקציות קצה. הן מריצות לוגיקה"
+          },
+          {
+            "index": 3,
+            "text": "מאובטחת, מתקשרות עם מודלי ה-AI"
+          },
+          {
+            "index": 4,
+            "text": "ושומרות את מפתחות הסוד בשרת"
+          },
+          {
+            "index": 5,
+            "text": "(API Gateway) הרחק מעיני המשתמש"
+          },
+          {
+            "index": 6,
+            "text": "בדפדפן."
+          },
+          {
+            "index": 7,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "לפעולות מורכבות ומאובטחות השתמשנו בפונקציות קצה. הן מריצות לוגיקה מאובטחת, מתקשרות עם מודלי ה-AI ושומרות את מפתחות הסוד בשרת",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "לפעולות מורכבות ומאובטחות השתמשנו בפונקציות קצה. הן מריצות לוגיקה מאובטחת, מתקשרות עם מודלי ה-",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "AI ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": "ושומרות את מפתחות הסוד בשרת",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "(API Gateway) הרחק מעיני המשתמש בדפדפן.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "(",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "API Gateway",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": ") הרחק מעיני המשתמש בדפדפן.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/mxcnah8b",
+      "id": "25",
+      "name": "Picture 14",
+      "bbox": [
+        1017.17,
+        261,
+        39,
+        45
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image21.png",
+        "contentType": "image/png",
+        "byteLength": 1084
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image21.png",
+        "contentType": "image/png",
+        "byteLength": 1084
+      }
+    },
+    {
+      "order": 14,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/9036lw7m",
+      "id": "26",
+      "name": "Picture 15",
+      "bbox": [
+        612,
+        261,
+        56,
+        45
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image22.png",
+        "contentType": "image/png",
+        "byteLength": 1248
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image22.png",
+        "contentType": "image/png",
+        "byteLength": 1248
+      }
+    },
+    {
+      "order": 15,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/8zu5crq1",
+      "id": "27",
+      "name": "Picture 16",
+      "bbox": [
+        220.83,
+        261,
+        45,
+        45
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image23.png",
+        "contentType": "image/png",
+        "byteLength": 1252
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image23.png",
+        "contentType": "image/png",
+        "byteLength": 1252
+      }
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l4f6xcry",
+      "id": "18",
+      "name": "TextBox 17",
+      "bbox": [
+        2,
+        50,
+        1218,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "צד השרת (Backend) - Supabase",
+      "textPreview": "צד השרת (Backend) - Supabase",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "צד השרת (Backend) - Supabase"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "צד השרת (Backend) - Supabase",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "צד השרת (",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Backend",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": ") - ",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "Supabase",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

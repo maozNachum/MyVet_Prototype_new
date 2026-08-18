@@ -1,0 +1,8 @@
+Source deck: MyVet Presentation.pptx (14 slides, 16:9).
+Visual language: pale blue canvas, dark MyVet blue headings, white rounded cards, centered logo, simple section dividers.
+Typography: Hebrew RTL; large blue headings; dark body copy. Preserve existing fonts and master/layout behavior.
+Reusable frames: title slide (1), research timeline (2), two-column comparison (3-4), three-card objective/architecture frame (5,10,13), audience list (6), feature list (7), section divider (8), two-column technology frame (9), two-block AI frame (11), status list (12), closing slide (14).
+Brand assets: preserve the existing MyVet logo and all inherited decorative objects.
+Insertion contract: output follows the original order; source slide 10 is reused once for a dedicated security slide. All other source slides are retained.
+Content audit: remove unsupported market dominance, profitability, commission and exact test-count claims; avoid naming a specific AI model version; describe advanced AI as controlled and configuration-driven.
+

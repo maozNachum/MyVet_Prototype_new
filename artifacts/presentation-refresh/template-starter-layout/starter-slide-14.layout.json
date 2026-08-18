@@ -1,0 +1,1035 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/10zm5m",
+    "id": "10zm5m",
+    "slide": 14,
+    "layoutId": "/ppt/slideLayouts/slideLayout7.xml",
+    "layoutName": "Blank",
+    "layoutType": "blank",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "Office",
+    "colors": {
+      "accent1": "#4F81BD",
+      "accent2": "#C0504D",
+      "accent3": "#9BBB59",
+      "accent4": "#8064A2",
+      "accent5": "#4BACC6",
+      "accent6": "#F79646",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#1F497D",
+      "lt2": "#EEECE1",
+      "hlink": "#0000FF",
+      "folHlink": "#800080"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout7.xml",
+      "name": "Blank",
+      "type": "blank",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/2",
+          "id": "2",
+          "name": "Date Placeholder 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/3",
+          "id": "3",
+          "name": "Footer Placeholder 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout7.xml/4",
+          "id": "4",
+          "name": "Slide Number Placeholder 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            48,
+            28.83,
+            864,
+            120
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master title style",
+          "textPreview": "Click to edit Master title style",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master title style",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master title style"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            48,
+            168,
+            864,
+            475.17
+          ],
+          "geometry": "rect",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level",
+          "textPreview": "Click to edit Master text styles | Second level | Third level | Fourth level | Fifth level",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Click to edit Master text styles",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Click to edit Master text styles"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Second level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Second level"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Third level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Third level"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Fourth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fourth level"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Fifth level",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fifth level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            48,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "7/19/2026",
+          "textPreview": "7/19/2026",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "7/19/2026",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "7/19/2026"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            328,
+            667.33,
+            304,
+            38.33
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            688,
+            667.33,
+            224,
+            38.33
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l4j2dwbu",
+      "id": "4",
+      "name": "TextBox 3",
+      "bbox": [
+        319.06,
+        56.38,
+        708.24,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "המודל העסקי((B2B SaaS",
+      "textPreview": "המודל העסקי((B2B SaaS",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "המודל העסקי((B2B SaaS"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "המודל העסקי((B2B SaaS",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "המודל העסקי(",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "(B2B SaaS",
+              "fontSize": 52,
+              "typeface": "Arial",
+              "color": "#1E40AF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/oz2p43it",
+      "id": "20",
+      "name": "Picture 2",
+      "bbox": [
+        878.93,
+        218.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      }
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/p0bqd8je",
+      "id": "21",
+      "name": "Picture 2",
+      "bbox": [
+        465.59,
+        218.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      }
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/2xk72d0n",
+      "id": "22",
+      "name": "Picture 2",
+      "bbox": [
+        52.26,
+        218.5,
+        366.67,
+        441
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image15.png",
+        "contentType": "image/png",
+        "byteLength": 2479
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/21gf6x4f",
+      "id": "14",
+      "name": "TextBox 13",
+      "bbox": [
+        968.17,
+        287.79,
+        188.2,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "תוכנה כשירות SaaS",
+      "textPreview": "תוכנה כשירות SaaS",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "תוכנה כשירות SaaS"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "תוכנה כשירות SaaS",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "תוכנה כשירות ",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "SaaS",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/32pgf2l0",
+      "id": "15",
+      "name": "TextBox 14",
+      "bbox": [
+        887.87,
+        342.06,
+        314.67,
+        161.56
+      ],
+      "geometry": "rect",
+      "text": "המודל העסקי מתבסס על שירות חודשי\\שנתי. המרפאה\\בית החולים ירכוש חבילת בסיס או חבילת פריומיום מורחבת(מרפאה דיגיטלית, צט בוט חכם, AI  ,דוחות חכמים ועוד) ",
+      "textPreview": "המודל העסקי מתבסס על שירות חודשי\\שנתי. המרפאה\\בית החולים ירכוש חבילת בסיס או חבילת פריומיום מורחבת(מרפאה דיגיטלית, צט בוט חכם, AI  ,דוחות...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "המודל העסקי מתבסס על שירות"
+          },
+          {
+            "index": 2,
+            "text": "חודשי\\שנתי. המרפאה\\בית החולים ירכוש"
+          },
+          {
+            "index": 3,
+            "text": "חבילת בסיס או חבילת פריומיום"
+          },
+          {
+            "index": 4,
+            "text": "מורחבת(מרפאה דיגיטלית, צט בוט חכם,"
+          },
+          {
+            "index": 5,
+            "text": "AI  ,דוחות חכמים ועוד)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "המודל העסקי מתבסס על שירות חודשי\\שנתי. המרפאה\\בית החולים ירכוש חבילת בסיס או חבילת פריומיום מורחבת(מרפאה דיגיטלית, צט בוט חכם, AI  ,דוחות חכמים ועוד) ",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "המודל העסקי מתבסס על שירות חודשי\\שנתי. המרפאה\\בית החולים ירכוש חבילת בסיס או חבילת ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "פריומיום",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": " מורחבת(מרפאה דיגיטלית, ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "צט",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": " ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 6,
+              "text": "בוט",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 7,
+              "text": " חכם, ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 8,
+              "text": "AI ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 9,
+              "text": " ,דוחות חכמים ועוד) ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o3yx87m5",
+      "id": "16",
+      "name": "TextBox 15",
+      "bbox": [
+        68.66,
+        342.06,
+        314.67,
+        193.87
+      ],
+      "geometry": "rect",
+      "text": "העלויות המשמעותיות של המערכת הן שירות ענן (Supabase), משכורות לעובדים ושירותי סוכנים וAI. אנו צופים שהחזר העלויות והפיכה המודל לעסקי וריווחי יהיו כבר בצעדים הראשונים עם כמות בודדת של לקוחות.",
+      "textPreview": "העלויות המשמעותיות של המערכת הן שירות ענן (Supabase), משכורות לעובדים ושירותי סוכנים וAI. אנו צופים שהחזר העלויות והפיכה המודל לעסקי וריו...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "העלויות המשמעותיות של המערכת הן"
+          },
+          {
+            "index": 2,
+            "text": "שירות ענן (Supabase), משכורות"
+          },
+          {
+            "index": 3,
+            "text": "לעובדים ושירותי סוכנים וAI. אנו צופים"
+          },
+          {
+            "index": 4,
+            "text": "שהחזר העלויות והפיכה המודל לעסקי"
+          },
+          {
+            "index": 5,
+            "text": "וריווחי יהיו כבר בצעדים הראשונים עם"
+          },
+          {
+            "index": 6,
+            "text": "כמות בודדת של לקוחות."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "העלויות המשמעותיות של המערכת הן שירות ענן (Supabase), משכורות לעובדים ושירותי סוכנים וAI. אנו צופים שהחזר העלויות והפיכה המודל לעסקי וריווחי יהיו כבר בצעדים הראשונים עם כמות בודדת של לקוחות.",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "העלויות המשמעותיות של המערכת הן שירות ענן (",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 2,
+              "text": "Supabase",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 3,
+              "text": "), משכורות לעובדים ושירותי סוכנים ו",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 4,
+              "text": "AI",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            },
+            {
+              "index": 5,
+              "text": ". אנו צופים שהחזר העלויות והפיכה המודל לעסקי וריווחי יהיו כבר בצעדים הראשונים עם כמות בודדת של לקוחות.",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p47yhc3q",
+      "id": "17",
+      "name": "TextBox 16",
+      "bbox": [
+        488.03,
+        342.06,
+        314.67,
+        193.87
+      ],
+      "geometry": "rect",
+      "text": "כל לקוח המגיע למרפאה או לבית החולים יישלם מנוי למרפאה\\לבית החולים באופן חודשי. המנוי יכלול ביטוח רפואי וגישה לאפליקציה. מטרתנו היא לגבות גם מלקוחות אלו דרך המרפאה\\בית החולים  10\\5 אחוז מהעסקה החודשית. ",
+      "textPreview": "כל לקוח המגיע למרפאה או לבית החולים יישלם מנוי למרפאה\\לבית החולים באופן חודשי. המנוי יכלול ביטוח רפואי וגישה לאפליקציה. מטרתנו היא לגבות ...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "כל לקוח המגיע למרפאה או לבית החולים"
+          },
+          {
+            "index": 2,
+            "text": "יישלם מנוי למרפאה\\לבית החולים באופן"
+          },
+          {
+            "index": 3,
+            "text": "חודשי. המנוי יכלול ביטוח רפואי וגישה"
+          },
+          {
+            "index": 4,
+            "text": "לאפליקציה. מטרתנו היא לגבות גם"
+          },
+          {
+            "index": 5,
+            "text": "מלקוחות אלו דרך המרפאה\\בית החולים"
+          },
+          {
+            "index": 6,
+            "text": "10\\5 אחוז מהעסקה החודשית."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "כל לקוח המגיע למרפאה או לבית החולים יישלם מנוי למרפאה\\לבית החולים באופן חודשי. המנוי יכלול ביטוח רפואי וגישה לאפליקציה. מטרתנו היא לגבות גם מלקוחות אלו דרך המרפאה\\בית החולים  10\\5 אחוז מהעסקה החודשית. ",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "כל לקוח המגיע למרפאה או לבית החולים יישלם מנוי למרפאה\\לבית החולים באופן חודשי. המנוי יכלול ביטוח רפואי וגישה לאפליקציה. מטרתנו היא לגבות גם מלקוחות אלו דרך המרפאה\\בית החולים  10\\5 אחוז מהעסקה החודשית. ",
+              "fontSize": 20,
+              "typeface": "Arial",
+              "color": "#334155"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mx0fi1kj",
+      "id": "18",
+      "name": "TextBox 17",
+      "bbox": [
+        163.4,
+        286.53,
+        144.4,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "החזר ההשקעה",
+      "textPreview": "החזר ההשקעה",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "החזר ההשקעה"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "החזר ההשקעה",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "החזר ההשקעה",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nytgr6l4",
+      "id": "19",
+      "name": "TextBox 18",
+      "bbox": [
+        514.64,
+        286.68,
+        261.45,
+        26.66
+      ],
+      "geometry": "rect",
+      "text": "מנוי ממשתמשי האפליקציה",
+      "textPreview": "מנוי ממשתמשי האפליקציה",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "מנוי ממשתמשי האפליקציה"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "מנוי ממשתמשי האפליקציה",
+          "resolvedTextStyle": {
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "מנוי ממשתמשי האפליקציה",
+              "fontSize": 22,
+              "typeface": "Arial",
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}
