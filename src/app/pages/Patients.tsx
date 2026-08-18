@@ -267,6 +267,7 @@ export function Patients() {
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [linkedAppointmentId, setLinkedAppointmentId] = useState<number | undefined>();
   
   // States חדשים עבור הנתונים מהשרת
   const [patientsList, setPatientsList] = useState<Patient[]>([]);
@@ -385,8 +386,42 @@ export function Patients() {
     if (selectedId && patientsList.length > 0) {
       const found = patientsList.find((p) => p.id === Number(selectedId));
       if (found) {
-        setSelectedPatient(found);
-        setSearchParams({}, { replace: true });
+        const requestedAppointmentId = Number(searchParams.get("appointment_id"));
+        let cancelled = false;
+
+        const selectPatientFromRoute = async () => {
+          let verifiedAppointmentId: number | undefined;
+
+          if (Number.isInteger(requestedAppointmentId) && requestedAppointmentId > 0) {
+            const { data, error } = await supabase
+              .from("appointments")
+              .select("appointment_id")
+              .eq("appointment_id", requestedAppointmentId)
+              .eq("pet_id", found.id)
+              .maybeSingle();
+
+            if (cancelled) return;
+
+            if (error) {
+              console.error("Failed validating appointment context", error);
+              toast.error("לא הצלחנו לקשר את הרשומה לתור. אפשר להמשיך לתיק החיה ללא שיוך לתור.");
+            } else if (data?.appointment_id) {
+              verifiedAppointmentId = Number(data.appointment_id);
+            } else {
+              toast.error("התור שנבחר אינו משויך למטופל הזה.");
+            }
+          }
+
+          if (cancelled) return;
+          setLinkedAppointmentId(verifiedAppointmentId);
+          setSelectedPatient(found);
+          setSearchParams({}, { replace: true });
+        };
+
+        void selectPatientFromRoute();
+        return () => {
+          cancelled = true;
+        };
       }
     }
   }, [searchParams, setSearchParams, patientsList]);
@@ -659,6 +694,7 @@ export function Patients() {
         currentPatients.filter((patient) => patient.id !== selectedPatient.id)
       );
       setSelectedPatient(null);
+      setLinkedAppointmentId(undefined);
       toast.success("המטופל נמחק בהצלחה");
     } catch (error) {
       console.error("Supabase Delete Patient Error:", error);
@@ -685,7 +721,10 @@ export function Patients() {
     return (
       <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
         <button
-          onClick={() => setSelectedPatient(null)}
+          onClick={() => {
+            setSelectedPatient(null);
+            setLinkedAppointmentId(undefined);
+          }}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
         >
           <ArrowRight className="w-4 h-4" /> חזרה לרשימת מטופלים
@@ -1080,6 +1119,8 @@ export function Patients() {
           ownerName={owner.name}
           ownerId={owner.id}
           patientId={selectedPatient.id}
+          appointmentId={linkedAppointmentId}
+          onSave={() => setLinkedAppointmentId(undefined)}
         />
 
         <HospitalizationModal
@@ -1184,7 +1225,10 @@ export function Patients() {
                 return (
                   <div
                     key={patient.id}
-                    onClick={() => setSelectedPatient(patient)}
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setLinkedAppointmentId(undefined);
+                    }}
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-4 mb-4">

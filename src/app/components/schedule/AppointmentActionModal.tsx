@@ -129,7 +129,16 @@ export function AppointmentActionModal({
     }
 
     onClose();
-    navigate(appt.petId ? `/patients?selected=${appt.petId}` : "/patients");
+    if (!appt.petId) {
+      navigate("/patients");
+      return;
+    }
+
+    const params = new URLSearchParams({
+      selected: String(appt.petId),
+      appointment_id: String(appt.appointmentId || appt.id),
+    });
+    navigate(`/patients?${params.toString()}`);
   };
 
   return (
