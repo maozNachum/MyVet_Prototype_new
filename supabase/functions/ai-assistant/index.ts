@@ -61,7 +61,7 @@ async function clinicPriorities(client: SupabaseClient, role: StaffRole) {
   const today = dayRange(1);
   const medicalRole = role === "clinic_admin" || role === "vet" || role === "nurse";
   const [appointments, hospitalizations, conversations, urgentConversations, payments, labs] = await Promise.all([
-    count(client.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", today.start).lt("start_time", today.end)),
+    count(client.from("appointments").select("appointment_id", { count: "exact", head: true }).neq("status", "cancelled").gte("start_time", today.start).lt("start_time", today.end)),
     medicalRole ? count(client.from("hospitalizations").select("hospitalization_id", { count: "exact", head: true }).eq("status", "active")) : Promise.resolve(null),
     count(client.from("conversations").select("conversation_id", { count: "exact", head: true }).in("status", ["open", "waiting_staff"])),
     count(client.from("conversations").select("conversation_id", { count: "exact", head: true }).in("status", ["open", "waiting_staff"]).in("priority", ["high", "urgent"])),
@@ -73,7 +73,7 @@ async function clinicPriorities(client: SupabaseClient, role: StaffRole) {
 
 async function schedulePressure(client: SupabaseClient) {
   const week = dayRange(7);
-  const { data, error } = await client.from("appointments").select("start_time,appointment_mode,room,vet_name").gte("start_time", week.start).lt("start_time", week.end).limit(500);
+  const { data, error } = await client.from("appointments").select("start_time,appointment_mode,room,vet_name,status").neq("status", "cancelled").gte("start_time", week.start).lt("start_time", week.end).limit(500);
   if (error) return { unavailable: true };
   const rows = Array.isArray(data) ? data : [];
   const byDay: Record<string, number> = {};
@@ -211,7 +211,7 @@ const responseSchema = {
 // Stage 1 rollback path only. New traffic uses runVetBotGateway below.
 // Keep this compatibility implementation until the staged rollout is verified.
 async function callGeminiLegacy(input: { question: string; context: unknown; history: unknown[]; memorySummary?: string; tools: unknown; role: StaffRole; mode: VetBotMode; actions: unknown[] }) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const apiKey = String(Deno.env.get("GEMINI_API_KEY") || "");
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
   const configuredModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
   const models = [...new Set([configuredModel, "gemini-3.5-flash", "gemini-2.5-flash"])];
@@ -664,7 +664,9 @@ Deno.serve(async (request) => {
     }
     await audit(client, { actor_id: authData.user.id, actor_role: role, mode, tool_names: [...usedTools, ...telemetryTags], redaction_categories: protectedInput.report.categories, redaction_count: protectedInput.report.total, outcome: "failed", provider: telemetry?.provider || "ai-gateway", model_name: telemetry?.model || model, notice_version: NOTICE_VERSION, error_code: safeError.code });
     console.error("VetBot request failed", { mode, role, code: safeError.code });
-    const retryHeaders = safeError.retryAfterSeconds ? { "Retry-After": String(safeError.retryAfterSeconds) } : {};
+    const retryHeaders: Record<string, string> = safeError.retryAfterSeconds
+      ? { "Retry-After": String(safeError.retryAfterSeconds) }
+      : {};
     return json(request, { error: safeError.code, message: safeError.message }, safeError.httpStatus, retryHeaders);
   }
 });

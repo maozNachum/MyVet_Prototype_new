@@ -267,6 +267,7 @@ export function Patients() {
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [linkedAppointment, setLinkedAppointment] = useState<{ appointmentId: number; petId: number } | null>(null);
   
   // States חדשים עבור הנתונים מהשרת
   const [patientsList, setPatientsList] = useState<Patient[]>([]);
@@ -382,10 +383,16 @@ export function Patients() {
   // בחירת מטופל מה-URL רק אחרי שהרשימה נטענה
   useEffect(() => {
     const selectedId = searchParams.get("selected");
+    const requestedAppointmentId = Number(searchParams.get("appointment_id"));
     if (selectedId && patientsList.length > 0) {
       const found = patientsList.find((p) => p.id === Number(selectedId));
       if (found) {
         setSelectedPatient(found);
+        setLinkedAppointment(
+          Number.isSafeInteger(requestedAppointmentId) && requestedAppointmentId > 0
+            ? { appointmentId: requestedAppointmentId, petId: found.id }
+            : null,
+        );
         setSearchParams({}, { replace: true });
       }
     }
@@ -659,6 +666,7 @@ export function Patients() {
         currentPatients.filter((patient) => patient.id !== selectedPatient.id)
       );
       setSelectedPatient(null);
+      setLinkedAppointment(null);
       toast.success("המטופל נמחק בהצלחה");
     } catch (error) {
       console.error("Supabase Delete Patient Error:", error);
@@ -685,7 +693,10 @@ export function Patients() {
     return (
       <main className="w-full px-4 py-7 sm:px-6 sm:py-8">
         <button
-          onClick={() => setSelectedPatient(null)}
+          onClick={() => {
+            setSelectedPatient(null);
+            setLinkedAppointment(null);
+          }}
           className="flex items-center gap-2 text-[#1e40af] hover:text-[#1e3a8a] mb-6 cursor-pointer transition-colors text-[15px] font-medium"
         >
           <ArrowRight className="w-4 h-4" /> חזרה לרשימת מטופלים
@@ -1080,6 +1091,8 @@ export function Patients() {
           ownerName={owner.name}
           ownerId={owner.id}
           patientId={selectedPatient.id}
+          appointmentId={linkedAppointment?.petId === selectedPatient.id ? linkedAppointment.appointmentId : undefined}
+          onSave={() => setLinkedAppointment(null)}
         />
 
         <HospitalizationModal
@@ -1184,7 +1197,10 @@ export function Patients() {
                 return (
                   <div
                     key={patient.id}
-                    onClick={() => setSelectedPatient(patient)}
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setLinkedAppointment(null);
+                    }}
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-4 mb-4">

@@ -491,7 +491,7 @@ async function resolveAvailableSlot(client: SupabaseClient, date: string, time: 
 async function resolveAppointment(client: SupabaseClient, proposal: ModelActionProposal, context: unknown, conversationText?: unknown) {
   const directRef = numeric(proposal.appointmentRef) ?? contextNumber(context, ["selectedAppointmentRef"]);
   if (directRef) {
-    const { data } = await client.from("appointments").select("appointment_id,pet_id,start_time,end_time,appointment_type,appointment_mode").eq("appointment_id", directRef).maybeSingle();
+    const { data } = await client.from("appointments").select("appointment_id,pet_id,start_time,end_time,appointment_type,appointment_mode,status").eq("appointment_id", directRef).neq("status", "cancelled").maybeSingle();
     if (data) {
       const patientResult = await client.from("patients").select("pet_id,pet_name,species").eq("pet_id", data.pet_id).maybeSingle();
       return { row: data, patient: patientResult.data || null, issue: "" };
@@ -504,8 +504,9 @@ async function resolveAppointment(client: SupabaseClient, proposal: ModelActionP
   const currentDate = dateValue(proposal.currentAppointmentDate);
   const { data, error } = await client
     .from("appointments")
-    .select("appointment_id,pet_id,start_time,end_time,appointment_type,appointment_mode")
+    .select("appointment_id,pet_id,start_time,end_time,appointment_type,appointment_mode,status")
     .eq("pet_id", patient.row.pet_id)
+    .neq("status", "cancelled")
     .gte("start_time", currentDate ? `${currentDate}T00:00:00Z` : new Date(Date.now() - 86_400_000).toISOString())
     .order("start_time", { ascending: true })
     .limit(30);
@@ -808,7 +809,7 @@ export async function decideVetBotAction({
   }
   const rpcName = requestRow.action_type === "create_inventory_item"
     ? "myvet_execute_vetbot_inventory_create"
-    : "myvet_execute_vetbot_action";
+    : "myvet_execute_vetbot_action_v2";
   const { data, error } = await client.rpc(rpcName, { requested_action_id: requestId });
   const result: any = data || {};
   if (error || result.ok !== true) {

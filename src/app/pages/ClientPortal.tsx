@@ -22,6 +22,7 @@ import { clearAiConversations } from "../components/ai/aiConversationStorage";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
+import { cancelAppointment, rescheduleAppointment } from "../../services/appointmentMutations";
 import { clearStaffSession } from "../data/staffAuth";
 import { ensureNoAppointmentConflict } from "../data/AppointmentStore";
 import { safeHebrewLabel } from "../utils/displayText";
@@ -748,9 +749,10 @@ export function ClientPortal() {
       if (petIds.length > 0) {
         const { data: appointmentRows, error: appointmentsError } = await supabase
           .from("appointments")
-          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, color, notes")
+          .select("appointment_id, pet_id, start_time, end_time, department, vet_name, room, appointment_type, appointment_mode, color, notes, status")
           .in("pet_id", petIds)
           .gte("start_time", new Date().toISOString())
+          .neq("status", "cancelled")
           .order("start_time", { ascending: true });
 
         if (appointmentsError) throw appointmentsError;
@@ -1368,15 +1370,7 @@ export function ClientPortal() {
         excludeId: rescheduleAppt.id,
       });
 
-      const { error } = await supabase
-        .from("appointments")
-        .update({
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-        })
-        .eq("appointment_id", rescheduleAppt.id);
-
-      if (error) throw error;
+      await rescheduleAppointment("owner", rescheduleAppt.id, startTime.toISOString(), endTime.toISOString());
 
       await refreshPortalData();
       setRescheduleSuccess(true);
@@ -1397,12 +1391,7 @@ export function ClientPortal() {
     if (blockStaffPreviewMutation()) return;
     if (!cancelAppt) return;
     try {
-      const { error } = await supabase
-        .from("appointments")
-        .delete()
-        .eq("appointment_id", cancelAppt.id);
-
-      if (error) throw error;
+      await cancelAppointment("owner", cancelAppt.id);
 
       await refreshPortalData();
       setCancelSuccess(true);

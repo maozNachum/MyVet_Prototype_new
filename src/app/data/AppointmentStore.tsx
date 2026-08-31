@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { bookStaffAppointment, cancelAppointment, rescheduleAppointment as rescheduleAppointmentRpc, updateStaffAppointment } from "../../services/appointmentMutations";
 import { safeHebrewLabel } from "../utils/displayText";
 import type { AppointmentStatus } from "./calendar-constants";
 
@@ -139,6 +140,7 @@ export async function ensureNoAppointmentConflict({
   let query = supabase
     .from("appointments")
     .select("appointment_id, vet_name, room, start_time, end_time")
+    .neq("status", "cancelled")
     .lt("start_time", endDate.toISOString())
     .gt("end_time", startDate.toISOString());
 
@@ -412,22 +414,18 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           mode: appointmentMode,
         });
 
-        const { error: insertError } = await supabase.from("appointments").insert([
-          {
-            pet_id: appt.petId,
-            start_time: startDate.toISOString(),
-            end_time: endDate.toISOString(),
-            department: appt.department || "כללי",
-            vet_name: appt.vet || "טרם שובץ",
-            room: appt.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
-            appointment_type: appt.type || "ביקור",
-            appointment_mode: appointmentMode,
-            color: appt.color || "blue",
-            notes: appt.notes || null,
-          },
-        ]);
-
-        if (insertError) throw insertError;
+        await bookStaffAppointment({
+          petId: appt.petId,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          department: appt.department || "כללי",
+          vetName: appt.vet || "טרם שובץ",
+          room: appt.room || (appointmentMode === "video" ? "דיגיטל" : "—"),
+          appointmentType: appt.type || "ביקור",
+          appointmentMode,
+          color: appt.color || "blue",
+          notes: appt.notes || null,
+        });
 
         await refreshAppointments();
         pushNotification("staff", "created", "תור חדש נוסף ליומן", `התור של ${appt.petName} נוסף`, appt.petName, "staff");
@@ -452,12 +450,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       try {
         const appt = calendarAppointments.find((a) => a.id === id);
 
-        const { error: deleteError } = await supabase
-          .from("appointments")
-          .delete()
-          .eq("appointment_id", id);
-
-        if (deleteError) throw deleteError;
+        await cancelAppointment(by, id);
 
         setCalendarAppointments((prev) => prev.filter((a) => a.id !== id));
 
@@ -469,8 +462,8 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
         toast.success("התור בוטל בהצלחה");
       } catch (err: any) {
         console.error("Error deleting appointment:", err);
-        setError(err?.message || "שגיאה במחיקת התור");
-        toast.error("לא הצלחנו למחוק את התור");
+        setError(err?.message || "שגיאה בביטול התור");
+        toast.error(err?.message || "לא הצלחנו לבטל את התור");
         throw err;
       } finally {
         setIsLoading(false);
@@ -499,15 +492,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
           excludeId: id,
         });
 
-        const { error: updateError } = await supabase
-          .from("appointments")
-          .update({
-            start_time: startDate.toISOString(),
-            end_time: endDate.toISOString(),
-          })
-          .eq("appointment_id", id);
-
-        if (updateError) throw updateError;
+        await rescheduleAppointmentRpc(by, id, startDate.toISOString(), endDate.toISOString());
 
         setCalendarAppointments((prev) =>
           prev.map((a) =>
@@ -542,50 +527,39 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       setError(null);
 
       try {
+        if (by !== "staff") throw new Error("עריכת פרטי תור זמינה לצוות המרפאה בלבד");
         const current = calendarAppointments.find((a) => a.id === id);
         if (!current) throw new Error("התור לא נמצא");
 
-        const patch: Record<string, any> = {};
-
-        if (updates.type !== undefined) patch.appointment_type = updates.type;
-        if (updates.department !== undefined) patch.department = updates.department;
-        if (updates.vet !== undefined) patch.vet_name = updates.vet;
-        if (updates.room !== undefined) patch.room = updates.room;
-        if (updates.notes !== undefined) patch.notes = updates.notes || null;
-        if (updates.color !== undefined) patch.color = updates.color;
-        if (updates.appointmentMode !== undefined) patch.appointment_mode = normalizeAppointmentMode(updates.appointmentMode);
-
-        if (updates.time !== undefined) {
-          const startDate = buildDateTime(current.year, current.month, current.day, updates.time);
-          patch.start_time = startDate.toISOString();
-        }
-
-        if (updates.endTime !== undefined) {
-          const endDate = buildDateTime(current.year, current.month, current.day, updates.endTime);
-          patch.end_time = endDate.toISOString();
-        }
+        const nextStart = buildDateTime(current.year, current.month, current.day, updates.time ?? current.time);
+        const nextEnd = buildDateTime(current.year, current.month, current.day, updates.endTime ?? current.endTime);
+        const nextMode = normalizeAppointmentMode(updates.appointmentMode ?? current.appointmentMode);
 
         const schedulingChanged = updates.time !== undefined || updates.endTime !== undefined || updates.vet !== undefined || updates.room !== undefined || updates.appointmentMode !== undefined;
         if (schedulingChanged) {
-          const nextStart = buildDateTime(current.year, current.month, current.day, updates.time ?? current.time);
-          const nextEnd = buildDateTime(current.year, current.month, current.day, updates.endTime ?? current.endTime);
           validateAppointmentWindow(nextStart, nextEnd, updates.time !== undefined || updates.endTime !== undefined);
           await ensureNoAppointmentConflict({
             startDate: nextStart,
             endDate: nextEnd,
             vet: updates.vet ?? current.vet,
             room: updates.room ?? current.room,
-            mode: normalizeAppointmentMode(updates.appointmentMode ?? current.appointmentMode),
+            mode: nextMode,
             excludeId: id,
           });
         }
 
-        const { error: updateError } = await supabase
-          .from("appointments")
-          .update(patch)
-          .eq("appointment_id", id);
-
-        if (updateError) throw updateError;
+        await updateStaffAppointment({
+          appointmentId: id,
+          startTime: nextStart.toISOString(),
+          endTime: nextEnd.toISOString(),
+          department: updates.department ?? current.department,
+          vetName: updates.vet ?? current.vet,
+          room: updates.room ?? current.room,
+          appointmentType: updates.type ?? current.type,
+          appointmentMode: nextMode,
+          color: updates.color ?? current.color,
+          notes: updates.notes ?? current.notes,
+        });
 
         setCalendarAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
 
@@ -595,7 +569,7 @@ export function AppointmentStoreProvider({ children }: { children: ReactNode }) 
       } catch (err: any) {
         console.error("Error editing appointment:", err);
         setError(err?.message || "שגיאה בעריכת התור");
-        toast.error("לא הצלחנו לשמור את העריכה");
+        toast.error(err?.message || "לא הצלחנו לשמור את העריכה");
         throw err;
       } finally {
         setIsLoading(false);

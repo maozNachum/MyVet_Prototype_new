@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.2";
 import { asAiGatewayError } from "../_shared/ai/errors.ts";
-import { isAiCapabilityEnabled, runtimeEnv } from "../_shared/ai/featureFlags.ts";
-import { runDocumentExtractionGateway, telemetryFromError } from "../_shared/ai/gateway.ts";
+import { isAiCapabilityEnabled } from "../_shared/ai/featureFlags.ts";
+import { runDocumentExtractionGateway, runtimeEnv, telemetryFromError } from "../_shared/ai/gateway.ts";
 import type { DocumentExtractionKind } from "../_shared/ai/types.ts";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -124,6 +124,16 @@ Deno.serve(async (request) => {
     const { data: pet } = await admin.from("patients").select("pet_id,owner_id,clinic_id")
       .eq("pet_id", petId).eq("clinic_id", clinicId).maybeSingle();
     if (!pet || (owner && String(pet.owner_id) !== String(owner.owner_id))) return json(request, { error: "ACCESS_DENIED" }, 403);
+    if (action === "save" && !staffAllowed) return json(request, { error: "STAFF_APPROVAL_REQUIRED" }, 403);
+
+    const { data: tenantFlag, error: tenantFlagError } = await admin.from("ai_feature_flags")
+      .select("enabled,kill_switch")
+      .eq("clinic_id", clinicId)
+      .eq("capability", "document_ocr")
+      .maybeSingle();
+    if (tenantFlagError || !tenantFlag?.enabled || tenantFlag.kill_switch) {
+      return json(request, { error: "AI_FEATURE_DISABLED" }, 503);
+    }
 
     const uploaded = form.get("file");
     if (!(uploaded instanceof File) || uploaded.size < 16 || uploaded.size > MAX_FILE_BYTES) {
@@ -186,7 +196,7 @@ Deno.serve(async (request) => {
       await admin.storage.from("documents").remove([objectPath]);
       throw saveError;
     }
-    console.info("DOCUMENT_OCR_AUDIT", { actorId: authData.user.id, outcome: "saved_after_confirmation", capability: "vaccination.ocr", petId, duplicateOverride: Boolean(duplicates?.length) });
+    console.info("DOCUMENT_OCR_AUDIT", { outcome: "saved_after_confirmation", capability: "vaccination.ocr", duplicateOverride: Boolean(duplicates?.length) });
     return json(request, { vaccination }, 201);
   } catch (error) {
     const safe = asAiGatewayError(error);

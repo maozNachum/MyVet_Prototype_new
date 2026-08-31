@@ -78,8 +78,8 @@ export async function buildDashboardContext(role: AiUserRole) {
     highPriorityConversations,
     lowStockInventory,
   ] = await Promise.all([
-    supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", start).lt("start_time", end),
-    supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).gte("start_time", start).lt("start_time", week.end).eq("appointment_mode", "video"),
+    supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).neq("status", "cancelled").gte("start_time", start).lt("start_time", end),
+    supabase.from("appointments").select("appointment_id", { count: "exact", head: true }).neq("status", "cancelled").gte("start_time", start).lt("start_time", week.end).eq("appointment_mode", "video"),
     supabase.from("hospitalizations").select("hospitalization_id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("medical_problems").select("problem_id", { count: "exact", head: true }).eq("status", "active").in("severity", ["serious", "critical"]),
     supabase.from("lab_orders").select("lab_order_id", { count: "exact", head: true }).not("status", "eq", "completed"),

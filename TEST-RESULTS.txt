@@ -1,0 +1,43 @@
+CODEX AUTO RESUME SUPER v5 - TEST RESULTS
+=========================================
+
+Static syntax check:
+- node --check codex-supervisor.js: PASS
+
+Built-in self-test:
+- 13/13 PASS
+  1. HTML escaping
+  2. 5-hour limit classification
+  3. Weekly limit wins when both windows are exhausted
+  4. Credits/account limit stops
+  5. Additional limit stops
+  6. Main 5-hour window takes precedence over unrelated additional bucket
+  7. Ambiguous limit fails closed
+  8. Valid Thread ID accepted
+  9. Unsafe/invalid Thread ID rejected
+  10. 5-hour/weekly window mapping
+  11. Reset timestamp parsing
+  12. Project path normalization
+  13. Continuation prompt explicitly preserves completed work
+
+Safety design review:
+- Existing .codex-auto-resume/state.json from older versions is not deleted.
+- Legacy threadId/projectPath fields are read and retained.
+- Resume by saved ID never silently accepts a different returned Thread ID.
+- Weekly/account/additional/unknown limits stop instead of retrying blindly.
+- Only a confidently identified 5-hour limit is auto-waited/resumed.
+- Safe Stop flag does not kill a normal active Codex turn; it stops after that turn finishes.
+- During a reset wait, Stop is interruptible within a few seconds.
+- Thread mismatch is the deliberate exception: wrong-thread execution is terminated immediately.
+- A per-project lock prevents two supervisor instances.
+- Keep-awake uses SetThreadExecutionState in a helper process and does not change Windows power-plan settings.
+- Hebrew user-facing status is rendered as UTF-8 HTML with html lang=he, dir=rtl, right alignment, and unicode-bidi handling.
+- Raw Codex JSONL and stderr are retained in .codex-auto-resume for diagnosis.
+
+Important verification boundary:
+This environment is Linux, so Windows-specific integration (cmd.exe, taskkill.exe,
+SetThreadExecutionState, and your authenticated Codex account) cannot be executed here.
+For that reason the package includes Check-Codex-Auto-Resume.bat (Doctor), which performs
+those environment-specific checks on your actual Windows PC without submitting a work prompt.
+No software can truthfully guarantee zero bugs across future Codex versions; the supervisor is
+designed to fail closed when uncertain rather than guess.

@@ -102,6 +102,13 @@ test("Edge function enforces server identity, MIME signatures, private storage a
   assert.match(source, /schema\("storage"\).*from\("buckets"\)/s);
   assert.match(source, /POSSIBLE_DUPLICATE/);
   assert.match(source, /duplicateConfirmed/);
+  assert.match(source, /action === "save" && !staffAllowed/);
+  assert.match(source, /STAFF_APPROVAL_REQUIRED/);
+  assert.match(source, /from\("ai_feature_flags"\)/);
+  assert.match(source, /\.eq\("capability", "document_ocr"\)/);
+  assert.match(source, /!tenantFlag\?\.enabled \|\| tenantFlag\.kill_switch/);
+  assert.doesNotMatch(source, /saved_after_confirmation"[^\n]*actorId/);
+  assert.doesNotMatch(source, /saved_after_confirmation"[^\n]*petId/);
   assert.doesNotMatch(source, /createPublicUrl/);
   assert.doesNotMatch(source, /form\.get\("provider"\)|form\.get\("model"\)|form\.get\("prompt"\)/);
 });

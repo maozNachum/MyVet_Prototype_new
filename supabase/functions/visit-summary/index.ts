@@ -214,7 +214,9 @@ Deno.serve(async (request) => {
       });
     }
     console.error("Visit summary request failed", { action: body.action, code: safe.code });
-    const retryHeaders = safe.retryAfterSeconds ? { "Retry-After": String(safe.retryAfterSeconds) } : {};
+    const retryHeaders: Record<string, string> = safe.retryAfterSeconds
+      ? { "Retry-After": String(safe.retryAfterSeconds) }
+      : {};
     return json(request, { error: safe.code }, safe.httpStatus, retryHeaders);
   }
 });

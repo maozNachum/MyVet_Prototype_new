@@ -1,0 +1,20 @@
+﻿2026-08-26 23:22:24 [INFO] Found Codex CLI: codex-cli 0.150.0
+2026-08-26 23:22:25 [WARN] Could not enable sleep prevention: Cannot convert value "-2147483648" to type "System.UInt32". Error: "Value was either too large or too small for a UInt32."
+2026-08-26 23:22:25 [INFO] Starting Codex mode=ResumeLast in 'C:\Users\user\Desktop\MyVet_Prototype (6)'.
+2026-08-26 23:23:25 [INFO] Found Codex CLI: codex-cli 0.150.0
+2026-08-26 23:23:25 [WARN] Could not enable sleep prevention: Cannot convert value "-2147483648" to type "System.UInt32". Error: "Value was either too large or too small for a UInt32."
+2026-08-26 23:23:25 [INFO] Starting Codex mode=ResumeLast in 'C:\Users\user\Desktop\MyVet_Prototype (6)'.
+2026-08-26 23:23:48 [INFO] Found Codex CLI: codex-cli 0.150.0
+2026-08-26 23:23:48 [WARN] Could not enable sleep prevention: Cannot convert value "-2147483648" to type "System.UInt32". Error: "Value was either too large or too small for a UInt32."
+2026-08-26 23:23:49 [INFO] Starting Codex mode=ResumeLast in 'C:\Users\user\Desktop\MyVet_Prototype (6)'.
+2026-08-26 23:28:23 [INFO] Found Codex CLI: codex-cli 0.150.0
+2026-08-26 23:28:24 [WARN] Could not enable sleep prevention: Cannot convert value "-2147483648" to type "System.UInt32". Error: "Value was either too large or too small for a UInt32."
+2026-08-26 23:28:24 [INFO] Starting Codex mode=ResumeLast in 'C:\Users\user\Desktop\MyVet_Prototype (6)'.
+2026-08-26 23:28:28 [INFO] Codex thread id: 019f6088-4703-78f0-9af9-9955ccf89f55
+2026-08-26 23:29:53 [INFO] Codex turn completed without a usage limit. Supervisor finished normally.
+2026-08-26 23:36:07 [INFO] Found Codex CLI: codex-cli 0.150.0
+2026-08-26 23:36:07 [INFO] Keep-awake enabled. Windows may turn off the display, but the PC should not sleep while this supervisor is running.
+2026-08-26 23:36:07 [INFO] Using saved Codex thread id: 019f6088-4703-78f0-9af9-9955ccf89f55
+2026-08-26 23:36:07 [INFO] Starting Codex mode=ResumeId in 'C:\Users\user\Desktop\MyVet_Prototype (6)'.
+2026-08-26 23:36:11 [INFO] Codex thread id: 019f6088-4703-78f0-9af9-9955ccf89f55
+2026-08-26 23:55:31 [INFO] Codex turn completed without a usage limit. Supervisor finished normally.

@@ -522,7 +522,7 @@ export function Dashboard() {
     try {
       const { start, end } = todayRange();
       const [appointmentsResult, conversationsResult, labsResult, hospitalizationsResult, paymentsResult, inventoryResult] = await Promise.allSettled([
-        supabase.from("appointments").select("appointment_id, pet_id, start_time, appointment_type, department, vet_name, room, notes, appointment_mode, color").gte("start_time", start.toISOString()).lt("start_time", end.toISOString()).order("start_time", { ascending: true }),
+        supabase.from("appointments").select("appointment_id, pet_id, start_time, appointment_type, department, vet_name, room, notes, appointment_mode, color, status").neq("status", "cancelled").gte("start_time", start.toISOString()).lt("start_time", end.toISOString()).order("start_time", { ascending: true }),
         supabase.from("conversations").select("conversation_id, subject, status, priority, last_message_at").in("status", ["open", "waiting_staff", "waiting_owner"]).order("last_message_at", { ascending: false }),
         supabase.from("lab_orders").select("lab_order_id, test_name, status, is_urgent, ordered_date, test_date, pet_id").neq("status", "completed").order("ordered_date", { ascending: false }),
         supabase.from("hospitalizations").select("hospitalization_id, pet_id, department, status, severity, admitted_at, expected_discharge_at").eq("status", "active"),
@@ -794,7 +794,7 @@ export function Dashboard() {
 
   const openAppointment = (appointment: AppointmentItem) => {
     if (appointment.petId) {
-      navigate(`/patients?selected=${appointment.petId}`);
+      navigate(`/patients?selected=${appointment.petId}&appointment_id=${appointment.id}`);
       return;
     }
     navigate("/appointments");

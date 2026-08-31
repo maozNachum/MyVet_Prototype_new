@@ -59,7 +59,7 @@ npm run dev
 - Supabase: Auth, PostgreSQL, RLS, Realtime, Storage, RPC ו־Edge Functions
 - Gemini דרך Edge Function של Supabase בלבד
 - SheetJS לייבוא ולייצוא Excel/CSV
-- Vitest ובדיקות אינטגרציה ייעודיות
+- בדיקות יחידה ואינטגרציה ייעודיות באמצעות Node.js test runner וסקריפטים ממוקדים
 - Vercel לפריסת ממשק המשתמש
 
 ## ארכיטקטורה בקצרה
@@ -115,10 +115,12 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
 | פקודה | מטרה |
 | --- | --- |
 | `npm run dev` | הפעלת סביבת הפיתוח המקומית |
-| `npm run build` | בניית גרסת Production ובדיקת TypeScript |
+| `npm run build` | בניית גרסת Production באמצעות Vite |
 | `npm run test:vetbot` | הרצת חבילת בדיקות VetBot, פרטיות והרשאות |
-| `npm run typecheck:ai` | בדיקת טיפוסים לקוד ה־AI |
-| `npm run test:anon-access` | בדיקת גישה אנונימית והרשאות Supabase |
+| `npm run typecheck:ai` | בדיקת טיפוסים ממוקדת לתשתית ה־AI המשותפת |
+| `npm run typecheck:edge` | בדיקת טיפוסים לשבע פונקציות Edge; דורש Deno זמין ב־PATH |
+| `npm run test:anon-access` | בדיקת גישה אנונימית מול פרויקט Supabase שמוגדר במשתני הסביבה; הבדיקה קוראת מהיעד החי ולכן יש לוודא מראש מהו היעד |
+| `npm run test:supabase-baseline` | הקמת Supabase Local נקי פעמיים ובדיקת schema, הרשאות, Storage, Realtime ו־RAG סינתטי; דורש Docker ו־Supabase CLI |
 
 לפני מסירה או מיזוג מומלץ להריץ:
 

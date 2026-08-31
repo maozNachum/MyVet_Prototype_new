@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   X,
   Stethoscope,
@@ -26,7 +26,7 @@ import {
 } from "../data/MedicalStore";
 import { useLabStore } from "../data/LabStore";
 import { getStaffName } from "../data/staffAuth";
-import { supabase } from "../../services/supabaseClient";
+import { saveMedicalEntryAtomic } from "../../services/medicalVisitMutations";
 import { VisitPostSaveActionsModal } from "./VisitPostSaveActionsModal";
 
 const VACCINATIONS_CHANGED_EVENT = "myvet:vaccinations-changed";
@@ -243,15 +243,11 @@ export function TreatmentModal({
   onSave,
 }: TreatmentModalProps) {
   const {
-    addVisit,
-    addPrescription,
-    addPhysicalExam,
-    addMedicalProblem,
-    addDifferentialDiagnosis,
     loadMedicalData,
   } = useMedicalStore();
-  const { addLabOrder } = useLabStore();
+  const { loadLabOrders } = useLabStore();
   const currentVet = getStaffName();
+  const submissionIdRef = useRef(crypto.randomUUID());
 
   const [entryType, setEntryType] = useState<EntryType>("full_exam");
   const [visitDate, setVisitDate] = useState(todayInputValue());
@@ -323,6 +319,7 @@ export function TreatmentModal({
     setPrescriptions([{ medication: "", dosage: "", frequency: "", duration: "" }]);
     setLabs([{ testName: "", category: "blood", testDate: todayInputValue(), urgent: false, notes: "" }]);
     setDifferentials([{ diagnosisText: "", likelihood: "possible", notes: "" }]);
+    submissionIdRef.current = crypto.randomUUID();
   }, [isOpen]);
 
   useEffect(() => {
@@ -412,10 +409,26 @@ export function TreatmentModal({
       const parsedWeight = numericValue(weight);
       if (!nonEmpty(weight)) nextErrors.weight = "חובה להזין משקל.";
       else if (Number.isNaN(parsedWeight) || parsedWeight <= 0) nextErrors.weight = "משקל חייב להיות מספר חיובי.";
+      else if (parsedWeight > 500) nextErrors.weight = "המשקל חייב להיות עד 500 ק״ג.";
     }
 
-    if (entryType === "prescription_only") {
-      if (cleanPrescriptions.length === 0) nextErrors.prescriptions = "חובה להזין לפחות תרופה אחת.";
+    const startedPrescriptions = prescriptions.filter((prescription) => (
+      [prescription.medication, prescription.dosage, prescription.frequency, prescription.duration].some(nonEmpty)
+    ));
+    const incompletePrescription = startedPrescriptions.find((prescription) => (
+      ![prescription.medication, prescription.dosage, prescription.frequency, prescription.duration].every(nonEmpty)
+    ));
+    const oversizedPrescription = startedPrescriptions.find((prescription) => (
+      [prescription.medication, prescription.dosage, prescription.frequency, prescription.duration]
+        .some((value) => value.trim().length > 500)
+    ));
+
+    if (entryType === "prescription_only" && startedPrescriptions.length === 0) {
+      nextErrors.prescriptions = "חובה להזין לפחות תרופה אחת.";
+    } else if (incompletePrescription) {
+      nextErrors.prescriptions = "יש להשלים שם תרופה, מינון, תדירות ומשך טיפול בכל מרשם שהתחלתם למלא.";
+    } else if (oversizedPrescription) {
+      nextErrors.prescriptions = "אחד משדות המרשם ארוך מדי. יש לקצר אותו עד 500 תווים.";
     }
 
     if (entryType === "lab") {
@@ -432,6 +445,34 @@ export function TreatmentModal({
       if (!nonEmpty(notes) && !nonEmpty(freeVisitText)) {
         nextErrors.notes = "חובה להזין את ההערה הרפואית.";
       }
+    }
+
+    const payload = buildVisitPayload();
+    if (payload.reason.length > 2000) {
+      nextErrors.chiefComplaint = "סיבת הביקור ארוכה מדי. יש לקצר אותה עד 2,000 תווים.";
+    }
+    if (payload.treatment.length > 10000) {
+      nextErrors.form = "פרטי הטיפול ארוכים מדי. יש לקצר אותם לפני השמירה.";
+    }
+    if (payload.notes.length > 10000) {
+      nextErrors.notes = "הסיכום וההערות ארוכים מדי. יש לקצר אותם עד 10,000 תווים.";
+    }
+    if (payload.diagnosis.length > 4000) {
+      nextErrors.form = "פרטי האבחנה ארוכים מדי. יש לקצר אותם עד 4,000 תווים.";
+    }
+    if (payload.followUpNotes.length > 4000) {
+      nextErrors.notes = "הנחיות המעקב ארוכות מדי. יש לקצר אותן עד 4,000 תווים.";
+    }
+    if (vaccineName.trim().length > 250) {
+      nextErrors.vaccineName = "שם החיסון ארוך מדי. יש לקצר אותו עד 250 תווים.";
+    }
+    if (physicalExamFindings.trim().length > 10000
+        || cleanProblems.some((problem) => problem.problemText.trim().length > 2000 || problem.notes.trim().length > 4000)
+        || cleanDifferentials.some((diagnosis) => diagnosis.diagnosisText.trim().length > 2000 || diagnosis.notes.trim().length > 4000)) {
+      nextErrors.fullExamContent = "אחד מפרטי הבדיקה ארוך מדי. יש לקצר את הטקסט לפני השמירה.";
+    }
+    if (cleanLabs.some((lab) => lab.testName.trim().length > 500 || lab.notes.trim().length > 4000)) {
+      nextErrors.labs = "אחד מפרטי בדיקות המעבדה ארוך מדי. יש לקצר את הטקסט לפני השמירה.";
     }
 
 
@@ -617,157 +658,83 @@ export function TreatmentModal({
     if (!patientId) return;
 
     setIsSubmitting(true);
-    let medicalVisitSaved = false;
-    let savedVisitId: number | null = null;
-    let persistenceComplete = false;
 
     try {
       const payload = buildVisitPayload();
-
-      const savedVisit = await addVisit({
-        patientId,
-        date: dateInputToUiDate(visitDate),
-        vetName: currentVet,
+      const result = await saveMedicalEntryAtomic({
+        submissionId: submissionIdRef.current,
+        petId: patientId,
+        appointmentId: appointmentId ?? null,
+        visitDate: new Date(`${visitDate}T12:00:00`).toISOString(),
+        visitType: entryType,
+        urgencyLevel,
         reason: payload.reason,
         diagnosis: payload.diagnosis,
         treatment: payload.treatment,
         notes: payload.notes,
-        attachments: 0,
-        visitType: entryType,
-        urgencyLevel,
-        chiefComplaint: payload.reason,
-        finalDiagnosis: payload.finalDiagnosis,
         followUpRequired: payload.followUpRequired,
         followUpNotes: payload.followUpNotes,
         entryData: buildEntryData(),
-      }, { showSuccessToast: false, appointmentId });
+        vaccination: entryType === "vaccination" ? {
+          vaccineName: vaccineName.trim(),
+          givenDate: visitDate,
+          nextDueDate: nextDueDate || undefined,
+          notes: notes.trim() || undefined,
+        } : null,
+        physicalExam: entryType === "full_exam" && nonEmpty(physicalExamFindings)
+          ? { findings: physicalExamFindings.trim() }
+          : null,
+        problems: entryType === "full_exam" ? cleanProblems.map((problem) => ({
+          ...problem,
+          problemText: problem.problemText.trim(),
+          notes: problem.notes.trim(),
+        })) : [],
+        differentials: entryType === "full_exam" ? cleanDifferentials.map((diagnosis) => ({
+          ...diagnosis,
+          diagnosisText: diagnosis.diagnosisText.trim(),
+          notes: diagnosis.notes.trim(),
+        })) : [],
+        prescriptions: entryType === "full_exam" || entryType === "prescription_only"
+          ? cleanPrescriptions.map((prescription) => ({
+              ...prescription,
+              medication: prescription.medication.trim(),
+              dosage: prescription.dosage.trim(),
+              frequency: prescription.frequency.trim(),
+              duration: prescription.duration.trim(),
+              startDate: visitDate,
+            }))
+          : [],
+        labs: entryType === "full_exam" || entryType === "lab"
+          ? cleanLabs.map((lab) => ({ ...lab, testName: lab.testName.trim(), notes: lab.notes.trim() }))
+          : [],
+        weight: entryType === "weight_check" ? numericValue(weight) : null,
+      });
 
-      if (!savedVisit) return;
-      medicalVisitSaved = true;
-      savedVisitId = savedVisit.id;
+      await Promise.all([loadMedicalData(), loadLabOrders()]);
+      const savedVisit = {
+        id: result.visitId,
+        patientId: result.patientId,
+        date: dateInputToUiDate(visitDate),
+        vetName: result.vetName,
+        reason: result.reason,
+        diagnosis: result.finalDiagnosis || result.diagnosis,
+        treatment: result.treatment,
+        notes: result.notes,
+        attachments: 0,
+        visitType: result.visitType,
+        urgencyLevel: result.urgencyLevel,
+        chiefComplaint: result.reason,
+        finalDiagnosis: result.finalDiagnosis,
+        followUpRequired: result.followUpRequired,
+        followUpNotes: result.followUpNotes,
+        entryData: result.entryData,
+      };
 
       if (entryType === "vaccination") {
-        const { error: vaccinationError } = await supabase
-          .from("vaccinations")
-          .insert({
-            pet_id: patientId,
-            owner_id: ownerId || null,
-            visit_id: savedVisit.id,
-            vaccine_name: vaccineName.trim(),
-            given_date: visitDate,
-            next_due_date: nextDueDate || null,
-            administered_by: currentVet,
-            entry_method: "manual",
-            notes: notes.trim() || null,
-          })
-          .select("vaccination_id")
-          .single();
-
-        if (vaccinationError) {
-          // The schema has no transaction/RPC for creating both records together.
-          // Roll back the visit we just created so the two sources do not diverge.
-          const { error: rollbackError } = await supabase
-            .from("medical_visits")
-            .delete()
-            .eq("visit_id", savedVisit.id);
-
-          if (!rollbackError) {
-            medicalVisitSaved = false;
-            await loadMedicalData();
-          }
-
-          throw vaccinationError;
-        }
-
-        window.dispatchEvent(new CustomEvent(VACCINATIONS_CHANGED_EVENT, {
-          detail: { patientId },
-        }));
+        window.dispatchEvent(new CustomEvent(VACCINATIONS_CHANGED_EVENT, { detail: { patientId } }));
       }
-
-      if (entryType === "full_exam" && nonEmpty(physicalExamFindings)) {
-        const savedExam = await addPhysicalExam({
-          visitId: savedVisit.id,
-          patientId,
-          examDate: new Date(`${visitDate}T12:00:00`).toISOString(),
-          findings: physicalExamFindings.trim(),
-        });
-        if (!savedExam) throw new Error("PHYSICAL_EXAM_SAVE_FAILED");
-      }
-
-      if (entryType === "full_exam") {
-        for (const problem of cleanProblems) {
-          const savedProblem = await addMedicalProblem({
-            visitId: savedVisit.id,
-            patientId,
-            problemText: problem.problemText.trim(),
-            severity: problem.severity,
-            status: problem.status,
-            notes: problem.notes.trim(),
-          });
-          if (!savedProblem) throw new Error("MEDICAL_PROBLEM_SAVE_FAILED");
-        }
-
-        for (const diagnosis of cleanDifferentials) {
-          const savedDiagnosis = await addDifferentialDiagnosis({
-            visitId: savedVisit.id,
-            patientId,
-            diagnosisText: diagnosis.diagnosisText.trim(),
-            likelihood: diagnosis.likelihood,
-            notes: diagnosis.notes.trim(),
-          });
-          if (!savedDiagnosis) throw new Error("DIFFERENTIAL_DIAGNOSIS_SAVE_FAILED");
-        }
-      }
-
-      if (entryType === "full_exam" || entryType === "prescription_only") {
-        for (const prescription of cleanPrescriptions) {
-          const savedPrescription = await addPrescription({
-            patientId,
-            visitId: savedVisit.id,
-            medication: prescription.medication.trim(),
-            dosage: prescription.dosage.trim(),
-            frequency: prescription.frequency.trim(),
-            duration: prescription.duration.trim(),
-            startDate: visitDate,
-            prescribedBy: currentVet,
-          });
-          if (!savedPrescription) throw new Error("PRESCRIPTION_SAVE_FAILED");
-        }
-      }
-
-      if (entryType === "full_exam" || entryType === "lab") {
-        for (const lab of cleanLabs) {
-          const savedLab = await addLabOrder({
-            patientId,
-            visitId: savedVisit.id,
-            petName,
-            testName: lab.testName.trim(),
-            category: lab.category,
-            status: "ordered",
-            orderedDate: dateInputToUiDate(visitDate),
-            testDate: lab.testDate,
-            orderedBy: currentVet,
-            notes: lab.notes.trim(),
-            urgent: lab.urgent,
-          });
-          if (!savedLab) throw new Error("LAB_ORDER_SAVE_FAILED");
-        }
-      }
-
-      if (entryType === "weight_check") {
-        const parsedWeight = numericValue(weight);
-        const { error: updateWeightError } = await supabase
-          .from("patients")
-          .update({ weight: parsedWeight })
-          .eq("pet_id", patientId);
-
-        if (updateWeightError) throw updateWeightError;
-      }
-
-      persistenceComplete = true;
-      await loadMedicalData();
       setSavedVisitContext({
-        visitId: savedVisit.id,
+        visitId: result.visitId,
         entryType,
         entryLabel: entryConfig.label,
         visitDate,
@@ -788,37 +755,7 @@ export function TreatmentModal({
       toast.success(entryType === "vaccination" ? "הרשומה נשמרה והחיסון נוסף לפנקס" : "הרשומה הרפואית נשמרה");
     } catch (error) {
       console.error("Failed saving medical entry", error);
-      let rollbackFailed = false;
-      if (savedVisitId && !persistenceComplete) {
-        const childTables = [
-          "lab_orders",
-          "prescriptions",
-          "differential_diagnoses",
-          "medical_problems",
-          "physical_exams",
-          "vaccinations",
-        ];
-        const rollbackResults = await Promise.all(
-          childTables.map((table) => supabase.from(table).delete().eq("visit_id", savedVisitId)),
-        );
-        const { error: visitRollbackError } = await supabase
-          .from("medical_visits")
-          .delete()
-          .eq("visit_id", savedVisitId);
-        rollbackFailed = rollbackResults.some((result) => Boolean(result.error)) || Boolean(visitRollbackError);
-        medicalVisitSaved = rollbackFailed;
-        await loadMedicalData();
-      }
-
-      if (rollbackFailed) {
-        toast.error("חלק מנתוני הרשומה נשמרו. אין לשמור שוב לפני בדיקת התיק.");
-      } else if (entryType === "vaccination" && medicalVisitSaved) {
-        toast.error("הרשומה הרפואית נשמרה, אך החיסון לא נוסף לפנקס. אין לשמור שוב לפני בדיקה.");
-      } else if (entryType === "vaccination") {
-        toast.error("לא הצלחנו לשמור את החיסון והרשומה הרפואית");
-      } else {
-        toast.error("אירעה שגיאה בשמירת הרשומה הרפואית");
-      }
+      toast.error(error instanceof Error ? error.message : "אירעה שגיאה בשמירת הרשומה הרפואית");
     } finally {
       setIsSubmitting(false);
     }
@@ -1264,7 +1201,13 @@ export function TreatmentModal({
                 <p className="text-white/80 text-[13px] mt-1">{petName} · בעלים: {ownerName} · רופא: {currentVet}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 transition-colors" aria-label="סגור">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="p-2 rounded-xl hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="סגור"
+            >
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -1294,6 +1237,11 @@ export function TreatmentModal({
                     <AlertTriangle className="w-4 h-4" /> {errors.patient}
                   </div>
                 )}
+                {errors.form && (
+                  <div data-field="form" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 text-[14px] font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> {errors.form}
+                  </div>
+                )}
                 {renderCommonHeader()}
                 {renderDynamicForm()}
               </>
@@ -1309,7 +1257,12 @@ export function TreatmentModal({
             </div>
 
             <div className="flex items-center gap-3">
-              <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-semibold">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[14px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 ביטול
               </button>
               <button

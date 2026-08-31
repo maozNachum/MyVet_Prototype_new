@@ -26,7 +26,8 @@ const appointmentScheduleSource = readFileSync("src/app/pages/AppointmentSchedul
 const dayAppointmentsModalSource = readFileSync("src/app/components/schedule/CalendarSidebar.tsx", "utf8");
 const departmentFilterSource = readFileSync("src/app/components/schedule/DeptFilterPanel.tsx", "utf8");
 const treatmentModalSource = readFileSync("src/app/components/TreatmentModal.tsx", "utf8");
-const medicalStoreSource = readFileSync("src/app/data/MedicalStore.tsx", "utf8");
+const medicalVisitServiceSource = readFileSync("src/services/medicalVisitMutations.ts", "utf8");
+const medicalVisitMigration = readFileSync("supabase/migrations/20260826143000_atomic_medical_visit_save.sql", "utf8");
 const vetbotDrawerSource = readFileSync("src/app/components/ai/AiAssistantDrawer.tsx", "utf8");
 const vetbotAnswerSource = readFileSync("src/app/components/ai/AiStructuredAnswer.tsx", "utf8");
 const vetbotClientSource = readFileSync("src/app/components/ai/aiClient.ts", "utf8");
@@ -264,13 +265,16 @@ test("Dashboard keeps untreated overdue appointments visible and opens the pet r
   assert.match(dashboardSource, /const isOverdue = isPast && !appointment\.hasTreatment/);
   assert.match(dashboardSource, /טרם התחיל טיפול/);
   assert.doesNotMatch(dashboardSource, /isOverdueWithoutTreatment[\s\S]*setTreatmentPatient/);
-  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
-  assert.match(treatmentModalSource, /showSuccessToast: false, appointmentId/);
-  assert.match(medicalStoreSource, /appointment_id: options\.appointmentId \?\? null/);
+  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}&appointment_id=\$\{appointment\.id\}`\)/);
+  assert.match(patientsSource, /searchParams\.get\("appointment_id"\)/);
+  assert.match(patientsSource, /appointmentId=\{linkedAppointment\?\.petId === selectedPatient\.id \? linkedAppointment\.appointmentId : undefined\}/);
+  assert.match(treatmentModalSource, /saveMedicalEntryAtomic\([\s\S]*appointmentId: appointmentId \?\? null/);
+  assert.match(medicalVisitServiceSource, /myvet_save_medical_entry/);
+  assert.match(medicalVisitMigration, /set status = 'completed'/);
 });
 
 test("Dashboard appointments still allow opening the selected animal medical record", () => {
-  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}`\)/);
+  assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}&appointment_id=\$\{appointment\.id\}`\)/);
 });
 
 test("Monthly calendar opens day appointments in an anchored popover instead of the sidebar", () => {

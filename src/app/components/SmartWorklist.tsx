@@ -122,7 +122,8 @@ export function SmartWorklist() {
       safeSelect(
         supabase
           .from("appointments")
-          .select("appointment_id, start_time, appointment_type, appointment_mode, vet_name, room, department, notes")
+          .select("appointment_id, start_time, appointment_type, appointment_mode, vet_name, room, department, notes, status")
+          .neq("status", "cancelled")
           .gte("start_time", startIso)
           .lte("start_time", endIso)
           .order("start_time", { ascending: true })
