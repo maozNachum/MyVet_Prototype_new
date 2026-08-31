@@ -3,6 +3,8 @@
 עודכן: 16.07.2026  
 מסמך זה מתאר את המימוש הנמצא בריפו. אין להכניס לכאן project secrets, סיסמאות או ערכי `.env`.
 
+> הערת עדכון 31.08.2026: המסמך נשמר כמדריך ארכיטקטורה, אך תמונת המיגרציות, הסביבות והפערים העדכנית נמצאת ב־`CODEX_PARTNER_FULL_SYSTEM_HANDOFF_HE.md`, ב־`STAGING_ACCEPTANCE_EVIDENCE_2026-08-29.md` וב־`PRODUCTION_READINESS_ACTION_PLAN_2026-08-30.md`.
+
 ## 1. חיבור
 
 ה-frontend יוצר client ב-`src/services/supabaseClient.ts` באמצעות:
@@ -20,7 +22,7 @@ Edge Function מקבלת אוטומטית/דרך Supabase:
 סודות VetBot בצד השרת בלבד:
 
 - `GEMINI_API_KEY`
-- `GEMINI_MODEL` — אופציונלי; ברירת המחדל בקוד היא `gemini-2.5-flash`.
+- `GEMINI_MODEL` — אופציונלי ונבחר בצד השרת. אין ברירת מחדל אוניברסלית אחת: `ai-assistant` וה־Gateway המשותף מגדירים ברירות מחדל ורשימות fallback שונות, ולכן יש לבדוק את הפונקציה והסביבה הרלוונטיות.
 - `ALLOWED_ORIGINS`
 
 ## 2. Auth ותפקידים

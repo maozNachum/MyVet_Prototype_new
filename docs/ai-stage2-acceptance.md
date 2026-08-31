@@ -1,5 +1,7 @@
 # Stage 2 final acceptance gate
 
+> **Historical Stage 2 snapshot (2026-07-17).** It records the gate at that time and is not the current Production or Staging status. See `README.md` in this directory.
+
 Date: 2026-07-17
 
 ## Result

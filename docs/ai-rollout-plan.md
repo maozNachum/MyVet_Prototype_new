@@ -1,5 +1,7 @@
 # MyVet — תוכנית Rollout לתשתית AI, שלבים 1–2
 
+> **תוכנית היסטורית שהתרחבה בשלבים מאוחרים יותר.** אין להשתמש בה לבדה לפריסה. נוהל הפריסה העדכני הוא `PRODUCTION_RUNBOOK_HE.md` ותוכנית המשימות מ־30.08.2026.
+
 ## Stage 6 OCR gate
 
 Keep `AI_DOCUMENT_OCR_ENABLED=false` and `AI_VACCINATION_OCR_ENABLED=false` until synthetic vaccination documents pass a live-provider test outside Production. Enable the document flag first and vaccination flag second. RAG flags remain off and are not a dependency of this demo flow.

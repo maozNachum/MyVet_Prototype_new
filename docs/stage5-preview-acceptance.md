@@ -1,5 +1,7 @@
 # Stage 5 — Preview acceptance and controlled activation
 
+> **Historical blocked snapshot.** The missing-Preview and HNSW-blocked findings below were superseded by `STAGING_ACCEPTANCE_EVIDENCE_2026-08-29.md`. Keep this file only as an audit trail.
+
 Updated: 2026-07-17
 
 ## Current gate

@@ -1,5 +1,7 @@
 # MyVet — ארכיטקטורת תשתית AI מרכזית
 
+> **הערת תחזוקה 31.08.2026:** התכנון הטכני במסמך שימושי, אך סטטוסי Stage/Production שבו הם snapshots היסטוריים. מצב הסביבה נקבע לפי `README.md` בתיקייה זו, מסמך החפיפה ודוחות אוגוסט 2026.
+
 ## Stage 7 — owner-facing client summary
 
 The authenticated `client-summary` Edge Function derives an owner-facing draft only from an approved `visit_summary`. It uses the central Gateway, the versioned `client-summary.generate` prompt and strict grounding validation. The existing `client_explanation` artifact, approval history, release fields and owner RLS are reused. Approval and release are distinct veterinarian actions; the portal queries only approved, explicitly released artifacts. The capability defaults off. Full design and rollback: `docs/ai-client-summary.md`.

@@ -1,6 +1,6 @@
 # MyVet Repository Guide
 
-This file applies to the entire repository. Before substantial work, read the relevant source files and, when applicable, `docs/PROJECT_CONTEXT_HE.md`, `docs/SUPABASE_ARCHITECTURE_HE.md`, `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, and `docs/VETBOT_PRIVACY_DPIA_HE.md`.
+This file applies to the entire repository. Start with `docs/README.md` and `docs/CODEX_PARTNER_FULL_SYSTEM_HANDOFF_HE.md`. Before substantial work, read the relevant source files and, when applicable, `docs/PROJECT_CONTEXT_HE.md`, `docs/SUPABASE_ARCHITECTURE_HE.md`, `docs/PRODUCTION_RUNBOOK_HE.md`, `docs/PRODUCTION_READINESS_ACTION_PLAN_2026-08-30.md`, and `docs/VETBOT_PRIVACY_DPIA_HE.md`. `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md` is a historical implementation snapshot, not the current environment status.
 
 ## Project
 

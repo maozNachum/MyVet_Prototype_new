@@ -180,13 +180,16 @@ docs/                    תיעוד מוצר, ארכיטקטורה ותפעול
 ## תיעוד הפרויקט
 
 - [הוראות עבודה לסוכני קוד](AGENTS.md)
+- [אינדקס התיעוד ומקורות האמת](docs/README.md)
+- [מסמך חפיפה מלא למפתח או לסוכן חדש](docs/CODEX_PARTNER_FULL_SYSTEM_HANDOFF_HE.md)
 - [הקשר המוצר והמערכת](docs/PROJECT_CONTEXT_HE.md)
 - [ארכיטקטורת Supabase](docs/SUPABASE_ARCHITECTURE_HE.md)
 - [שיתוף פעולה והעברת משימות](docs/COLLABORATION_HE.md)
-- [מצב תוכנית ה־AI — שלבים 0–9](docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md)
+- [היסטוריית תוכנית ה־AI — שלבים 0–9](docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md)
 - [פעולות VetBot](docs/VETBOT_ACTIONS_HANDOFF_HE.md)
 - [תרחיש הדגמה](docs/DEMO_SCENARIO_HE.md)
 - [נוהל Production](docs/PRODUCTION_RUNBOOK_HE.md)
+- [תוכנית המשימות לקראת Production](docs/PRODUCTION_READINESS_ACTION_PLAN_2026-08-30.md)
 - [תסקיר פרטיות VetBot](docs/VETBOT_PRIVACY_DPIA_HE.md)
 
 ## ענפים ופריסה

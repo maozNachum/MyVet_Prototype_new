@@ -1,5 +1,7 @@
 # MyVet — Gap Analysis סופי
 
+> **מסמך היסטורי מ־17.07.2026.** רשימת הפערים העדכנית נמצאת ב־`PRODUCTION_READINESS_ACTION_PLAN_2026-08-30.md` וב־`COMMERCIAL_CRITICAL_GATES_SUPPLEMENT_2026-08-30.md`.
+
 עודכן: 17.07.2026
 
 סטטוס: **CONDITIONAL PASS לדמו; לא אישור Production**

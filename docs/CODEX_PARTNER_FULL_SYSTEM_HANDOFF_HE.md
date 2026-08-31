@@ -13,13 +13,14 @@ MyVet היא מערכת לניהול מרפאה וטרינרית, תיק רפו�
 לפי הסדר:
 
 1. `AGENTS.md` — כללי העבודה המחייבים לכל המאגר.
-2. `docs/PROJECT_CONTEXT_HE.md` — הקשר מוצרי ומבנה הפרויקט.
-3. `docs/SUPABASE_ARCHITECTURE_HE.md` — מבנה Supabase והרשאות.
-4. `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md` — היסטוריית שכבת ה־AI.
+2. `docs/README.md` — אינדקס התיעוד והבחנה בין מקור אמת למסמך היסטורי.
+3. `docs/PROJECT_CONTEXT_HE.md` — הקשר מוצרי ומבנה הפרויקט.
+4. `docs/SUPABASE_ARCHITECTURE_HE.md` — מבנה Supabase והרשאות.
 5. `docs/PRODUCTION_RUNBOOK_HE.md` — תפעול, פריסה ובדיקות.
 6. `docs/VETBOT_PRIVACY_DPIA_HE.md` — פרטיות, סיכוני AI ונקודות לאישור משפטי.
 7. `docs/PRODUCTION_READINESS_ACTION_PLAN_2026-08-30.md` — תוכנית המשימות העדכנית לקראת מוצר מסחרי.
 8. `docs/MYVET_PRODUCTION_READINESS_AUDIT_FINAL_2026-08-28.md` ו־`docs/COMMERCIAL_CRITICAL_GATES_SUPPLEMENT_2026-08-30.md` — ראיות בדיקה ופערים קריטיים.
+9. `docs/CODEX_HANDOFF_STAGE_0_TO_9_HE.md` — רק כאשר נדרשת היסטוריית המימוש של שכבת ה־AI; זהו snapshot היסטורי ולא סטטוס סביבה נוכחי.
 
 ## 3. כללי עבודה שאסור לעקוף
 
