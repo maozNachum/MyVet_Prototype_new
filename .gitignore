@@ -5,3 +5,7 @@ dist/
 .vscode/
 node_modules
 supabase/.temp/
+.codex-remote-attachments/
+.codex-work/
+.codex-worktrees/
+tmp/pdfs/
