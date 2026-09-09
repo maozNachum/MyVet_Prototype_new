@@ -9,6 +9,7 @@ const migrationPaths = [
   "supabase/migrations/20260716213800_ai_data_model.sql",
   "supabase/migrations/20260716213806_ai_rls_and_rpc_hardening.sql",
   "supabase/migrations/20260716213812_ai_storage_security.sql",
+  "supabase/migrations/20260908115631_revoke_inactive_staff_storage_access.sql",
 ];
 
 const rollbackPaths = [
@@ -589,6 +590,87 @@ test("tenant, owner, veterinary approval and Storage boundaries are enforced by 
     await setIdentity(db, null, "anon");
     await assert.rejects(db.query("select * from public.ai_artifacts"));
     await assert.rejects(db.query("select public.claim_owner_profile()"));
+    await resetIdentity(db);
+  } finally {
+    await db.close();
+  }
+});
+
+test("inactive staff immediately lose owner-based access to private Storage objects", async () => {
+  const db = await createDatabase();
+  try {
+    const seeded = await seedTwoClinics(db);
+    const unlinkedDocumentPath = `consents/OWNER-A/${seeded.petA}/inactive-staff-unlinked.html`;
+    const linkedDocumentPath = `consents/OWNER-A/${seeded.petA}/inactive-staff-linked.html`;
+    const unlinkedChatPath = "conversation-unlinked/inactive-staff-unlinked.pdf";
+
+    await setIdentity(db, ids.vetA);
+    await db.query(
+      `insert into storage.objects(bucket_id,name,owner) values
+        ('documents',$1,$4),
+        ('documents',$2,$4),
+        ('chat-attachments',$3,$4)`,
+      [unlinkedDocumentPath, linkedDocumentPath, unlinkedChatPath, ids.vetA],
+    );
+    await db.query(
+      `insert into public.documents(
+        clinic_id,owner_id,pet_id,file_name,file_path,mime_type,file_size,category,uploaded_by,uploaded_by_role
+      ) values ($1,'OWNER-A',$2,'linked.html',$3,'text/html',32,'anesthesia_consent',$4,'vet')`,
+      [seeded.clinicA, seeded.petA, linkedDocumentPath, ids.vetA],
+    );
+
+    const activeRows = await db.query(
+      "select name from storage.objects where name = any($1::text[]) order by name",
+      [[unlinkedDocumentPath, linkedDocumentPath, unlinkedChatPath]],
+    );
+    assert.equal(activeRows.rows.length, 3);
+    await resetIdentity(db);
+
+    await db.query("update public.staff set is_active=false where auth_user_id=$1", [ids.vetA]);
+    await setIdentity(db, ids.vetA);
+    const revokedRows = await db.query(
+      "select name from storage.objects where name = any($1::text[])",
+      [[unlinkedDocumentPath, linkedDocumentPath, unlinkedChatPath]],
+    );
+    assert.equal(revokedRows.rows.length, 0);
+    assert.equal(
+      (await db.query(
+        "update storage.objects set name=$2 where bucket_id='documents' and name=$1 returning name",
+        [unlinkedDocumentPath, `${unlinkedDocumentPath}.renamed`],
+      )).rows.length,
+      0,
+    );
+    assert.equal(
+      (await db.query(
+        "delete from storage.objects where bucket_id='chat-attachments' and name=$1 returning name",
+        [unlinkedChatPath],
+      )).rows.length,
+      0,
+    );
+    await assert.rejects(
+      db.query(
+        "insert into storage.objects(bucket_id,name,owner) values ('documents','blocked/new.html',$1)",
+        [ids.vetA],
+      ),
+    );
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.nurseA);
+    assert.equal(
+      (await db.query("select name from storage.objects where name=$1", [linkedDocumentPath])).rows.length,
+      1,
+    );
+    assert.equal(
+      (await db.query("select name from storage.objects where name=$1", [unlinkedDocumentPath])).rows.length,
+      0,
+    );
+    await resetIdentity(db);
+
+    await setIdentity(db, ids.adminB);
+    assert.equal(
+      (await db.query("select name from storage.objects where name=$1", [linkedDocumentPath])).rows.length,
+      0,
+    );
     await resetIdentity(db);
   } finally {
     await db.close();

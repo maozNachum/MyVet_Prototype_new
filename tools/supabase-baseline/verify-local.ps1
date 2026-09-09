@@ -37,6 +37,10 @@ try {
     Get-Content -LiteralPath tools\supabase-baseline\verify\acceptance.sql -Raw |
       docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
     Assert-NativeSuccess "Database acceptance check $attempt"
+
+    Get-Content -LiteralPath tools\supabase-baseline\verify\inactive-staff-storage.sql -Raw |
+      docker exec -i $Container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres
+    Assert-NativeSuccess "Inactive staff Storage acceptance check $attempt"
   }
 
   Get-Content -LiteralPath tools\supabase-baseline\verify\rag-runtime.sql -Raw |

@@ -6,6 +6,14 @@ const tenant = readFileSync("supabase/migrations/20260716213752_ai_tenant_founda
 const model = readFileSync("supabase/migrations/20260716213800_ai_data_model.sql", "utf8");
 const rls = readFileSync("supabase/migrations/20260716213806_ai_rls_and_rpc_hardening.sql", "utf8");
 const storage = readFileSync("supabase/migrations/20260716213812_ai_storage_security.sql", "utf8");
+const inactiveStaffStorageRevoke = readFileSync(
+  "supabase/migrations/20260908115631_revoke_inactive_staff_storage_access.sql",
+  "utf8",
+);
+const baselineInactiveStaffStorageRevoke = readFileSync(
+  "tools/supabase-baseline/supabase/migrations/20260908115631_revoke_inactive_staff_storage_access.sql",
+  "utf8",
+);
 const trustedMigrationGuard = readFileSync(
   "supabase/migrations/20260717145900_allow_trusted_migration_tenant_writes.sql",
   "utf8",
@@ -14,7 +22,7 @@ const authOwnerSignupGuard = readFileSync(
   "supabase/migrations/20260719150000_allow_supabase_auth_owner_signup.sql",
   "utf8",
 );
-const combined = `${tenant}\n${model}\n${rls}\n${storage}`;
+const combined = `${tenant}\n${model}\n${rls}\n${storage}\n${inactiveStaffStorageRevoke}`;
 
 test("Stage 2 creates a server-derived tenant foundation with composite entity keys", () => {
   assert.match(tenant, /create table if not exists public\.clinics/);
@@ -165,6 +173,34 @@ test("Storage is private, tenant-prefixed and has no direct owner access to AI b
   assert.doesNotMatch(storage, /create policy .*owner.*ai-(medical-documents|recordings)/i);
   assert.match(storage, /file_size_limit/);
   assert.match(storage, /allowed_mime_types/);
+});
+
+test("technical Storage ownership remains conditional on active staff membership", () => {
+  for (const policy of [
+    "myvet_staff_documents_select",
+    "myvet_staff_documents_update",
+    "myvet_staff_documents_delete",
+    "myvet_staff_chat_select",
+    "myvet_staff_chat_update",
+    "myvet_staff_chat_delete",
+  ]) {
+    assert.match(inactiveStaffStorageRevoke, new RegExp(`create policy ${policy}`));
+  }
+
+  const guardedOwnerBranches = inactiveStaffStorageRevoke.match(
+    /owner\s*=\s*\(select auth\.uid\(\)\)[\s\S]{0,100}public\.myvet_is_active_staff\(\)/g,
+  );
+  assert.equal(guardedOwnerBranches?.length, 6);
+  assert.doesNotMatch(
+    inactiveStaffStorageRevoke,
+    /owner\s*=\s*\(select auth\.uid\(\)\)\s*\n\s*or exists/,
+  );
+  assert.doesNotMatch(inactiveStaffStorageRevoke, /drop policy if exists myvet_owner_/);
+  assert.match(storage, /create policy myvet_owner_documents_select/);
+  assert.match(storage, /create policy myvet_owner_chat_select/);
+  assert.match(storage, /create policy myvet_owner_chat_insert/);
+  assert.match(storage, /create policy myvet_owner_chat_delete/);
+  assert.equal(inactiveStaffStorageRevoke, baselineInactiveStaffStorageRevoke);
 });
 
 test("pgvector payload/search remains deferred instead of fixing an unverified dimension", () => {
