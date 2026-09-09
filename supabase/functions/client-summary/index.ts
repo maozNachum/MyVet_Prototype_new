@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { AiGatewayError, asAiGatewayError } from "../_shared/ai/errors.ts";
 import { isAiCapabilityEnabled } from "../_shared/ai/featureFlags.ts";
@@ -34,10 +35,10 @@ function validateBody(value: unknown): Body {
 async function requireVet(client: SupabaseClient, userId: string, visitId: number) {
   const { data: visit } = await client.from("medical_visits").select("clinic_id,visit_id,pet_id,visit_date").eq("visit_id", visitId).maybeSingle();
   if (!visit) throw new AiGatewayError("ACCESS_DENIED", { httpStatus: 403 });
-  const { data: staff } = await client.from("staff").select("staff_id").eq("auth_user_id", userId)
+  const { data: staff } = await client.from("staff").select("staff_id,role").eq("auth_user_id", userId)
     .eq("clinic_id", visit.clinic_id).eq("role", "vet").eq("is_active", true).maybeSingle();
   if (!staff) throw new AiGatewayError("ACCESS_DENIED", { httpStatus: 403 });
-  return visit;
+  return { visit, staff };
 }
 
 async function loadState(client: SupabaseClient, visitId: number) {
@@ -79,13 +80,21 @@ Deno.serve(async (request) => {
   let body: Body;
   try { body = validateBody(JSON.parse(raw)); } catch (error) { const safe = asAiGatewayError(error); return json(request, { error: safe.code }, safe.httpStatus); }
   try {
+    const { data: mfaStaff } = await admin.from("staff").select("role")
+      .eq("auth_user_id", auth.user.id).eq("role", "vet").eq("is_active", true).limit(1).maybeSingle();
+    if (mfaStaff && !staffMfaSatisfied(authHeader, mfaStaff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     let visitId = body.visitId;
     if (!visitId && body.artifactId) {
       const { data } = await client.from("ai_artifacts").select("visit_id").eq("artifact_id", body.artifactId).eq("artifact_type", "client_explanation").maybeSingle();
       visitId = Number(data?.visit_id || 0);
     }
     if (!visitId) throw new AiGatewayError("ACCESS_DENIED", { httpStatus: 403 });
-    const visit = await requireVet(client, auth.user.id, visitId);
+    const { visit, staff } = await requireVet(client, auth.user.id, visitId);
+    if (!staffMfaSatisfied(authHeader, staff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     if (body.action === "load") return json(request, await loadState(client, visitId));
     if (!isAiCapabilityEnabled("client-summary.generate", runtimeEnv)) throw new AiGatewayError("AI_FEATURE_DISABLED", { httpStatus: 503 });
     const { data: clinicFlag } = await admin.from("ai_feature_flags").select("enabled,kill_switch").eq("clinic_id", visit.clinic_id).eq("capability", "client_explanation").maybeSingle();

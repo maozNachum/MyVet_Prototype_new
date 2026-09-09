@@ -95,6 +95,7 @@ reset role;
 
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-4000-8000-000000000003","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 
 do $$
@@ -122,6 +123,7 @@ where auth_user_id = '20000000-0000-4000-8000-000000000003';
 
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-4000-8000-000000000003","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 
 do $$
@@ -172,6 +174,7 @@ $$;
 reset role;
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000004', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-4000-8000-000000000004","role":"authenticated","aal":"aal1"}', true);
 set local role authenticated;
 
 do $$
@@ -189,6 +192,7 @@ $$;
 reset role;
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000005', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-4000-8000-000000000005","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 
 do $$
@@ -202,6 +206,7 @@ $$;
 reset role;
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-4000-8000-000000000006","role":"authenticated","aal":"aal1"}', true);
 set local role authenticated;
 
 do $$

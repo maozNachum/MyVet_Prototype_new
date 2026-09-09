@@ -41,6 +41,31 @@ try {
     Get-Content -LiteralPath tools\supabase-baseline\verify\inactive-staff-storage.sql -Raw |
       docker exec -i $Container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres
     Assert-NativeSuccess "Inactive staff Storage acceptance check $attempt"
+
+    Get-Content -LiteralPath tools\supabase-baseline\verify\auth-hardening.sql -Raw |
+      docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+    Assert-NativeSuccess "Auth hardening acceptance check $attempt"
+  }
+
+  $status = npx --yes $SupabaseCli status --workdir tools/supabase-baseline -o env
+  Assert-NativeSuccess 'Supabase Local credential lookup'
+  $localValues = @{}
+  foreach ($line in $status) {
+    if ($line -match '^([A-Z_]+)="(.*)"$') {
+      $localValues[$matches[1]] = $matches[2]
+    }
+  }
+  $env:MYVET_TEST_SUPABASE_URL = $localValues['API_URL']
+  $env:MYVET_TEST_ANON_KEY = $localValues['ANON_KEY']
+  $env:MYVET_TEST_SERVICE_ROLE_KEY = $localValues['SERVICE_ROLE_KEY']
+  try {
+    npm run test:auth-lifecycle-local
+    Assert-NativeSuccess 'Local Auth lifecycle acceptance'
+  }
+  finally {
+    Remove-Item Env:MYVET_TEST_SUPABASE_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:MYVET_TEST_ANON_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:MYVET_TEST_SERVICE_ROLE_KEY -ErrorAction SilentlyContinue
   }
 
   Get-Content -LiteralPath tools\supabase-baseline\verify\rag-runtime.sql -Raw |

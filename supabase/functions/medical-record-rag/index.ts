@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { redactText } from "../_shared/privacy.ts";
 import { asAiGatewayError, AiGatewayError } from "../_shared/ai/errors.ts";
@@ -310,6 +311,9 @@ Deno.serve(async (request) => {
   const auditRequestId = crypto.randomUUID();
   try {
     const status = await loadStatus(admin, authData.user.id, body.petId);
+    if (status.actor_kind === "staff" && !staffMfaSatisfied(authHeader, status.actor_role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     const privateNames = await loadPrivateNames(admin, status, body.petId);
     if (body.action === "status") {
       return json(request, {

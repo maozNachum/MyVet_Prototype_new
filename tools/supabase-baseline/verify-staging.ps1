@@ -92,6 +92,10 @@ try {
       -Label 'JWT role matrix' `
       -CredentialEnvFile $CredentialEnvFile
     Invoke-StagingSqlFile `
+      -Path 'tools\supabase-baseline\verify\auth-hardening.sql' `
+      -Label 'Auth hardening acceptance' `
+      -CredentialEnvFile $CredentialEnvFile
+    Invoke-StagingSqlFile `
       -Path 'tests\fixtures\previewMedicalVisitAcceptance.sql' `
       -Label 'Atomic medical visit acceptance' `
       -CredentialEnvFile $CredentialEnvFile

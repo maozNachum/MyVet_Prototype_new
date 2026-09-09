@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { protectPayload, redactText, type RedactionReport } from "../_shared/privacy.ts";
 import { AiGatewayError, asAiGatewayError } from "../_shared/ai/errors.ts";
@@ -383,6 +384,9 @@ Deno.serve(async (request) => {
   const mode = body.mode;
   const role = await resolveRole(client, authData.user.id, mode);
   if (!role) return json(request, { error: "ROLE_NOT_ALLOWED" }, 403);
+  if (!staffMfaSatisfied(authHeader, role)) {
+    return json(request, { error: "MFA_REQUIRED" }, 403);
+  }
 
   const actionDecision = body?.actionDecision;
   if (actionDecision) {

@@ -10,6 +10,7 @@ import { MedicalStoreProvider } from "../data/MedicalStore";
 import { AppointmentStoreProvider } from "../data/AppointmentStore";
 import { LabStoreProvider } from "../data/LabStore";
 import { AiAssistantShell } from "../components/ai/AiAssistantShell";
+import { requiresStaffMfa } from "../../services/authSecurity";
 
 export function Layout() {
   const navigate = useNavigate();
@@ -34,6 +35,16 @@ export function Layout() {
         const staffRole = String(staffProfile?.role || "") as StaffType;
         if (staffError || !staffProfile || !allowedRoles.includes(staffRole)) {
           throw new Error("NO_STAFF_ACCESS");
+        }
+
+        if (requiresStaffMfa(staffRole)) {
+          const { data: assurance, error: assuranceError } =
+            await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (assuranceError) throw assuranceError;
+          if (assurance.currentLevel !== "aal2") {
+            if (mounted) navigate("/mfa", { replace: true });
+            return;
+          }
         }
 
         localStorage.setItem("myvet_staff_type", staffRole);

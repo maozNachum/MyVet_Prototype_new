@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { asAiGatewayError, AiGatewayError } from "../_shared/ai/errors.ts";
 import { isAiCapabilityEnabled } from "../_shared/ai/featureFlags.ts";
@@ -150,13 +151,21 @@ Deno.serve(async (request) => {
   }
 
   try {
+    const { data: mfaStaff } = await admin.from("staff").select("role")
+      .eq("auth_user_id", authData.user.id).eq("role", "vet").eq("is_active", true).limit(1).maybeSingle();
+    if (mfaStaff && !staffMfaSatisfied(authHeader, mfaStaff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     let visitId = body.visitId;
     if (!visitId && body.artifactId) {
       const { data: artifact } = await client.from("ai_artifacts").select("visit_id").eq("artifact_id", body.artifactId).maybeSingle();
       visitId = Number(artifact?.visit_id || 0);
     }
     if (!visitId) throw new AiGatewayError("AI_INPUT_INVALID", { httpStatus: 404 });
-    const { visit } = await requireVeterinarianForVisit(client, authData.user.id, visitId);
+    const { visit, staff } = await requireVeterinarianForVisit(client, authData.user.id, visitId);
+    if (!staffMfaSatisfied(authHeader, staff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
 
     if (body.action === "load") return json(request, await loadSummaries(client, visitId));
 

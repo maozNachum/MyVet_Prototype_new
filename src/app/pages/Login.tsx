@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { supabase } from "../../services/supabaseClient";
+import {
+  PASSWORD_POLICY_MESSAGE,
+  PASSWORD_POLICY_REGEX,
+  requiresStaffMfa,
+} from "../../services/authSecurity";
 import type { StaffType } from "../data/staffAuth";
 
 const heroImage =
@@ -40,8 +45,6 @@ type FormErrors = Partial<Record<FormField, string>>;
 const ISRAELI_ID_REGEX = /^\d{9}$/;
 const ISRAELI_PHONE_REGEX = /^05\d{8}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_POLICY_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
-const MIN_PASSWORD_LENGTH = 6;
 const TERMS_VERSION = "myvet-owner-portal-v1";
 
 function onlyDigits(value: string) {
@@ -62,7 +65,10 @@ function getErrorMessage(error: unknown) {
     return "ההרשמה אינה זמינה כרגע. פנו למרפאה לקבלת עזרה.";
   }
   if (/rate limit|too many requests/i.test(rawMessage)) {
-    return "בוצעו יותר מדי ניסיונות הרשמה. המתינו כמה דקות ונסו שוב.";
+    return "בוצעו יותר מדי ניסיונות. המתינו כמה דקות ונסו שוב.";
+  }
+  if (/weak_password|password.*weak|password.*short/i.test(rawMessage)) {
+    return PASSWORD_POLICY_MESSAGE;
   }
   if (/invalid.*email|email.*invalid/i.test(rawMessage)) {
     return "כתובת האימייל אינה תקינה. בדקו אותה ונסו שוב.";
@@ -199,7 +205,7 @@ export function Login() {
     if (!EMAIL_REGEX.test(normalizedEmail))
       errors.email = "הזינו כתובת אימייל תקינה.";
     if (!PASSWORD_POLICY_REGEX.test(password)) {
-      errors.password = `הסיסמה חייבת להכיל לפחות ${MIN_PASSWORD_LENGTH} תווים, אות באנגלית ומספר.`;
+      errors.password = PASSWORD_POLICY_MESSAGE;
     }
     if (!confirmPassword)
       errors.confirmPassword = "הזינו שוב את הסיסמה לאימות.";
@@ -420,6 +426,16 @@ export function Login() {
       );
       localStorage.setItem("myvet_staff_id", staffProfile.staff_id || "");
 
+      if (requiresStaffMfa(staffRole)) {
+        const { data: assurance, error: assuranceError } =
+          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (assuranceError) throw assuranceError;
+        if (assurance.currentLevel !== "aal2") {
+          navigate("/mfa");
+          return;
+        }
+      }
+
       navigate("/");
     } catch (error) {
       const message = getErrorMessage(error);
@@ -476,7 +492,7 @@ export function Login() {
     const errors: FormErrors = {};
 
     if (!PASSWORD_POLICY_REGEX.test(password)) {
-      errors.password = `הסיסמה חייבת להכיל לפחות ${MIN_PASSWORD_LENGTH} תווים, אות באנגלית ומספר.`;
+      errors.password = PASSWORD_POLICY_MESSAGE;
     }
     if (!confirmPassword) {
       errors.confirmPassword = "הזינו שוב את הסיסמה לאימות.";
@@ -962,7 +978,7 @@ export function Login() {
                   </div>
                   {((role === "owner" && isSignUp) || isPasswordRecovery) && (
                     <p className="mt-2 text-[12px] font-medium text-gray-500">
-                      לפחות 6 תווים, אות באנגלית ומספר.
+                      לפחות 12 תווים, אות גדולה, אות קטנה, מספר וסימן מיוחד.
                     </p>
                   )}
                   <ErrorText id="password-error" message={formErrors.password} />

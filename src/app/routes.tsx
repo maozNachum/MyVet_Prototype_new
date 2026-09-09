@@ -5,6 +5,7 @@ import { AiAssistantShell } from "./components/ai/AiAssistantShell";
 
 const Layout = lazy(() => import("./pages/Layout").then((module) => ({ default: module.Layout })));
 const Login = lazy(() => import("./pages/Login").then((module) => ({ default: module.Login })));
+const StaffMfa = lazy(() => import("./pages/StaffMfa").then((module) => ({ default: module.StaffMfa })));
 const Dashboard = lazy(() => import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })));
 const AppointmentSchedule = lazy(() => import("./pages/AppointmentSchedule").then((module) => ({ default: module.AppointmentSchedule })));
 const NewAppointment = lazy(() => import("./pages/NewAppointment").then((module) => ({ default: module.NewAppointment })));
@@ -36,6 +37,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     Component: Login,
+  },
+  {
+    path: "/mfa",
+    Component: StaffMfa,
   },
   {
     path: "/portal",

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { AiGatewayError, asAiGatewayError } from "../_shared/ai/errors.ts";
 import { isAiCapabilityEnabled } from "../_shared/ai/featureFlags.ts";
@@ -118,7 +119,15 @@ Deno.serve(async (request) => {
   catch (error) { const safe = asAiGatewayError(error); return response(request, { error: safe.code }, safe.httpStatus); }
 
   try {
-    const { session } = await requireVeterinarianSession(client, auth.user.id, body.videoSessionId);
+    const { data: mfaStaff } = await admin.from("staff").select("role")
+      .eq("auth_user_id", auth.user.id).eq("role", "vet").eq("is_active", true).limit(1).maybeSingle();
+    if (mfaStaff && !staffMfaSatisfied(authHeader, mfaStaff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
+    const { session, staff } = await requireVeterinarianSession(client, auth.user.id, body.videoSessionId);
+    if (!staffMfaSatisfied(authHeader, staff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     await cleanupExpired(admin, session.clinic_id, auth.user.id);
     const flags = await clinicFlags(admin, session.clinic_id);
     if (body.action === "status") return response(request, { session, flags, noticeVersion: NOTICE_VERSION });

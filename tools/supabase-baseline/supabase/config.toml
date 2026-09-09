@@ -1,1 +1,55 @@
 project_id = "myvet-baseline"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/portal",
+  "http://localhost:5173/login?mode=recovery&role=owner",
+  "http://localhost:5173/login?mode=recovery&role=staff"
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.rate_limit]
+email_sent = 2
+sms_sent = 30
+anonymous_users = 1
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+web3 = 1
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "1m"
+otp_length = 6
+otp_expiry = 900
+
+[auth.sessions]
+timebox = "12h"
+inactivity_timeout = "1h"
+
+[auth.mfa]
+max_enrolled_factors = 3
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+otp_length = 6
+template = "Your code is {{ .Code }}"
+max_frequency = "1m"

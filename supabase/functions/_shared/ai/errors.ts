@@ -21,6 +21,7 @@ export type AiGatewayErrorCode =
   | "DIGITALCARE_VISIT_CREATE_FAILED"
   | "FOLLOW_UP_ACCESS_DENIED"
   | "FOLLOW_UP_APPROVED_SOURCE_REQUIRED"
+  | "MFA_REQUIRED"
   | "RAG_ACCESS_DENIED"
   | "RAG_INDEX_UNAVAILABLE"
   | "RAG_SEARCH_UNAVAILABLE";
@@ -48,6 +49,7 @@ const PUBLIC_MESSAGES: Record<AiGatewayErrorCode, string> = {
   DIGITALCARE_VISIT_CREATE_FAILED: "The DigitalCare visit could not be created.",
   FOLLOW_UP_ACCESS_DENIED: "The follow-up source is not available.",
   FOLLOW_UP_APPROVED_SOURCE_REQUIRED: "An approved source is required for follow-up suggestions.",
+  MFA_REQUIRED: "Additional authentication is required.",
   RAG_ACCESS_DENIED: "The requested medical record is not available.",
   RAG_INDEX_UNAVAILABLE: "Medical record indexing is temporarily unavailable.",
   RAG_SEARCH_UNAVAILABLE: "Medical record search is temporarily unavailable.",

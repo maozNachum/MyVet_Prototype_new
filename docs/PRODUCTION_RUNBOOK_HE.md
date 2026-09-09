@@ -8,6 +8,8 @@
 
 ## סדר פריסה מחייב
 
+מדיניות הסיסמאות, MFA, הסשנים, שחזור החשבון והפעולות הידניות ב־Supabase Auth מוגדרות ב־`docs/AUTH_HARDENING_POLICY_HE.md`. יש לאמת אותה ב־Staging לפני כל החלה על Production.
+
 1. לעבוד מתיקיית הפרויקט הראשית בלבד. אין לבצע `link` או `db push` מתוך `tools/supabase-baseline`.
 2. לקבע את כלי Supabase לגרסה המאומתת: `npx --yes supabase@2.116.0`. אין להשתמש ב־`@latest` בזמן release.
 3. להגדיר בכתב את סביבת היעד ואת ה־project ref שאושר. עבור Production נדרש אישור מפורש נפרד; ללא אישור עוצרים.

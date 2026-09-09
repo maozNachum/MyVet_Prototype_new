@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.2";
+import { staffMfaSatisfied } from "../_shared/authSecurity.ts";
 import { asAiGatewayError } from "../_shared/ai/errors.ts";
 import { isAiCapabilityEnabled } from "../_shared/ai/featureFlags.ts";
 import { runDocumentExtractionGateway, runtimeEnv, telemetryFromError } from "../_shared/ai/gateway.ts";
@@ -110,16 +111,18 @@ Deno.serve(async (request) => {
     const capability = documentKind === "vaccination_sticker" || documentKind === "vaccination_book"
       ? "vaccination.ocr" as const
       : "document.ocr" as const;
-    if (!isAiCapabilityEnabled(capability, runtimeEnv)) {
-      return json(request, { error: "AI_FEATURE_DISABLED" }, 503);
-    }
-
     const { data: staff } = await admin.from("staff").select("clinic_id,role,is_active")
       .eq("auth_user_id", authData.user.id).eq("is_active", true).maybeSingle();
     const { data: owner } = staff ? { data: null } : await admin.from("owners").select("clinic_id,owner_id")
       .eq("auth_user_id", authData.user.id).maybeSingle();
     const staffAllowed = Boolean(staff && ["clinic_admin", "vet", "nurse"].includes(staff.role));
+    if (staffAllowed && !staffMfaSatisfied(authHeader, staff?.role)) {
+      return json(request, { error: "MFA_REQUIRED" }, 403);
+    }
     if (!staffAllowed && !owner) return json(request, { error: "ACCESS_DENIED" }, 403);
+    if (!isAiCapabilityEnabled(capability, runtimeEnv)) {
+      return json(request, { error: "AI_FEATURE_DISABLED" }, 503);
+    }
     const clinicId = String(staff?.clinic_id || owner?.clinic_id || "");
     const { data: pet } = await admin.from("patients").select("pet_id,owner_id,clinic_id")
       .eq("pet_id", petId).eq("clinic_id", clinicId).maybeSingle();
