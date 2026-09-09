@@ -94,6 +94,17 @@ type DashboardData = {
   inventory: any[];
 };
 
+type DashboardLoadSection =
+  | "נתוני המרפאה"
+  | "תורים"
+  | "פניות"
+  | "בדיקות מעבדה"
+  | "אשפוזים"
+  | "תשלומים"
+  | "מלאי"
+  | "מצב טיפולים"
+  | "פרטי מטופלים";
+
 type WorkItem = {
   id: string;
   title: string;
@@ -388,7 +399,7 @@ export function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({ appointments: [], conversations: [], labs: [], hospitalizations: [], payments: [], inventory: [] });
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
   const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false);
-  const [dashboardLoadWarning, setDashboardLoadWarning] = useState(false);
+  const [dashboardLoadFailures, setDashboardLoadFailures] = useState<DashboardLoadSection[]>([]);
   const [lastUpdated, setLastUpdated] = useState("");
 
   const navigate = useNavigate();
@@ -530,10 +541,22 @@ export function Dashboard() {
         supabase.from("inventory").select("item_id, item_name, category, stock_quantity, low_stock_threshold, price"),
       ]);
 
-      const dashboardResults = [appointmentsResult, conversationsResult, labsResult, hospitalizationsResult, paymentsResult, inventoryResult];
-      const hasBaseLoadWarning = dashboardResults.some((result) => (
-        result.status === "rejected" || Boolean(result.value.error)
-      ));
+      const dashboardSections = [
+        { label: "תורים" as const, result: appointmentsResult },
+        { label: "פניות" as const, result: conversationsResult },
+        { label: "בדיקות מעבדה" as const, result: labsResult },
+        { label: "אשפוזים" as const, result: hospitalizationsResult },
+        { label: "תשלומים" as const, result: paymentsResult },
+        { label: "מלאי" as const, result: inventoryResult },
+      ];
+      const failedSections: DashboardLoadSection[] = dashboardSections
+        .filter(({ result }) => result.status === "rejected" || Boolean(result.value.error))
+        .map(({ label }) => label);
+      const failureCodes = dashboardSections.flatMap(({ label, result }) => {
+        if (result.status === "rejected") return [{ section: label, code: "REQUEST_REJECTED" }];
+        if (result.value.error) return [{ section: label, code: result.value.error.code || "QUERY_FAILED" }];
+        return [];
+      });
 
       const rawAppointments = appointmentsResult.status === "fulfilled" && !appointmentsResult.value.error ? (appointmentsResult.value.data || []) as any[] : [];
       const appointmentIds = rawAppointments.map((item) => Number(item.appointment_id)).filter(Number.isFinite);
@@ -553,13 +576,16 @@ export function Dashboard() {
       }
       const petIds = Array.from(new Set(rawAppointments.map((item) => item.pet_id).filter(Boolean).map((item) => Number(item))));
       const petMap = new Map<number, { petName: string; petSpecies: string; ownerName: string; ownerPhone: string }>();
+      let appointmentDetailsLookupFailed = false;
 
       if (petIds.length > 0) {
-        const { data: patientRows } = await supabase.from("patients").select("pet_id, pet_name, species, owner_id").in("pet_id", petIds);
-        const ownerIds = Array.from(new Set(((patientRows || []) as any[]).map((row) => row.owner_id).filter(Boolean)));
+        const { data: patientRows, error: patientsError } = await supabase.from("patients").select("pet_id, pet_name, species, owner_id").in("pet_id", petIds);
+        appointmentDetailsLookupFailed = Boolean(patientsError);
+        const ownerIds = patientsError ? [] : Array.from(new Set(((patientRows || []) as any[]).map((row) => row.owner_id).filter(Boolean)));
         const ownersById = new Map<string, OwnerRow>();
         if (ownerIds.length > 0) {
-          const { data: ownerRows } = await supabase.from("owners").select("owner_id, owner_first_name, owner_last_name, phone, email, address").in("owner_id", ownerIds);
+          const { data: ownerRows, error: ownersError } = await supabase.from("owners").select("owner_id, owner_first_name, owner_last_name, phone, email, address").in("owner_id", ownerIds);
+          appointmentDetailsLookupFailed ||= Boolean(ownersError);
           for (const owner of (ownerRows || []) as OwnerRow[]) ownersById.set(String(owner.owner_id), owner);
         }
         for (const row of (patientRows || []) as any[]) {
@@ -595,7 +621,18 @@ export function Dashboard() {
         } as AppointmentItem;
       });
 
-      setDashboardLoadWarning(hasBaseLoadWarning || treatmentLookupFailed);
+      if (treatmentLookupFailed) failedSections.push("מצב טיפולים");
+      if (appointmentDetailsLookupFailed) failedSections.push("פרטי מטופלים");
+      const uniqueFailedSections = Array.from(new Set(failedSections));
+      setDashboardLoadFailures(uniqueFailedSections);
+      if (uniqueFailedSections.length > 0) {
+        console.warn("Dashboard data partially unavailable", {
+          sections: uniqueFailedSections,
+          codes: failureCodes,
+          treatmentLookupFailed,
+          appointmentDetailsLookupFailed,
+        });
+      }
 
       setDashboardData({
         appointments,
@@ -615,8 +652,9 @@ export function Dashboard() {
       });
       setLastUpdated(new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }));
     } catch (error) {
-      console.error("Failed to load dashboard data", error);
-      setDashboardLoadWarning(true);
+      const errorCode = typeof error === "object" && error && "code" in error ? String(error.code) : "UNEXPECTED_ERROR";
+      console.error("Failed to load dashboard data", { code: errorCode });
+      setDashboardLoadFailures(["נתוני המרפאה"]);
     } finally {
       setIsDashboardLoading(false);
       setIsDashboardRefreshing(false);
@@ -837,11 +875,13 @@ export function Dashboard() {
           </div>
         </header>
 
-        {dashboardLoadWarning && (
+        {dashboardLoadFailures.length > 0 && (
           <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between" role="status">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-              <p className="text-[13px] font-medium">חלק מנתוני המרפאה לא נטענו. הנתונים שכן התקבלו מוצגים כרגיל.</p>
+              <p className="text-[13px] font-medium">
+                לא הצלחנו לטעון: {dashboardLoadFailures.join(", ")}. הנתונים שכן התקבלו מוצגים כרגיל.
+              </p>
             </div>
             <button type="button" onClick={() => loadDashboardData()} className="self-start rounded-xl border border-amber-200 bg-white px-3 py-2 text-[13px] font-bold text-amber-800 hover:bg-amber-100 sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30">
               נסה שוב

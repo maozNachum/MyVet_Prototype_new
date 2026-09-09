@@ -22,6 +22,7 @@ import { clearAiConversations } from "../components/ai/aiConversationStorage";
 import { ClientMedicalReports } from "../components/ClientMedicalReports";
 import { VaccinationBook } from "../components/VaccinationBook";
 import { supabase } from "../../services/supabaseClient";
+import { claimOwnerProfile, OwnerProfileClaimError } from "../../services/ownerProfileClaim";
 import { cancelAppointment, rescheduleAppointment } from "../../services/appointmentMutations";
 import { clearStaffSession } from "../data/staffAuth";
 import { ensureNoAppointmentConflict } from "../data/AppointmentStore";
@@ -541,11 +542,9 @@ export function ClientPortal() {
 
         // קישור מאובטח מתבצע בשרת לפי האימייל המאומת שב-JWT. הדפדפן אינו
         // מקבל הרשאה לחפש רשומות לקוח לפי כתובת אימייל.
-        if (!ownerData && authUser.email) {
-          const { data: claimedOwnerId, error: claimOwnerError } = await supabase.rpc("claim_owner_profile");
-          if (claimOwnerError) {
-            console.warn("Owner profile could not be linked securely:", claimOwnerError.code);
-          } else if (claimedOwnerId) {
+        if (!ownerData) {
+          const claimedOwnerId = await claimOwnerProfile();
+          if (claimedOwnerId) {
             const { data: claimedOwner, error: claimedOwnerError } = await supabase
               .from("owners")
               .select(ownerSelect)
@@ -558,7 +557,7 @@ export function ClientPortal() {
 
         if (!ownerData) {
           clearPortalData();
-          setPortalError("התחברת בהצלחה, אבל לא נמצא כרטיס בעלים שמחובר לחשבון הזה. בדקו שבטבלת owners קיימת שורה עם אותו אימייל או עם auth_user_id מתאים.");
+          setPortalError("לא נמצא אזור אישי שמחובר לחשבון הזה. פנו למרפאה לחיבור החשבון.");
           return;
         }
       }
@@ -860,7 +859,10 @@ export function ClientPortal() {
         })
       );
     } catch (error) {
-      console.error("Error loading owner portal from Supabase:", error);
+      const safeErrorCode = error instanceof OwnerProfileClaimError
+        ? error.code
+        : "PORTAL_LOAD_FAILED";
+      console.error("Error loading owner portal from Supabase:", { code: safeErrorCode });
       setOwnerProfile(null);
       setPets([]);
       setAppointments([]);
@@ -871,7 +873,11 @@ export function ClientPortal() {
       setDigitalMessages([]);
       setDigitalAttachments([]);
       setSelectedConversationId(null);
-      setPortalError("לא הצלחנו לטעון את האזור האישי. נסה לרענן את הדף או פנה למרפאה.");
+      setPortalError(
+        error instanceof OwnerProfileClaimError
+          ? error.message
+          : "לא הצלחנו לטעון את האזור האישי. נסו לרענן את הדף או פנו למרפאה.",
+      );
     } finally {
       setIsPortalLoading(false);
     }

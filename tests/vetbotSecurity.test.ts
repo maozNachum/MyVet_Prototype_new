@@ -16,6 +16,7 @@ const aiGateway = readFileSync("supabase/functions/_shared/ai/gateway.ts", "utf8
 const aiSchemas = readFileSync("supabase/functions/_shared/ai/schemas.ts", "utf8");
 const aiFeatures = readFileSync("supabase/functions/_shared/ai/featureFlags.ts", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
+const ownerClaimService = readFileSync("src/services/ownerProfileClaim.ts", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
@@ -134,7 +135,8 @@ test("MyVet blocks anonymous database access and enables RLS", () => {
 
 test("Owner linking uses the verified JWT email only on the server", () => {
   assert.match(rlsMigration, /auth\.jwt\(\)\s*->>\s*'email'/);
-  assert.match(portalSource, /rpc\("claim_owner_profile"\)/);
+  assert.match(portalSource, /claimOwnerProfile\(\)/);
+  assert.match(ownerClaimService, /rpc\("claim_owner_profile"\)/);
   assert.doesNotMatch(portalSource, /\.eq\("email",\s*authUser\.email\)/);
 });
 
@@ -275,6 +277,13 @@ test("Dashboard keeps untreated overdue appointments visible and opens the pet r
 
 test("Dashboard appointments still allow opening the selected animal medical record", () => {
   assert.match(dashboardSource, /navigate\(`\/patients\?selected=\$\{appointment\.petId\}&appointment_id=\$\{appointment\.id\}`\)/);
+});
+
+test("Dashboard identifies the section that failed without exposing database errors in the UI", () => {
+  assert.match(dashboardSource, /const \[dashboardLoadFailures, setDashboardLoadFailures\]/);
+  assert.match(dashboardSource, /לא הצלחנו לטעון: \{dashboardLoadFailures\.join\(", "\)\}/);
+  assert.match(dashboardSource, /Dashboard data partially unavailable/);
+  assert.doesNotMatch(dashboardSource, /\{result\.value\.error\.message\}/);
 });
 
 test("Monthly calendar opens day appointments in an anchored popover instead of the sidebar", () => {

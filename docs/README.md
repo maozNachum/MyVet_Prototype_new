@@ -21,6 +21,10 @@
 - [`COLLABORATION_HE.md`](COLLABORATION_HE.md) — עבודה מקבילה; הגדרות Vercel החיות נבדקות לפני כל פריסה.
 - [`VETBOT_ACTIONS_HANDOFF_HE.md`](VETBOT_ACTIONS_HANDOFF_HE.md) — פעולות VetBot והבנת עברית.
 - [`VETBOT_PRIVACY_DPIA_HE.md`](VETBOT_PRIVACY_DPIA_HE.md) — בסיס הנדסי לפרטיות; אינו ייעוץ משפטי.
+- [`PRIVACY_RELEASE_GATE_2026-09-06_HE.md`](PRIVACY_RELEASE_GATE_2026-09-06_HE.md) — שער 3.6, סטטוס, אחריות ותנאי יציאה לשוק.
+- [`PRIVACY_DATA_MAP_HE.md`](PRIVACY_DATA_MAP_HE.md) — מפת המידע, מטרות העיבוד והזרימות לספקים.
+- [`PRIVACY_VENDOR_REGISTER_HE.md`](PRIVACY_VENDOR_REGISTER_HE.md) — ספקים, DPA, תתי־מעבדים והעברות לחו״ל.
+- [`PRIVACY_OPERATIONS_RUNBOOK_HE.md`](PRIVACY_OPERATIONS_RUNBOOK_HE.md) — טיפול בבקשות פרטיות ובאירועי מידע.
 - [`DEMO_SCENARIO_HE.md`](DEMO_SCENARIO_HE.md) — תרחיש הצגה בלבד, לא שער Production.
 
 ## תיעוד ממוקד ליכולות AI

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { MyVetLogo } from "../components/MyVetLogo";
 import { supabase } from "../../services/supabaseClient";
+import { claimOwnerProfile } from "../../services/ownerProfileClaim";
 import type { StaffType } from "../data/staffAuth";
 
 const heroImage =
@@ -337,10 +338,13 @@ export function Login() {
         if (ownerByAuthError) throw ownerByAuthError;
 
         if (!ownerByAuth) {
-          const { data: claimedOwnerId, error: claimOwnerError } =
-            await supabase.rpc("claim_owner_profile");
-
-          if (claimOwnerError) throw claimOwnerError;
+          let claimedOwnerId: string | null;
+          try {
+            claimedOwnerId = await claimOwnerProfile();
+          } catch (claimError) {
+            await supabase.auth.signOut();
+            throw claimError;
+          }
 
           if (!claimedOwnerId) {
             await supabase.auth.signOut();

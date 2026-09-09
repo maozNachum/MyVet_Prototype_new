@@ -15,6 +15,7 @@ const metadataSanitizer = readFileSync(
   "supabase/migrations/20260719151000_sanitize_owner_signup_metadata.sql",
   "utf8",
 );
+const ownerClaimService = readFileSync("src/services/ownerProfileClaim.ts", "utf8");
 
 test("owner signup does not query or mutate owner rows before authentication", () => {
   const signupStart = login.indexOf('if (role === "owner" && isSignUp)');
@@ -25,7 +26,8 @@ test("owner signup does not query or mutate owner rows before authentication", (
   assert.doesNotMatch(beforeAuth, /\.from\("owners"\)/);
   assert.match(login, /phone:\s*normalizedPhone/);
   assert.match(login, /terms_version:\s*TERMS_VERSION/);
-  assert.match(login, /rpc\("claim_owner_profile"\)/);
+  assert.match(login, /claimOwnerProfile\(\)/);
+  assert.match(ownerClaimService, /rpc\("claim_owner_profile"\)/);
   assert.doesNotMatch(login, /\.eq\("email",\s*normalizedEmail\)/);
 });
 

@@ -1,5 +1,6 @@
 import { Accessibility, ArrowRight, Eye, Keyboard, Mail, MessageCircleWarning } from "lucide-react";
 import { Link } from "react-router";
+import { Footer } from "../components/Footer";
 import { MyVetLogo } from "../components/MyVetLogo";
 
 const accessibilityAdjustments = [
@@ -22,16 +23,15 @@ const accessibilityAdjustments = [
 
 export function AccessibilityStatement() {
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
+    <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-slate-50 text-slate-900 outline-none"
+      className="flex min-h-screen flex-col bg-gradient-to-b from-blue-50 via-white to-slate-50 text-slate-900"
       style={{ fontFamily: "'Heebo', sans-serif" }}
     >
+      <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
       <header className="border-b border-blue-100 bg-[#1e40af] text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
-          <Link to="/login" className="inline-flex items-center gap-2 rounded-lg text-[13px] font-bold text-blue-100 hover:text-white focus-visible:outline-none">
+          <Link to="/" className="inline-flex items-center gap-2 rounded-lg text-[13px] font-bold text-blue-100 hover:text-white focus-visible:outline-none">
             <ArrowRight className="h-4 w-4" aria-hidden="true" /> חזרה ל־MyVet
           </Link>
           <div className="h-14 w-24 text-white">
@@ -92,6 +92,8 @@ export function AccessibilityStatement() {
           </a>
         </section>
       </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }
