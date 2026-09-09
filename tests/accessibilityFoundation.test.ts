@@ -18,9 +18,19 @@ test("accessibility statement is public, reportable and does not claim unverifie
 
   assert.match(routes, /path: "\/accessibility"/);
   assert.match(footer, /to="\/accessibility"/);
+  assert.match(statement, /import \{ Footer \}/);
+  assert.match(statement, /<Link to="\/login"[\s\S]*חזרה ל־MyVet/);
+  assert.match(statement, /<Footer \/>/);
   assert.match(statement, /mailto:info@myvet\.co\.il\?subject=/);
   assert.match(statement, /טרם עברה בדיקת התאמה מלאה/);
   assert.match(statement, /איננו מצהירים בשלב זה על עמידה מלאה/);
+});
+
+test("public privacy and terms surface keeps the shared information footer", () => {
+  const privacy = read("src/app/pages/PrivacyPolicy.tsx");
+  assert.match(privacy, /import \{ Footer \}/);
+  assert.match(privacy, /id="terms"/);
+  assert.match(privacy, /<Footer \/>/);
 });
 
 test("global keyboard focus and reduced-motion preferences remain visible", () => {

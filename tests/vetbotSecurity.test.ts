@@ -16,6 +16,7 @@ const aiGateway = readFileSync("supabase/functions/_shared/ai/gateway.ts", "utf8
 const aiSchemas = readFileSync("supabase/functions/_shared/ai/schemas.ts", "utf8");
 const aiFeatures = readFileSync("supabase/functions/_shared/ai/featureFlags.ts", "utf8");
 const portalSource = readFileSync("src/app/pages/ClientPortal.tsx", "utf8");
+const ownerClaimService = readFileSync("src/services/ownerProfileClaim.ts", "utf8");
 const bookingSource = readFileSync("src/app/components/OwnerBookAppointment.tsx", "utf8");
 const newAppointmentSource = readFileSync("src/app/pages/NewAppointment.tsx", "utf8");
 const vaccinationSource = readFileSync("src/app/components/VaccinationBook.tsx", "utf8");
@@ -134,7 +135,8 @@ test("MyVet blocks anonymous database access and enables RLS", () => {
 
 test("Owner linking uses the verified JWT email only on the server", () => {
   assert.match(rlsMigration, /auth\.jwt\(\)\s*->>\s*'email'/);
-  assert.match(portalSource, /rpc\("claim_owner_profile"\)/);
+  assert.match(portalSource, /claimOwnerProfile\(\)/);
+  assert.match(ownerClaimService, /rpc\("claim_owner_profile"\)/);
   assert.doesNotMatch(portalSource, /\.eq\("email",\s*authUser\.email\)/);
 });
 

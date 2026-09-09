@@ -16,12 +16,14 @@ const admin = createClient(url, serviceRoleKey, {
 const suffix = randomUUID().slice(0, 8);
 const userEmail = `auth-admin-${suffix}@example.invalid`;
 const weakEmail = `auth-weak-${suffix}@example.invalid`;
+const ownerEmail = `auth-owner-${suffix}@example.invalid`;
 const password = "MyVet!Local#2026";
 const clinicId = randomUUID();
 const staffId = randomUUID();
 const ownerId = `AUTH-${suffix.toUpperCase()}`;
 const petId = 970000 + Math.floor(Math.random() * 20000);
 let userId = null;
+let ownerUserId = null;
 
 function decodeBase32(value) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -76,6 +78,15 @@ try {
     "create test user",
   );
   userId = created.user.id;
+  const createdOwner = await requireNoError(
+    await admin.auth.admin.createUser({
+      email: ownerEmail,
+      password,
+      email_confirm: true,
+    }),
+    "create privacy owner",
+  );
+  ownerUserId = createdOwner.user.id;
 
   await requireNoError(
     await admin.from("clinics").insert({
@@ -102,7 +113,8 @@ try {
     await admin.from("owners").insert({
       owner_id: ownerId,
       clinic_id: clinicId,
-      email: `owner-${suffix}@example.invalid`,
+      auth_user_id: ownerUserId,
+      email: ownerEmail,
     }),
     "create test owner",
   );
@@ -125,11 +137,57 @@ try {
     "sign in test admin",
   );
 
+  const ownerClientA = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const ownerClientB = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  await requireNoError(
+    await ownerClientA.auth.signInWithPassword({ email: ownerEmail, password }),
+    "sign in privacy owner A",
+  );
+  await requireNoError(
+    await ownerClientB.auth.signInWithPassword({ email: ownerEmail, password }),
+    "sign in privacy owner B",
+  );
+  const [privacyRequestA, privacyRequestB] = await Promise.all([
+    ownerClientA.rpc("myvet_submit_privacy_request", {
+      requested_type: "access",
+      requested_details: "first concurrent request",
+    }),
+    ownerClientB.rpc("myvet_submit_privacy_request", {
+      requested_type: "access",
+      requested_details: "second concurrent request",
+    }),
+  ]);
+  const privacyRequestIdA = await requireNoError(privacyRequestA, "submit privacy request A");
+  const privacyRequestIdB = await requireNoError(privacyRequestB, "submit privacy request B");
+  assert.equal(privacyRequestIdA, privacyRequestIdB, "Concurrent privacy requests created different rows.");
+  const openRequests = await requireNoError(
+    await admin
+      .from("privacy_requests")
+      .select("request_id")
+      .eq("clinic_id", clinicId)
+      .eq("owner_id", ownerId)
+      .eq("request_type", "access")
+      .in("status", ["submitted", "identity_review", "in_review"]),
+    "count concurrent privacy requests",
+  );
+  assert.equal(openRequests.length, 1, "Concurrent privacy requests were not deduplicated.");
+
   const initialAal = await requireNoError(
     await client.auth.mfa.getAuthenticatorAssuranceLevel(),
     "read initial AAL",
   );
   assert.equal(initialAal.currentLevel, "aal1");
+
+  const manageBeforeMfa = await client.rpc("myvet_manage_privacy_request", {
+    requested_request_id: privacyRequestIdA,
+    requested_status: "in_review",
+    requested_resolution_notes: null,
+  });
+  assert.match(manageBeforeMfa.error?.message || "", /MFA_REQUIRED/);
 
   const beforeMfa = await requireNoError(
     await client.from("patients").select("pet_id"),
@@ -155,6 +213,15 @@ try {
   );
   assert.equal(verifiedAal.currentLevel, "aal2");
 
+  await requireNoError(
+    await client.rpc("myvet_manage_privacy_request", {
+      requested_request_id: privacyRequestIdA,
+      requested_status: "completed",
+      requested_resolution_notes: "local acceptance",
+    }),
+    "manage privacy request after MFA",
+  );
+
   const afterMfa = await requireNoError(
     await client.from("patients").select("pet_id").eq("pet_id", petId),
     "query after MFA",
@@ -175,9 +242,11 @@ try {
 
   console.log("auth_lifecycle_local_passed");
 } finally {
+  await admin.from("privacy_requests").delete().eq("clinic_id", clinicId);
   await admin.from("patients").delete().eq("pet_id", petId);
   await admin.from("owners").delete().eq("owner_id", ownerId);
   await admin.from("staff").delete().eq("staff_id", staffId);
   await admin.from("clinics").delete().eq("clinic_id", clinicId);
   if (userId) await admin.auth.admin.deleteUser(userId);
+  if (ownerUserId) await admin.auth.admin.deleteUser(ownerUserId);
 }
