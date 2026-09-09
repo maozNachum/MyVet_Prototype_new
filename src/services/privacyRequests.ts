@@ -47,9 +47,12 @@ export async function hasLinkedOwnerProfile(): Promise<boolean> {
 }
 
 export async function listMyPrivacyRequests(): Promise<PrivacyRequestSummary[] | null> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user) throw new Error("יש להתחבר לאזור האישי כדי לצפות בבקשות.");
   const { data, error } = await supabase
     .from("privacy_requests")
     .select("request_id, request_type, status, submitted_at")
+    .eq("auth_user_id", authData.user.id)
     .order("submitted_at", { ascending: false })
     .limit(20);
   if (error) {

@@ -46,6 +46,7 @@ test("frontend uses one service and gives safe guidance", () => {
   assert.match(page, /לאחר אימות זהות/);
   assert.match(page, /hasLinkedOwnerProfile\(\)[\s\S]*listMyPrivacyRequests\(\)/);
   assert.match(page, /isOwnerSignedIn && requestWorkflowAvailable/);
+  assert.match(service, /\.eq\("auth_user_id", authData\.user\.id\)/);
 });
 
 test("clean-room baseline contains the identical migration", () => {
