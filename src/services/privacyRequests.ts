@@ -8,6 +8,7 @@ export interface PrivacyRequestSummary {
   type: PrivacyRequestType;
   status: PrivacyRequestStatus;
   submittedAt: string;
+  details: string;
 }
 
 const SAFE_ERRORS: Array<[string, string]> = [
@@ -29,13 +30,18 @@ export async function submitPrivacyRequest(type: PrivacyRequestType, details?: s
     requested_type: type,
     requested_details: details?.trim() || null,
   });
-  if (error) throw safeError(error, "לא הצלחנו לשלוח את הבקשה. נסו שוב או פנו אלינו בדוא״ל.");
+  if (error) throw safeError(error, "לא הצלחנו לשלוח את הבקשה. נסו שוב או פנו למרפאה.");
+  if (!data) throw new Error("לא התקבל אישור לשמירת הבקשה. רעננו את הרשימה לפני ניסיון נוסף.");
   return String(data || "");
 }
 
 export async function hasLinkedOwnerProfile(): Promise<boolean> {
   const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) return false;
+  if (authError) {
+    if (authError.name === "AuthSessionMissingError") return false;
+    throw new Error("לא הצלחנו לאמת את החשבון. נסו שוב.");
+  }
+  if (!authData.user) return false;
   const { data, error } = await supabase
     .from("owners")
     .select("owner_id")
@@ -51,7 +57,7 @@ export async function listMyPrivacyRequests(): Promise<PrivacyRequestSummary[] |
   if (authError || !authData.user) throw new Error("יש להתחבר לאזור האישי כדי לצפות בבקשות.");
   const { data, error } = await supabase
     .from("privacy_requests")
-    .select("request_id, request_type, status, submitted_at")
+    .select("request_id, request_type, status, submitted_at, request_details")
     .eq("auth_user_id", authData.user.id)
     .order("submitted_at", { ascending: false })
     .limit(20);
@@ -64,5 +70,6 @@ export async function listMyPrivacyRequests(): Promise<PrivacyRequestSummary[] |
     type: row.request_type as PrivacyRequestType,
     status: row.status as PrivacyRequestStatus,
     submittedAt: String(row.submitted_at),
+    details: String(row.request_details || ""),
   }));
 }

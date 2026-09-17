@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Building2, CheckCircle2, Copy, KeyRound, Loader2, Mail, ShieldCheck, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../services/supabaseClient";
+import { PrivacyRequestsManager } from "../components/PrivacyRequestsManager";
 
 type InvitationType = "owner" | "staff";
 type StaffRole = "clinic_admin" | "vet" | "nurse" | "secretary";
@@ -215,6 +216,7 @@ export function ClinicManagement() {
             <div className="min-w-0 flex-1"><h2 className="font-black text-emerald-950">ההזמנה מוכנה</h2><p className="mt-1 text-sm leading-6 text-emerald-900">הקוד מוצג פעם אחת בלבד. העתיקו את הקישור ושלחו אותו לנמען בערוץ מאובטח.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input readOnly dir="ltr" value={`${window.location.origin}/login?role=${invitationType === "staff" ? "staff" : "owner"}&invite=${encodeURIComponent(invitationToken)}`} className="min-h-11 min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-3 text-left text-xs text-slate-700" aria-label="קישור הזמנה" /><button type="button" onClick={copyInvitation} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"><Copy className="h-4 w-4" />העתקת קישור</button></div><p className="mt-2 flex items-center gap-1 text-xs text-emerald-800"><Mail className="h-3.5 w-3.5" />תוקף עד {new Intl.DateTimeFormat("he-IL", { dateStyle: "medium", timeStyle: "short" }).format(new Date(invitationExpiresAt))}</p></div>
           </div>
         </section>}
+        <PrivacyRequestsManager clinicId={clinicId} />
       </div>
     </main>
   );

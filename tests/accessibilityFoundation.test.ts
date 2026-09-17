@@ -21,7 +21,8 @@ test("accessibility statement is public, reportable and does not claim unverifie
   assert.match(statement, /import \{ Footer \}/);
   assert.match(statement, /<Link to="\/login"[\s\S]*חזרה ל־MyVet/);
   assert.match(statement, /<Footer \/>/);
-  assert.match(statement, /mailto:info@myvet\.co\.il\?subject=/);
+  assert.doesNotMatch(statement, /mailto:info@myvet\.co\.il/);
+  assert.match(statement, /צוות המרפאה/);
   assert.match(statement, /טרם עברה בדיקת התאמה מלאה/);
   assert.match(statement, /איננו מצהירים בשלב זה על עמידה מלאה/);
 });

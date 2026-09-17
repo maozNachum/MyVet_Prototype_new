@@ -5,6 +5,7 @@ const sharedArguments = ["--experimental-strip-types", "--test"];
 const sourceTests = [
   "tests/aiPrivacy.test.ts",
   "tests/privacyRightsSecurity.test.ts",
+  "tests/privacyRequestManagement.test.mjs",
   "tests/vetbotSecurity.test.ts",
   "tests/vetbotActionUnderstanding.test.ts",
   "tests/vetbotConversationPersistence.test.ts",

@@ -8,7 +8,7 @@
     "dev": "vite",
     "typecheck:ai": "tsc -p tsconfig.ai-infrastructure.json",
     "typecheck:edge": "deno check --frozen supabase/functions/ai-assistant/index.ts supabase/functions/visit-summary/index.ts supabase/functions/digitalcare-transcription/index.ts supabase/functions/medical-record-rag/index.ts supabase/functions/document-ocr/index.ts supabase/functions/client-summary/index.ts supabase/functions/follow-up-suggestions/index.ts",
-    "test:privacy": "node --experimental-strip-types --test --test-concurrency=1 tests/aiPrivacy.test.ts tests/privacyRightsSecurity.test.ts tests/privacyRightsDatabaseIntegration.test.mjs",
+    "test:privacy": "node --experimental-strip-types --test --test-concurrency=1 tests/aiPrivacy.test.ts tests/privacyRightsSecurity.test.ts tests/privacyRequestManagement.test.mjs tests/privacyRightsDatabaseIntegration.test.mjs",
     "test:ai-infrastructure": "node --experimental-strip-types --test tests/aiGatewayInfrastructure.test.ts",
     "test:frontend-secrets": "node scripts/verify-frontend-ai-secrets.mjs",
     "test:ai-data-security": "node --experimental-strip-types --test tests/aiStage2DatabaseSecurity.test.ts",

@@ -1,4 +1,4 @@
-import { Accessibility, ArrowRight, Eye, Keyboard, Mail, MessageCircleWarning } from "lucide-react";
+import { Accessibility, ArrowRight, Eye, Keyboard, MessageCircleWarning } from "lucide-react";
 import { Link } from "react-router";
 import { Footer } from "../components/Footer";
 import { MyVetLogo } from "../components/MyVetLogo";
@@ -81,15 +81,10 @@ export function AccessibilityStatement() {
           <div>
             <h2 id="contact-title" className="text-[18px] font-extrabold">דיווח על בעיית נגישות</h2>
             <p className="mt-2 max-w-2xl text-[13.5px] leading-7 text-slate-600">
-              אם נתקלתם במחסום, כתבו לנו באיזה עמוד ובאיזו פעולה נתקלתם בבעיה, ובמידת האפשר ציינו דפדפן וטכנולוגיה מסייעת. אין לשלוח בדיווח מידע רפואי או אישי רגיש.
+              אם נתקלתם במחסום, מסרו לצוות המרפאה באיזה עמוד ובאיזו פעולה נתקלתם בבעיה, ובמידת האפשר ציינו דפדפן וטכנולוגיה מסייעת. אין לשלוח בדיווח מידע רפואי או אישי רגיש.
             </p>
           </div>
-          <a
-            href="mailto:info@myvet.co.il?subject=דיווח%20נגישות%20-%20MyVet"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#1e40af] px-4 py-3 text-[13px] font-extrabold text-white transition-colors hover:bg-[#1e3a8a]"
-          >
-            <Mail className="h-4 w-4" aria-hidden="true" /> דיווח נגישות
-          </a>
+          <p className="text-sm leading-7 text-slate-600">לדיווח, פנו לצוות המרפאה בערוץ הקשר המוכר לכם.</p>
         </section>
       </div>
       </main>

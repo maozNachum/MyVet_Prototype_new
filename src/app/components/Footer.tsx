@@ -1,4 +1,4 @@
-import { Mail, Phone } from "lucide-react";
+
 import { Link } from "react-router";
 
 export function Footer() {
@@ -12,23 +12,7 @@ export function Footer() {
           <p className="mt-1 text-[12px] text-blue-200">מערכת הדגמה במסגרת פרויקט גמר — אינה שירות רפואי פעיל</p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a
-            href="mailto:info@myvet.co.il"
-            className="flex items-center gap-1.5 text-blue-100 hover:text-white text-[13px] transition-colors"
-          >
-            <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>info@myvet.co.il</span>
-          </a>
-          <span className="hidden text-white/20 sm:inline" aria-hidden="true">|</span>
-          <a
-            href="tel:+972-3-1234567"
-            className="flex items-center gap-1.5 text-blue-100 hover:text-white text-[13px] transition-colors"
-          >
-            <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>03-123-4567</span>
-          </a>
-        </div>
+
 
         <nav aria-label="קישורי מידע" className="flex items-center gap-4 text-blue-100 text-[13px]">
           <Link to="/privacy" className="hover:text-white transition-colors">פרטיות</Link>
