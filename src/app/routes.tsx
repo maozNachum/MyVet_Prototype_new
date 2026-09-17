@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
-import { canAccessReportsPage } from "./data/staffAuth";
+import { canAccessReportsPage, getStaffType } from "./data/staffAuth";
 import { AiAssistantShell } from "./components/ai/AiAssistantShell";
 
 const Layout = lazy(() => import("./pages/Layout").then((module) => ({ default: module.Layout })));
@@ -18,11 +18,16 @@ const DigitalCare = lazy(() => import("./pages/DigitalCare").then((module) => ({
 const Hospitalizations = lazy(() => import("./pages/Hospitalizations").then((module) => ({ default: module.Hospitalizations })));
 const LabOrders = lazy(() => import("./pages/LabOrders").then((module) => ({ default: module.LabOrders })));
 const PriceList = lazy(() => import("./pages/PriceList").then((module) => ({ default: module.PriceList })));
+const ClinicManagement = lazy(() => import("./pages/ClinicManagement").then((module) => ({ default: module.ClinicManagement })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then((module) => ({ default: module.PrivacyPolicy })));
 const AccessibilityStatement = lazy(() => import("./pages/AccessibilityStatement").then((module) => ({ default: module.AccessibilityStatement })));
 
 function ReportsRoute() {
   return canAccessReportsPage() ? <Reports /> : <Navigate to="/" replace />;
+}
+
+function ClinicManagementRoute() {
+  return getStaffType() === "clinic_admin" ? <ClinicManagement /> : <Navigate to="/" replace />;
 }
 
 function ClientPortalRoute() {
@@ -73,6 +78,7 @@ export const router = createBrowserRouter([
       { path: "hospitalizations", Component: Hospitalizations },
       { path: "lab-orders", Component: LabOrders },
       { path: "price-list", Component: PriceList },
+      { path: "clinic-management", Component: ClinicManagementRoute },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

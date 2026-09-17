@@ -45,6 +45,18 @@ try {
     Get-Content -LiteralPath tools\supabase-baseline\verify\auth-hardening.sql -Raw |
       docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
     Assert-NativeSuccess "Auth hardening acceptance check $attempt"
+
+    Get-Content -LiteralPath tools\supabase-baseline\verify\service-catalog-trigger.sql -Raw |
+      docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+    Assert-NativeSuccess "Service catalog trigger acceptance check $attempt"
+
+    Get-Content -LiteralPath tools\supabase-baseline\verify\definer-grants.sql -Raw |
+      docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+    Assert-NativeSuccess "Definer grant allowlist check $attempt"
+
+    Get-Content -LiteralPath tools\supabase-baseline\verify\definer-boundaries.sql -Raw |
+      docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+    Assert-NativeSuccess "Definer boundary acceptance check $attempt"
   }
 
   $status = npx --yes $SupabaseCli status --workdir tools/supabase-baseline -o env

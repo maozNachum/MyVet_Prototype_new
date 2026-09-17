@@ -61,19 +61,29 @@ Do not run `link`, `db push`, `migration repair`, or `deploy` from this workdir.
 No seed containing real people, clinics, owners, pets, or medical records belongs
 in this package.
 
-## Verified Staging acceptance
+## Verified Preview acceptance
 
-On 2026-08-29 this package was applied manually to the isolated persistent
-Supabase branch `myvet-staging` (project ref `mofigaoqzlffmnrmocxu`). Production
-was not changed. The catalog acceptance, medical-visit transaction fixture,
-tenant/role matrix, synthetic RAG runtime, HNSW planner check, and database lint
-all passed. The role and vector fixtures run inside transactions and roll back.
+On 2026-09-16 the guarded acceptance runner passed against the isolated
+persistent Supabase branch `myvet-staging` (project ref
+`fajwhkgafbjgnbgwsumt`). Production was not changed. The runner verifies the
+expected branch ref before using its credentials and covers the catalog,
+tenant/role matrix, Auth hardening, seven Edge Function MFA boundaries, Auth
+lifecycle, private Storage HTTP access and revocation, multi-clinic onboarding,
+anonymous-access denial, and synthetic-fixture cleanup.
 
-The branch's initial automatic bootstrap failed before the manual clean-room
-application, so Supabase branch metadata can still report `MIGRATIONS_FAILED`.
-Use the actual migration list and the acceptance results as the technical gate,
-and resolve the stale platform status before relying on automatic branch
-promotion.
+Run it only with the reviewed Production parent ref, Preview branch id and
+expected Preview project ref:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/supabase-baseline/verify-p0-preview.ps1 `
+  -ParentProjectRef <production-project-ref> `
+  -BranchId <preview-branch-id> `
+  -ExpectedProjectRef <preview-project-ref> `
+  -Execute
+```
+
+The script refuses an identical Production/Preview ref and verifies the resolved
+database user and URL before running write-capable synthetic fixtures.
 
 ## Logical restore warning
 

@@ -75,6 +75,15 @@ test("validated server requests enforce AAL2 for privileged staff", () => {
     assert.match(source, /staffMfaSatisfied/, edgeFunction);
     assert.match(source, /MFA_REQUIRED/, edgeFunction);
   }
+
+  const ragSource = readFileSync("supabase/functions/medical-record-rag/index.ts", "utf8");
+  const ragMfaPreflight = ragSource.indexOf('admin.from("staff").select("role")');
+  const ragResourceLookup = ragSource.indexOf("await loadStatus(admin");
+  assert.ok(ragMfaPreflight >= 0, "medical-record-rag is missing the staff MFA preflight");
+  assert.ok(
+    ragMfaPreflight < ragResourceLookup,
+    "medical-record-rag must enforce staff MFA before looking up a patient resource",
+  );
 });
 
 test("database enforcement requires aal2 and revokes staff sessions", () => {

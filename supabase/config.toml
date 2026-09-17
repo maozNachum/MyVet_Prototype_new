@@ -5,7 +5,9 @@ enabled = true
 site_url = "http://localhost:5173"
 additional_redirect_urls = [
   "http://localhost:5173",
-  "http://localhost:5173/portal",
+    "http://localhost:5173/portal",
+    "http://localhost:5173/login?mode=login&role=owner&invite=*",
+    "http://localhost:5173/login?mode=login&role=staff&invite=*",
   "http://localhost:5173/login?mode=recovery&role=owner",
   "http://localhost:5173/login?mode=recovery&role=staff"
 ]

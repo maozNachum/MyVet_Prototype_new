@@ -276,6 +276,7 @@ export function Navbar() {
     { to: "/inventory", label: "מלאי" },
     { to: "/digital-care", label: "דיגיטל" },
     ...(canAccessReportsPage() ? [{ to: "/reports", label: "דוחות" }] : []),
+    ...(staffType === "clinic_admin" ? [{ to: "/clinic-management", label: "ניהול מרפאה" }] : []),
   ];
 
   return (
@@ -343,6 +344,17 @@ export function Navbar() {
                 }`}
               >
                 דוחות
+              </Link>
+            )}
+            {staffType === "clinic_admin" && (
+              <Link
+                to="/clinic-management"
+                aria-current={isActive("/clinic-management") ? "page" : undefined}
+                className={`px-3.5 py-2 rounded-lg text-[14px] font-medium transition-all cursor-pointer whitespace-nowrap ${
+                  isActive("/clinic-management") ? "bg-white/15 text-white shadow-sm" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                ניהול מרפאה
               </Link>
             )}
           </div>

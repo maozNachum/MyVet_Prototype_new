@@ -134,3 +134,25 @@ test("non-owner Auth signup is not coupled to the clinic owner table", async () 
   assert.equal((await db.query("select count(*)::int as count from public.owners")).rows[0].count, 0);
   await db.close();
 });
+
+test("late email verification failure preserves an unconfirmed account and safely retries after verified correction", async () => {
+  const db = await createDatabase();
+  const userId = "20000000-0000-0000-0000-000000000005";
+  try {
+    await db.exec(`insert into public.owners(clinic_id,owner_id,email)
+      values ('10000000-0000-0000-0000-000000000001','100000005','expected@example.test')`);
+    await db.query("insert into auth.users(id,email,raw_user_meta_data) values ($1,$2,$3::jsonb)",
+      [userId,"wrong@example.test",signupMetadata("100000005")]);
+    await assert.rejects(db.query("update auth.users set email_confirmed_at=now() where id=$1",[userId]),
+      /OWNER_SIGNUP_EMAIL_MISMATCH/);
+    assert.deepEqual((await db.query("select email_confirmed_at from auth.users where id=$1",[userId])).rows,
+      [{email_confirmed_at:null}]);
+    assert.equal((await db.query("select auth_user_id from public.owners where owner_id='100000005'")).rows[0].auth_user_id,null);
+    // Simulate an operator's separately verified correction, not a browser permission.
+    await db.query("update auth.users set email=$2 where id=$1",[userId,"expected@example.test"]);
+    await db.query("update auth.users set email_confirmed_at=now() where id=$1",[userId]);
+    assert.equal((await db.query("select auth_user_id from public.owners where owner_id='100000005'")).rows[0].auth_user_id,userId);
+    assert.equal((await db.query("select count(*)::int count from public.owners")).rows[0].count,1);
+    assert.deepEqual((await db.query("select raw_user_meta_data from auth.users where id=$1",[userId])).rows[0].raw_user_meta_data,{});
+  } finally { await db.close(); }
+});

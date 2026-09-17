@@ -29,6 +29,7 @@ const sourceTests = [
 ];
 
 const databaseTests = [
+  "tests/definerBoundaryDatabaseIntegration.test.mjs",
   "tests/patientDeletionDatabaseIntegration.test.mjs",
   "tests/ownerSignupDatabaseIntegration.test.mjs",
   "tests/ownerProfileClaimDatabaseIntegration.test.mjs",

@@ -310,6 +310,11 @@ Deno.serve(async (request) => {
 
   const auditRequestId = crypto.randomUUID();
   try {
+    const { data: mfaStaff } = await admin.from("staff").select("role")
+      .eq("auth_user_id", authData.user.id).eq("is_active", true).limit(1).maybeSingle();
+    if (mfaStaff && !staffMfaSatisfied(authHeader, mfaStaff.role)) {
+      throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });
+    }
     const status = await loadStatus(admin, authData.user.id, body.petId);
     if (status.actor_kind === "staff" && !staffMfaSatisfied(authHeader, status.actor_role)) {
       throw new AiGatewayError("MFA_REQUIRED", { httpStatus: 403 });

@@ -1,15 +1,21 @@
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
-const env = Object.fromEntries(
-  fs.readFileSync(".env", "utf8")
-    .split(/\r?\n/)
-    .filter((line) => line && !line.trimStart().startsWith("#"))
-    .map((line) => {
-      const separator = line.indexOf("=");
-      return [line.slice(0, separator), line.slice(separator + 1)];
-    }),
-);
+const fileEnv = fs.existsSync(".env")
+  ? Object.fromEntries(
+      fs.readFileSync(".env", "utf8")
+        .split(/\r?\n/)
+        .filter((line) => line && !line.trimStart().startsWith("#"))
+        .map((line) => {
+          const separator = line.indexOf("=");
+          return [line.slice(0, separator), line.slice(separator + 1)];
+        }),
+    )
+  : {};
+const env = {
+  VITE_SUPABASE_URL: process.env.MYVET_TEST_SUPABASE_URL || fileEnv.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: process.env.MYVET_TEST_ANON_KEY || fileEnv.VITE_SUPABASE_ANON_KEY,
+};
 
 if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
   console.error("Missing public Supabase configuration.");

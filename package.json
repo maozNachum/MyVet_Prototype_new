@@ -26,6 +26,7 @@
     "test:hardening": "node --experimental-strip-types --test tests/finalHardening.test.ts",
     "test:auth-hardening": "node --experimental-strip-types --test tests/authHardening.test.ts",
     "test:auth-lifecycle-local": "node scripts/verify-auth-lifecycle.mjs",
+    "test:multi-clinic-onboarding-preview": "node scripts/verify-multi-clinic-onboarding.mjs",
     "test:accessibility": "node --experimental-strip-types --test tests/accessibilityFoundation.test.ts",
     "test:rag-calibration": "node --experimental-strip-types scripts/calibrate-rag-similarity.mjs",
     "test:vetbot": "node scripts/run-vetbot-tests.mjs",

@@ -7,6 +7,10 @@ const migration = readFileSync(
   "supabase/migrations/20260906120000_harden_owner_profile_claim.sql",
   "utf8",
 );
+const concurrencyMigration = readFileSync(
+  "supabase/migrations/20260915130000_harden_owner_profile_claim_concurrency.sql",
+  "utf8",
+);
 
 const ids = {
   userA: "20000000-0000-0000-0000-000000000001",
@@ -23,6 +27,7 @@ async function createDatabase() {
     create role service_role nologin bypassrls;
 
     create schema auth;
+    create schema private;
     create table auth.users (
       id uuid primary key,
       email text,
@@ -54,6 +59,7 @@ async function createDatabase() {
       ('${ids.clinicB}', 'Clinic B');
   `);
   await db.exec(migration);
+  await db.exec(concurrencyMigration);
   return db;
 }
 

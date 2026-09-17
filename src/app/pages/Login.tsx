@@ -77,6 +77,9 @@ function getErrorMessage(error: unknown) {
   if (/database error saving new user|owner_signup_/i.test(rawMessage)) {
     return "לא ניתן להשלים את ההרשמה. ודאו שתעודת הזהות והאימייל תואמים לפרטי הלקוח במרפאה, או פנו לצוות המרפאה.";
   }
+  if (/INVITATION_|OWNER_SIGNUP_INVITATION/i.test(rawMessage)) {
+    return "קוד ההזמנה אינו תקף, פג תוקפו או כבר נוצל. בקשו מהמנהל קישור חדש.";
+  }
 
   return "אירעה שגיאה. נסו שוב בעוד רגע.";
 }
@@ -125,6 +128,7 @@ export function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [invitationToken, setInvitationToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -138,6 +142,15 @@ export function Login() {
     const searchParams = new URLSearchParams(window.location.search);
     const recoveryRole = searchParams.get("role");
     const recoveryRequested = searchParams.get("mode") === "recovery";
+    const invite = searchParams.get("invite")?.trim() || "";
+    const invitedRole = searchParams.get("role");
+    if (invite) {
+      setInvitationToken(invite);
+      if (!recoveryRequested && (invitedRole === "owner" || invitedRole === "staff")) {
+        setRole(invitedRole);
+        setIsSignUp(searchParams.get("mode") !== "login");
+      }
+    }
 
     const openRecoveryForm = () => {
       setRole(recoveryRole === "staff" ? "staff" : "owner");
@@ -238,6 +251,58 @@ export function Login() {
     return Object.keys(errors).length === 0;
   };
 
+  const validateStaffSignup = () => {
+    const errors: FormErrors = {};
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (fullName.trim().length < 2) errors.fullName = "הזינו שם מלא כדי ליצור חשבון צוות.";
+    if (!EMAIL_REGEX.test(normalizedEmail)) errors.email = "הזינו כתובת אימייל תקינה.";
+    if (!PASSWORD_POLICY_REGEX.test(password)) errors.password = PASSWORD_POLICY_MESSAGE;
+    if (!confirmPassword) errors.confirmPassword = "הזינו שוב את הסיסמה לאימות.";
+    else if (password !== confirmPassword) errors.confirmPassword = "הסיסמאות לא תואמות. בדקו והזינו שוב.";
+    if (!invitationToken.trim()) errors.general = "הזינו את קוד ההזמנה שקיבלתם ממנהל המרפאה.";
+
+    setFormErrors(errors);
+    setFormMessage(getFirstError(errors));
+    return Object.keys(errors).length === 0;
+  };
+
+  const setActiveClinic = async (clinicId: string | null | undefined) => {
+    if (!clinicId) return;
+    const { error } = await supabase.rpc("myvet_set_active_clinic", {
+      requested_clinic_id: clinicId,
+    });
+    // Keep old single-clinic deployments compatible during the migration rollout.
+    if (error && !/function .*myvet_set_active_clinic.*does not exist|could not find the function/i.test(error.message)) {
+      throw error;
+    }
+  };
+
+  const acceptOwnerInvitation = async (
+    token: string,
+    profile: { fullName: string; phone: string; ownerId: string },
+  ) => {
+    const { data, error } = await supabase.rpc("myvet_accept_clinic_invitation", {
+      requested_token: token,
+      requested_full_name: profile.fullName,
+      requested_phone: profile.phone,
+      requested_owner_id: profile.ownerId,
+      requested_terms_version: TERMS_VERSION,
+    });
+    if (error) throw error;
+    await supabase.auth.updateUser({
+      data: {
+        role: null,
+        owner_id: null,
+        full_name: null,
+        phone: null,
+        terms_version: null,
+        invitation_token: null,
+      },
+    });
+    return String((data as { clinic_id?: string } | null)?.clinic_id || "");
+  };
+
   const handleLogin = async (
     event?: React.FormEvent | React.MouseEvent<HTMLButtonElement>,
   ) => {
@@ -252,11 +317,15 @@ export function Login() {
     }
 
     const isValid =
-      role === "owner" && isSignUp ? validateOwnerSignup() : validateLogin();
+      role === "owner" && isSignUp
+        ? validateOwnerSignup()
+        : role === "staff" && isSignUp
+          ? validateStaffSignup()
+          : validateLogin();
     if (!isValid) return;
 
     setFormMessage(
-      role === "owner" && isSignUp
+      isSignUp && (role === "owner" || role === "staff")
         ? "בודק את הפרטים ויוצר חשבון..."
         : "בודק פרטי התחברות...",
     );
@@ -273,13 +342,18 @@ export function Login() {
           email: normalizedEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/portal`,
+            emailRedirectTo: invitationToken.trim()
+              ? `${window.location.origin}/login?mode=login&role=owner&invite=${encodeURIComponent(invitationToken.trim())}`
+              : `${window.location.origin}/portal`,
             data: {
               role: "owner",
               owner_id: normalizedId,
               full_name: fullName.trim(),
               phone: normalizedPhone,
               terms_version: TERMS_VERSION,
+              ...(invitationToken.trim()
+                ? { invitation_token: invitationToken.trim() }
+                : {}),
             },
           },
         });
@@ -297,9 +371,16 @@ export function Login() {
         }
 
         if (data.session) {
+          if (invitationToken.trim()) {
+            await acceptOwnerInvitation(invitationToken.trim(), {
+              fullName: fullName.trim(),
+              phone: normalizedPhone,
+              ownerId: normalizedId,
+            });
+          }
           const { data: createdOwner, error: createdOwnerError } = await supabase
             .from("owners")
-            .select("owner_id")
+            .select("owner_id, clinic_id")
             .eq("auth_user_id", data.user.id)
             .maybeSingle();
 
@@ -308,6 +389,8 @@ export function Login() {
               "החשבון נוצר, אך פרופיל הלקוח לא הושלם. פנו למרפאה לפני ניסיון נוסף.",
             );
           }
+
+          await setActiveClinic(createdOwner.clinic_id);
 
           setFormMessage("החשבון נוצר בהצלחה! מעביר אותך לאזור האישי...");
           setTimeout(() => navigate("/portal"), 900);
@@ -324,6 +407,68 @@ export function Login() {
         return;
       }
 
+      if (role === "staff" && isSignUp) {
+        setIsLoading(true);
+        if (!invitationToken.trim()) throw new Error("קוד ההזמנה חסר. פנו למנהל המרפאה לקבלת קישור חדש.");
+
+        const { data: staffSignup, error: staffSignupError } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/login?mode=login&role=staff&invite=${encodeURIComponent(invitationToken.trim())}`,
+            data: {
+              role: "staff",
+              full_name: fullName.trim(),
+              invitation_token: invitationToken.trim(),
+            },
+          },
+        });
+        if (staffSignupError) throw staffSignupError;
+        if (!staffSignup.user) throw new Error("המשתמש לא נוצר במערכת האימות.");
+        if (Array.isArray(staffSignup.user.identities) && staffSignup.user.identities.length === 0) {
+          throw new Error("כבר קיים חשבון עבור האימייל הזה. נסו להתחבר עם הסיסמה הקיימת.");
+        }
+
+        if (!staffSignup.session) {
+          setFormMessage("החשבון נוצר. אשרו את המייל שנשלח אליכם, ולאחר מכן התחברו דרך הקישור שקיבלתם.");
+          setIsSignUp(false);
+          setPassword("");
+          setConfirmPassword("");
+          setFormErrors({});
+          return;
+        }
+
+        const { data: acceptedStaff, error: invitationError } = await supabase.rpc(
+          "myvet_accept_clinic_invitation",
+          {
+            requested_token: invitationToken.trim(),
+            requested_full_name: fullName.trim(),
+          },
+        );
+        if (invitationError) throw invitationError;
+
+        const acceptedRole = String((acceptedStaff as { role?: string } | null)?.role || "").trim() as StaffType;
+        const staffRole: StaffType = ["clinic_admin", "vet", "nurse", "secretary"].includes(acceptedRole) ? acceptedRole : "vet";
+        const acceptedClinicId = String((acceptedStaff as { clinic_id?: string } | null)?.clinic_id || "");
+        const acceptedStaffId = String((acceptedStaff as { staff_id?: string } | null)?.staff_id || "");
+        await setActiveClinic(acceptedClinicId);
+        localStorage.setItem("myvet_staff_type", staffRole);
+        localStorage.setItem("myvet_staff_name", fullName.trim());
+        localStorage.setItem("myvet_staff_email", normalizedEmail);
+        localStorage.setItem("myvet_staff_id", acceptedStaffId);
+
+        if (requiresStaffMfa(staffRole)) {
+          const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (assuranceError) throw assuranceError;
+          if (assurance.currentLevel !== "aal2") {
+            navigate("/mfa");
+            return;
+          }
+        }
+        navigate("/");
+        return;
+      }
+
       setIsLoading(true);
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -337,13 +482,34 @@ export function Login() {
       if (role === "owner") {
         const { data: ownerByAuth, error: ownerByAuthError } = await supabase
           .from("owners")
-          .select("owner_id, auth_user_id, email")
+          .select("owner_id, auth_user_id, email, clinic_id")
           .eq("auth_user_id", data.user.id)
           .maybeSingle();
 
         if (ownerByAuthError) throw ownerByAuthError;
 
         if (!ownerByAuth) {
+          const ownerMetadata = data.user.user_metadata || {};
+          if (invitationToken.trim()) {
+            await acceptOwnerInvitation(invitationToken.trim(), {
+              fullName: String(ownerMetadata.full_name || "").trim(),
+              phone: onlyDigits(String(ownerMetadata.phone || "")),
+              ownerId: onlyDigits(String(ownerMetadata.owner_id || "")),
+            });
+          }
+
+          const { data: invitedOwner, error: invitedOwnerError } = await supabase
+            .from("owners")
+            .select("owner_id, auth_user_id, email, clinic_id")
+            .eq("auth_user_id", data.user.id)
+            .maybeSingle();
+          if (invitedOwnerError) throw invitedOwnerError;
+          if (invitedOwner) {
+            await setActiveClinic(invitedOwner.clinic_id);
+            navigate("/portal");
+            return;
+          }
+
           let claimedOwnerId: string | null;
           try {
             claimedOwnerId = await claimOwnerProfile();
@@ -361,13 +527,16 @@ export function Login() {
 
           const { data: claimedOwner, error: claimedOwnerError } = await supabase
             .from("owners")
-            .select("owner_id, auth_user_id, email")
+            .select("owner_id, auth_user_id, email, clinic_id")
             .eq("auth_user_id", data.user.id)
             .maybeSingle();
 
           if (claimedOwnerError) throw claimedOwnerError;
           if (!claimedOwner) throw new Error("פרופיל הלקוח לא קושר לחשבון.");
+          await setActiveClinic(claimedOwner.clinic_id);
         }
+
+        if (ownerByAuth) await setActiveClinic(ownerByAuth.clinic_id);
 
         navigate("/portal");
         return;
@@ -386,13 +555,33 @@ export function Login() {
         throw new Error("חשבון זה מוגדר כלקוח. התחברו דרך האזור האישי.");
       }
 
-      const { data: staffProfile, error: staffProfileError } = await supabase
+      let { data: staffProfile, error: staffProfileError } = await supabase
         .from("staff")
-        .select("staff_id, auth_user_id, email, full_name, role, is_active")
+        .select("staff_id, auth_user_id, email, full_name, role, is_active, clinic_id")
         .eq("auth_user_id", data.user.id)
         .maybeSingle();
 
       if (staffProfileError) throw staffProfileError;
+
+      if (!staffProfile) {
+        if (invitationToken.trim()) {
+          const { error: invitationError } = await supabase.rpc(
+            "myvet_accept_clinic_invitation",
+            {
+              requested_token: invitationToken.trim(),
+              requested_full_name:
+                String(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "צוות מרפאה"),
+            },
+          );
+          if (invitationError) throw invitationError;
+          ({ data: staffProfile, error: staffProfileError } = await supabase
+            .from("staff")
+            .select("staff_id, auth_user_id, email, full_name, role, is_active, clinic_id")
+            .eq("auth_user_id", data.user.id)
+            .maybeSingle());
+          if (staffProfileError) throw staffProfileError;
+        }
+      }
 
       if (!staffProfile) {
         await supabase.auth.signOut();
@@ -418,6 +607,8 @@ export function Login() {
         await supabase.auth.signOut();
         throw new Error("לתפקיד המשתמש אין הרשאה להיכנס לממשק הצוות.");
       }
+
+      await setActiveClinic(staffProfile.clinic_id);
 
       localStorage.setItem("myvet_staff_type", staffRole);
       localStorage.setItem(
@@ -767,7 +958,9 @@ export function Login() {
                     ? isSignUp
                       ? "פתיחת חשבון לקוח"
                       : "שלום, אזור אישי"
-                    : "שלום, צוות המרפאה"}
+                    : isSignUp
+                      ? "פתיחת חשבון צוות"
+                      : "שלום, צוות המרפאה"}
                 </h1>
                 <p className="text-gray-500 font-medium text-[14px]">
                   {isPasswordRecovery
@@ -776,7 +969,9 @@ export function Login() {
                     ? isSignUp
                       ? "צרו חשבון חדש לניהול התיק הרפואי והתורים"
                       : "התחברו כדי לצפות בתיק הרפואי ובתורים"
-                    : "התחברו כדי לגשת ללוח הבקרה"}
+                    : isSignUp
+                      ? "השלימו הרשמה באמצעות קוד ההזמנה שקיבלתם מהמרפאה"
+                      : "התחברו כדי לגשת ללוח הבקרה"}
                 </p>
 
                 {formMessage && (
@@ -800,7 +995,7 @@ export function Login() {
                 noValidate
                 className="space-y-4"
               >
-                {role === "staff" && !isPasswordRecovery && (
+                {role === "staff" && !isPasswordRecovery && !isSignUp && (
                   <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-right">
                     <div className="flex items-start gap-3">
                       <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[#1e40af]" />
@@ -815,6 +1010,26 @@ export function Login() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {role === "staff" && isSignUp && !isPasswordRecovery && (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-right">
+                    <div className="flex items-start gap-3">
+                      <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[#1e40af]" />
+                      <p className="text-[12px] font-medium leading-5 text-slate-600">ההרשמה פתוחה רק באמצעות הזמנה אישית. לאחר אימות האימייל ההרשאה תיקבע לפי התפקיד שהוגדר בהזמנה.</p>
+                    </div>
+                  </div>
+                )}
+
+                {role === "staff" && isSignUp && (
+                  <div>
+                    <label htmlFor="staffFullName" className="block text-gray-600 text-[13px] mb-2" style={{ fontWeight: 500 }}>שם מלא</label>
+                    <div className="relative">
+                      <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-500 pointer-events-none" />
+                      <input type="text" id="staffFullName" value={fullName} aria-invalid={Boolean(formErrors.fullName)} aria-describedby={formErrors.fullName ? "staffFullName-error" : undefined} onChange={(event) => { setFullName(event.target.value); clearFieldError("fullName"); }} className={`w-full pr-11 pl-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("fullName", "staff")}`} placeholder="הזינו שם מלא" />
+                    </div>
+                    <ErrorText id="staffFullName-error" message={formErrors.fullName} />
                   </div>
                 )}
 
@@ -906,7 +1121,49 @@ export function Login() {
                       </div>
                       <ErrorText id="phone-error" message={formErrors.phoneNumber} />
                     </div>
+
+                    <div>
+                      <label
+                        htmlFor="invitationToken"
+                        className="block text-gray-600 text-[13px] mb-2"
+                        style={{ fontWeight: 500 }}
+                      >
+                        קוד הזמנה <span className="font-normal text-gray-400">(אם קיבלתם מהמרפאה)</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="invitationToken"
+                        value={invitationToken}
+                        onChange={(event) => setInvitationToken(event.target.value.trim())}
+                        dir="ltr"
+                        autoComplete="one-time-code"
+                        className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("general")}`}
+                        placeholder="הדביקו קוד הזמנה"
+                      />
+                      <p className="mt-1.5 text-[11px] leading-5 text-gray-500">
+                        חשבון חדש נוצר רק באמצעות הזמנה מאומתת או חיבור לתיק קיים במרפאה.
+                      </p>
+                    </div>
                   </>
+                )}
+
+                {(role === "staff" && isSignUp) && (
+                  <div>
+                    <label htmlFor="staffInvitationToken" className="block text-gray-600 text-[13px] mb-2" style={{ fontWeight: 500 }}>
+                      קוד הזמנה
+                    </label>
+                    <input
+                      type="text"
+                      id="staffInvitationToken"
+                      value={invitationToken}
+                      onChange={(event) => { setInvitationToken(event.target.value.trim()); clearFieldError("general"); }}
+                      dir="ltr"
+                      autoComplete="one-time-code"
+                      className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 transition-all text-[15px] ${inputClass("general", "staff")}`}
+                      placeholder="הדביקו קוד הזמנה"
+                    />
+                    <p className="mt-1.5 text-[11px] leading-5 text-gray-500">הקוד אישי, חד־פעמי ותקף לזמן מוגבל.</p>
+                  </div>
                 )}
 
                 {!isPasswordRecovery && (
@@ -980,7 +1237,7 @@ export function Login() {
                       )}
                     </button>
                   </div>
-                  {((role === "owner" && isSignUp) || isPasswordRecovery) && (
+                  {(((role === "owner" || role === "staff") && isSignUp) || isPasswordRecovery) && (
                     <p className="mt-2 text-[12px] font-medium text-gray-500">
                       לפחות 12 תווים, אות גדולה, אות קטנה, מספר וסימן מיוחד.
                     </p>
@@ -988,7 +1245,7 @@ export function Login() {
                   <ErrorText id="password-error" message={formErrors.password} />
                 </div>
 
-                {((role === "owner" && isSignUp) || isPasswordRecovery) && (
+                {(((role === "owner" || role === "staff") && isSignUp) || isPasswordRecovery) && (
                   <>
                     <div>
                       <label
@@ -1104,12 +1361,14 @@ export function Login() {
                         ? isSignUp
                           ? "יצירת חשבון לקוח"
                           : "כניסה לאזור האישי"
-                        : "כניסה לממשק הצוות"}
+                        : isSignUp
+                          ? "יצירת חשבון צוות"
+                          : "כניסה לממשק הצוות"}
                     </>
                   )}
                 </button>
 
-                {role === "owner" && !isPasswordRecovery && (
+                {(role === "owner" || (role === "staff" && invitationToken)) && !isPasswordRecovery && (
                   <div className="text-center pt-1">
                     <button
                       type="button"
@@ -1117,12 +1376,14 @@ export function Login() {
                         setIsSignUp((prev) => !prev);
                         resetForm();
                       }}
-                      className="text-[13px] text-rose-500 hover:text-rose-600 hover:underline transition-colors"
+                      className={`text-[13px] hover:underline transition-colors ${role === "owner" ? "text-rose-500 hover:text-rose-600" : "text-[#1e40af] hover:text-blue-800"}`}
                       style={{ fontWeight: 500 }}
                     >
                       {isSignUp
                         ? "כבר יש לכם חשבון? התחברו"
-                        : "אין לכם חשבון? הירשמו"}
+                        : role === "staff"
+                          ? "יש לכם קוד הזמנה? הירשמו"
+                          : "אין לכם חשבון? הירשמו"}
                     </button>
                   </div>
                 )}

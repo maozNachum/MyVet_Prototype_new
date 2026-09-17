@@ -1,10 +1,13 @@
 # MyVet — אינדקס התיעוד הרשמי
 
-עודכן: 31.08.2026
+עודכן: 17.09.2026
 
 מטרת הקובץ היא למנוע שימוש במסמך היסטורי כאילו הוא מתאר את מצב המערכת הנוכחי. במקרה של סתירה, הקוד, המיגרציות ומצב הסביבה המאומת גוברים על מסמך תכנון.
 
 ## סדר קריאה מומלץ
+
+מצב P0 המאוחר: [סגירת אבטחה והחסמים שנותרו](P0_CLOSURE_STATUS_2026-09-17_HE.md).
+מסמכי אוגוסט להלן הם מפת ארכיטקטורה ותוכנית; אינם גוברים על ראיות ספטמבר.
 
 1. [`../AGENTS.md`](../AGENTS.md) — כללי עבודה מחייבים.
 2. [`CODEX_PARTNER_FULL_SYSTEM_HANDOFF_HE.md`](CODEX_PARTNER_FULL_SYSTEM_HANDOFF_HE.md) — מפת המערכת המלאה והעדכנית ביותר לסוכן חדש.
@@ -16,6 +19,10 @@
 
 ## תיעוד מוצר וארכיטקטורה
 
+- [ביקורת הרשאות פונקציות](P0_DEFINER_GRANTS_AUDIT_2026-09-16_HE.md) — חתימות, בקרות וממצאי הסקירה.
+- [חבילת החלטות פרטיות](PRIVACY_LEGAL_APPROVAL_PACK_HE.md) — טיוטה לאישור, כולל תרגילים ותקופות שמירה.
+- [קבלת דואר Auth](P0_SMTP_ACCEPTANCE_HE.md) — דרישות ספק ודומיין ומטריצת בדיקות מסירה.
+
 - [`PROJECT_CONTEXT_HE.md`](PROJECT_CONTEXT_HE.md) — הקשר מוצרי; יש לאמת פרטים טכניים מול מסמך החפיפה והקוד.
 - [`SUPABASE_ARCHITECTURE_HE.md`](SUPABASE_ARCHITECTURE_HE.md) — מבנה Supabase והרשאות.
 - [`COLLABORATION_HE.md`](COLLABORATION_HE.md) — עבודה מקבילה; הגדרות Vercel החיות נבדקות לפני כל פריסה.
@@ -26,6 +33,9 @@
 - [`PRIVACY_DATA_MAP_HE.md`](PRIVACY_DATA_MAP_HE.md) — מפת המידע, מטרות העיבוד והזרימות לספקים.
 - [`PRIVACY_VENDOR_REGISTER_HE.md`](PRIVACY_VENDOR_REGISTER_HE.md) — ספקים, DPA, תתי־מעבדים והעברות לחו״ל.
 - [`PRIVACY_OPERATIONS_RUNBOOK_HE.md`](PRIVACY_OPERATIONS_RUNBOOK_HE.md) — טיפול בבקשות פרטיות ובאירועי מידע.
+- [`NISAN_HANDOFF_P0_3_2_OWNER_CLAIM_2026-09-10_HE.md`](NISAN_HANDOFF_P0_3_2_OWNER_CLAIM_2026-09-10_HE.md) — מסירת קבלה למשימה 3.2.
+- [`NISAN_HANDOFF_P0_3_4_AUTH_MFA_2026-09-10_HE.md`](NISAN_HANDOFF_P0_3_4_AUTH_MFA_2026-09-10_HE.md) — מסירת קבלה למשימה 3.4 והפער התפעולי שנותר ב־SMTP.
+- [`NISAN_HANDOFF_P0_3_6_PRIVACY_LEGAL_2026-09-10_HE.md`](NISAN_HANDOFF_P0_3_6_PRIVACY_LEGAL_2026-09-10_HE.md) — מסירת התשתית ההנדסית והחסמים המשפטיים של 3.6.
 - [`DEMO_SCENARIO_HE.md`](DEMO_SCENARIO_HE.md) — תרחיש הצגה בלבד, לא שער Production.
 
 ## תיעוד ממוקד ליכולות AI

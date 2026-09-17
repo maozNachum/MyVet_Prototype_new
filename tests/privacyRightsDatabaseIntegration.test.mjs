@@ -116,19 +116,36 @@ test("only an active clinic admin can manage a request in the same clinic", asyn
   } finally { await reset(db); await db.close(); }
 });
 
-test("retention preview is service-only, aggregate-only and non-destructive", async () => {
+test("retention preview excludes boundary, future, unset and already-deleted records without mutation", async () => {
   const db = await database();
   try {
     await reset(db);
-    await db.exec("insert into public.ai_documents(retention_until) values (now()-interval '1 day'),(now()+interval '1 day'); insert into public.ai_artifacts(retention_until) values (now()-interval '1 day')");
+    // Freeze now() for insertion and preview so the exact boundary is meaningful.
+    await db.exec("begin");
+    for (const table of ["ai_documents", "ai_artifacts"]) {
+      await db.exec(`insert into public.${table}(retention_until,deleted_at) values
+        (now()-interval '1 microsecond',null),
+        (now(),null),
+        (now()+interval '1 microsecond',null),
+        (null,null),
+        (now()-interval '1 day',now())`);
+    }
     await asUser(db,id.adminA);
+    await db.exec("savepoint denied_preview");
     await assert.rejects(db.query("select public.myvet_privacy_retention_preview()"),/permission denied/i);
+    await db.exec("rollback to savepoint denied_preview");
     await asUser(db,id.adminA,"service_role");
     const preview = (await db.query("select public.myvet_privacy_retention_preview() as result")).rows[0].result;
+    assert.deepEqual(Object.keys(preview).sort(), ["expired_ai_artifacts", "expired_ai_documents", "generated_at"]);
     assert.equal(Number(preview.expired_ai_documents),1);
     assert.equal(Number(preview.expired_ai_artifacts),1);
     await reset(db);
-    assert.equal((await db.query("select count(*)::int count from public.ai_documents")).rows[0].count,2);
+    for (const table of ["ai_documents", "ai_artifacts"]) {
+      assert.deepEqual((await db.query(`select count(*)::int count,
+        count(*) filter (where deleted_at is not null)::int deleted
+        from public.${table}`)).rows[0], {count:5,deleted:1});
+    }
+    await db.exec("rollback");
   } finally { await reset(db); await db.close(); }
 });
 });
